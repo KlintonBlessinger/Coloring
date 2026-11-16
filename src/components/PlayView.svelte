@@ -1,0 +1,232 @@
+<script lang="ts">
+  import { untrack } from 'svelte';
+  import { Game, type Snapshot } from '../lib/game';
+  import { inkOn } from '../lib/color';
+  import { shareOrDownload } from '../lib/download';
+  import { getPuzzle } from '../lib/catalog';
+  import type { Settings } from '../lib/settings';
+  import type { ProgressSave } from '../lib/storage';
+
+  let {
+    puzzleId,
+    settings,
+    onBack,
+    onSaved,
+  }: {
+    puzzleId: string;
+    settings: Settings;
+    onBack: () => void;
+    onSaved: (id: string, save: ProgressSave) => void;
+  } = $props();
+
+  const puzzle = untrack(() => getPuzzle(puzzleId));
+  let canvasEl = $state<HTMLCanvasElement | null>(null);
+  let paletteEl = $state<HTMLDivElement | null>(null);
+  let gameRef = $state<Game | null>(null);
+  let snapshot = $state<Snapshot | null>(null);
+  let celebrate = $state(false);
+  let shaking = $state(false);
+  let saveError = $state(false);
+  let saving = $state(false);
+  let lastSel = -1;
+
+  const live = untrack(() => ({
+    sound: settings.sound,
+    haptics: settings.haptics,
+    bigNumbers: settings.bigNumbers,
+  }));
+
+  const pieces = puzzle
+    ? Array.from({ length: 26 }, (_, i) => ({
+        x: (i * 37) % 100,
+        color: puzzle.palette[i % puzzle.palette.length] ?? '#e07a5f',
+        delay: (i % 7) * 0.12,
+        dur: 2.6 + (i % 5) * 0.28,
+      }))
+    : [];
+
+  $effect(() => {
+    live.sound = settings.sound;
+    live.haptics = settings.haptics;
+    live.bigNumbers = settings.bigNumbers;
+    gameRef?.setBigNumbers(settings.bigNumbers);
+  });
+
+  $effect(() => {
+    const canvas = canvasEl;
+    if (!canvas || !puzzle) return;
+    let gone = false;
+    let opened: Game | null = null;
+    void Game.open(canvas, puzzle.id, live.bigNumbers, {
+      getSound: () => live.sound,
+      getHaptics: () => live.haptics,
+      onChange: (next) => {
+        if (!gone) snapshot = next;
+      },
+      onComplete: () => {
+        celebrate = true;
+        opened?.replay();
+      },
+      onUncomplete: () => {
+        celebrate = false;
+      },
+      onSaved: (save) => {
+        saveError = false;
+        onSaved(puzzle.id, save);
+      },
+      onSaveError: () => {
+        saveError = true;
+      },
+      onShake: () => {
+        shaking = false;
+        requestAnimationFrame(() => {
+          shaking = true;
+          window.setTimeout(() => {
+            shaking = false;
+          }, 280);
+        });
+      },
+    }).then((game) => {
+      if (!game || gone) {
+        game?.destroy();
+        return;
+      }
+      opened = game;
+      gameRef = game;
+    });
+    return () => {
+      gone = true;
+      opened?.destroy();
+      gameRef = null;
+    };
+  });
+
+  $effect(() => {
+    const selected = snapshot?.selected ?? -1;
+    if (selected < 0 || selected === lastSel) return;
+    lastSel = selected;
+    paletteEl?.querySelector<HTMLElement>(`[data-index="${selected}"]`)?.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+    });
+  });
+
+  const quiet = $derived(!!snapshot?.complete && !celebrate);
+  const ring = 2 * Math.PI * 19;
+
+  async function saveImage() {
+    if (!gameRef || saving) return;
+    saving = true;
+    try {
+      const blob = await gameRef.renderBlob();
+      await shareOrDownload(blob, `${puzzle?.id ?? 'picture'}.png`, puzzle?.title ?? 'Color Cozy');
+    } finally {
+      saving = false;
+    }
+  }
+</script>
+
+{#if !puzzle}
+  <div class="screen">
+    <p class="empty">That picture is missing.</p>
+    <button class="btn" type="button" onclick={onBack}>Back</button>
+  </div>
+{:else}
+  <div class="screen" data-testid="play" data-ready={snapshot ? '1' : '0'}>
+    <header class="topbar">
+      <button class="icon-btn" type="button" aria-label="Back" data-testid="back" onclick={onBack}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <div class="titles">
+        <h1>{puzzle.title}</h1>
+        <p class="sub">
+          {snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {puzzle.category}
+        </p>
+      </div>
+      <button class="icon-btn hint" type="button" data-testid="hint" onclick={() => gameRef?.hint()}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.1" fill="currentColor" />
+          <path d="M12 3.2v2.2M12 18.6v2.2M3.2 12h2.2M18.6 12h2.2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        Hint
+      </button>
+      <button class="icon-btn" type="button" aria-label="Undo" data-testid="undo" disabled={!snapshot?.canUndo} onclick={() => gameRef?.undo()}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M8 8H4.2V4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M5.2 9.2a7.2 7.2 0 1 1-.6 4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="stage">
+      <div class="shake-host" class:shake={shaking}>
+        <canvas bind:this={canvasEl} class="surface"></canvas>
+      </div>
+      {#if celebrate}
+        <div class="celebrate" data-testid="complete" role="status">
+          <div class="confetti" aria-hidden="true">
+            {#each pieces as piece, i (i)}
+              <i style="left:{piece.x}%; background:{piece.color}; animation-delay:{piece.delay}s; animation-duration:{piece.dur}s"></i>
+            {/each}
+          </div>
+          <div class="card-pop">
+            <p class="eyebrow">Finished</p>
+            <h2>That's a beauty.</h2>
+            <p>Every spot in {puzzle.title} is filled.</p>
+            <div class="actions">
+              <button class="btn secondary" type="button" data-testid="replay" onclick={() => gameRef?.replay()}>Replay</button>
+              <button class="btn" type="button" data-testid="save-image" disabled={saving} onclick={saveImage}>Save image</button>
+            </div>
+            <button class="linkish" type="button" data-testid="back-gallery" onclick={onBack}>Back to the shelf</button>
+          </div>
+        </div>
+      {:else if quiet}
+        <div class="finished-bar">
+          <strong>Finished</strong>
+          <button class="btn secondary" type="button" data-testid="replay" onclick={() => gameRef?.replay()}>Replay</button>
+          <button class="btn" type="button" data-testid="save-image" disabled={saving} onclick={saveImage}>Save image</button>
+        </div>
+      {/if}
+    </div>
+
+    {#if saveError}
+      <p class="save-error">Couldn't save on this device. Export a backup from Settings.</p>
+    {/if}
+
+    <div class="palette" class:loading={!snapshot} bind:this={paletteEl} data-testid="palette" role="listbox" aria-label="Colors">
+      {#each puzzle.palette as color, index (index)}
+        {@const total = snapshot?.totals[index] ?? 0}
+        {@const have = snapshot?.done[index] ?? 0}
+        {@const pct = total ? have / total : 0}
+        {@const finished = total > 0 && have >= total}
+        <button
+          type="button"
+          class="swatch"
+          class:selected={snapshot?.selected === index}
+          class:done={finished}
+          role="option"
+          aria-selected={snapshot?.selected === index}
+          data-testid="swatch"
+          data-index={index}
+          onclick={() => gameRef?.select(index)}
+        >
+          <svg class="ring" viewBox="0 0 54 54" aria-hidden="true">
+            <circle class="track" cx="27" cy="27" r="19" />
+            <circle class="prog" cx="27" cy="27" r="19" stroke-dasharray="{pct * ring} {ring}" />
+          </svg>
+          <span class="face" style="background:{color}; color:{inkOn(color)}">
+            {#if finished}
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            {:else}
+              {index + 1}
+            {/if}
+          </span>
+        </button>
+      {/each}
+    </div>
+  </div>
+{/if}

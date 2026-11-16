@@ -1,0 +1,35 @@
+{
+  "name": "color-cozy",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "puzzles": "tsx scripts/draw-originals.ts && tsx scripts/make-all.ts",
+    "make-puzzle": "tsx scripts/make-puzzle.ts",
+    "icons": "tsx scripts/make-icons.ts",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource/nunito": "^5.3.0",
+    "idb-keyval": "^6.3.0",
+    "svelte": "^5.57.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^26.6.6",
+    "@types/pngjs": "^6.0.5",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
+    "svelte-check": "^4.7.8",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}
