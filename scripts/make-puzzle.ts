@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 import { encode } from 'jpeg-js';
 import { encodeRLE } from '../src/lib/codec';
 import { hexToRgb } from '../src/lib/color';
-import { CATEGORIES, DIFFICULTY_PRESETS, type Category, type Difficulty, type PuzzleFile } from '../src/lib/types';
+import { CATEGORIES, DIFFICULTY_PRESETS, OUTLINE, type Category, type Difficulty, type PuzzleFile } from '../src/lib/types';
 import { loadImage, resizeToLongEdge, writePng, type Raster } from './image';
 import { segmentImage, segmentLineArt } from './segment';
 
@@ -78,7 +78,7 @@ export function writeSolutionThumb(file: PuzzleFile, thumbFile: string): void {
   const labels = decodeLabels(file);
   for (let i = 0; i < labels.length; i++) {
     const region = labels[i] ?? 0;
-    const rgb = colors[file.regionColors[region] ?? 0] ?? [244, 239, 230];
+    const rgb = region === OUTLINE ? [38, 38, 38] : (colors[file.regionColors[region] ?? 0] ?? [244, 239, 230]);
     const o = i * 4;
     data[o] = rgb[0];
     data[o + 1] = rgb[1];

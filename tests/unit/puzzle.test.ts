@@ -206,7 +206,7 @@ test('starter puzzles cover every shelf', () => {
     assert.equal(puzzle.inr.length, puzzle.regionColors.length, puzzle.id);
     for (const radius of puzzle.inr) assert.ok(1.1 * radius * MAX_SCALE >= 10, `${puzzle.id} ${radius}`);
     const labels = decodeRLE16(puzzle.labels, puzzle.width * puzzle.height);
-    for (const region of labels) assert.ok(region < puzzle.regionColors.length);
+    for (const region of labels) assert.ok(region === OUTLINE || region < puzzle.regionColors.length, puzzle.id);
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
     const preset = DIFFICULTY_PRESETS[puzzle.difficulty];
     assert.ok(puzzle.regionColors.length <= preset.maxRegions + 5, puzzle.id);

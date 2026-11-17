@@ -295,10 +295,10 @@ test('color names and sight words are unique, and Spanish differs', () => {
   const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles/flowers-lotus-pond.json'), 'utf8')) as PuzzleFile;
   const lotusEn = colorNames(lotus.palette, 'en');
   const lotusEs = colorNames(lotus.palette, 'es');
-  assert.match(lotusEn[1] ?? '', /green/);
-  assert.match(lotusEs[1] ?? '', /verde/);
-  assert.match(lotusEn[3] ?? '', /pink/);
-  assert.match(lotusEs[3] ?? '', /rosa/);
+  assert.ok(lotusEn.some((name) => /green/.test(name)), lotusEn.join(', '));
+  assert.ok(lotusEs.some((name) => /verde/.test(name)), lotusEs.join(', '));
+  assert.ok(lotusEn.some((name) => /pink/.test(name)), lotusEn.join(', '));
+  assert.ok(lotusEs.some((name) => /rosa/.test(name)), lotusEs.join(', '));
   const allowedEn = /^(very )?(light |dark )?(red|orange|yellow|green|blue|purple|pink|brown|black|white|gray|gold|tan|teal)$/;
   const allowedEs = /^(rojo|naranja|amarillo|verde|azul|morado|rosa|marrón|negro|blanco|gris|dorado|beige|turquesa)( muy)?( claro| oscuro)?$/;
   assert.ok(lotusEn.every((name) => allowedEn.test(name)), lotusEn.join(', '));

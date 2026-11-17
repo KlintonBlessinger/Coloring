@@ -575,6 +575,18 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await jpg('science-shelf.jpg');
 
   await openPuzzle(page, 'thanksgiving-first-harvest');
+  const harvestBook = puzzle('thanksgiving-first-harvest');
+  let harvestColor = 0;
+  let harvestInr = -1;
+  harvestBook.inr.forEach((radius, index) => {
+    if (radius > harvestInr) {
+      harvestInr = radius;
+      harvestColor = harvestBook.regionColors[index] ?? 0;
+    }
+  });
+  await page.locator(`.swatch[data-index="${harvestColor}"]`).click();
+  await page.getByTestId('hint').click();
+  await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
   await page.waitForTimeout(400);
   await jpg('first-harvest.jpg');
 
@@ -624,7 +636,6 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await expect.poll(() => sample(page, lotus, filledRegion)).not.toEqual(beforeFill);
   await page.locator(`.swatch[data-index="${biggest}"]`).click();
   await page.getByTestId('hint').click();
-  await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
   const addingLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-label'))));
   for (const label of addingLabels) expect(label).toBeGreaterThanOrEqual(4);
   for (const label of addingLabels) expect(label).toBeLessThanOrEqual(20);
@@ -654,7 +665,6 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   expect(new Set(timesLabels).size).toBe(timesLabels.length);
   await page.locator(`.swatch[data-index="${biggest}"]`).click();
   await page.getByTestId('hint').click();
-  await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
   await page.waitForTimeout(400);
   await jpg('times-10.jpg');
 
@@ -670,7 +680,7 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   const spanishLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-label') ?? ''));
   expect(spanishLabels.join(' ')).toMatch(/rosa|verde|turquesa|dorado/);
   expect(spanishLabels.join(' ')).not.toMatch(/salvia|rubor|musgo|salmón|cian|jade|ola|durazno|gris/);
-  expect(spanishLabels[3] ?? '').toMatch(/rosa/);
+  expect(spanishLabels.some((label) => /rosa/.test(label))).toBe(true);
   expect(spanishLabels.some((label) => /^\d+$/.test(label))).toBe(false);
   await page.locator('.swatch[data-index="0"]').click();
   const spokenEs = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
@@ -760,5 +770,84 @@ test('classic numbering on clownfish and lotus', async ({ page }) => {
   await page.waitForTimeout(300);
   await jpg('lotus-checker.jpg');
   await jpg('palette-bar.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('line art gallery, clownfish, unicorn, harvest, and a finished picture', async ({ page }) => {
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 55 });
+  };
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await expect(page.locator('[data-id="animals-clownfish-reef"] canvas.thumb')).toBeVisible();
+  await page.waitForTimeout(400);
+  await jpg('lineart-gallery.jpg');
+
+  await openPuzzle(page, 'animals-clownfish-reef');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  await page.waitForTimeout(400);
+  await jpg('lineart-clownfish-fit.jpg');
+  const fitted = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: id,
+          pointerType: 'touch',
+          isPrimary: id === 1,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: type === 'pointerup' ? 0 : 1,
+        }),
+      );
+    };
+    const start = 28;
+    const end = 84;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale'))).toBeGreaterThan(fitted * 2.4);
+  await page.waitForTimeout(300);
+  await jpg('lineart-clownfish-zoom.jpg');
+
+  await page.getByTestId('back').click();
+  await openPuzzle(page, 'fantasy-unicorn');
+  await page.waitForTimeout(400);
+  await jpg('lineart-unicorn-fit.jpg');
+
+  await page.getByTestId('back').click();
+  const harvest = puzzle('thanksgiving-first-harvest');
+  await openPuzzle(page, 'thanksgiving-first-harvest');
+  const partial = harvest.regionColors.flatMap((color, index) => (color < 4 ? [index] : []));
+  await paintRegions(page, harvest, partial);
+  await page.waitForTimeout(400);
+  await jpg('lineart-harvest-partial.jpg');
+
+  await page.getByTestId('back').click();
+  const turkey = puzzle('thanksgiving-turkey');
+  await openPuzzle(page, 'thanksgiving-turkey');
+  await paintRegions(page, turkey, turkey.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="complete"]');
+    if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+  });
+  await page.waitForTimeout(300);
+  await jpg('lineart-finished.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });

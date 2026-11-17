@@ -60,43 +60,134 @@ export function segmentImage(raster: Raster, opts: SegmentOptions): Segment {
  */
 export function segmentLineArt(raster: Raster, opts: SegmentOptions): Segment {
   const { width, height } = raster;
-  const ink = inkMask(raster.data, width, height);
+  const ink = thinInk(raster.data, width, height);
   const flooded = floodFills(raster.data, ink, width, height);
   if (flooded.regions === 0) throw new Error('Line art has no fillable regions.');
-  const clustered = clusterFills(flooded.means, flooded.areas, opts);
-  const fitted = absorbNarrow(flooded.labels, clustered.colors, width, height, MIN_INSCRIBED);
+  const split = splitFlatColors(raster.data, flooded.labels, width, height);
+  const clustered = clusterFills(split.means, split.areas, opts);
+  const minArea = Math.max(4, Math.round((60 * width * height) / (1024 * 1024)));
+  const fitted = absorbNarrow(split.labels, clustered.colors, width, height, MIN_INSCRIBED, minArea, opts.maxRegions);
   return describe(fitted.labels, fitted.colors, clustered.palette, width, height);
 }
 
-function inkMask(src: Uint8Array, width: number, height: number): Uint8Array {
+/** Thin lines darker than their surroundings. A solid dark fill is not ink. */
+function thinInk(src: Uint8Array, width: number, height: number): Uint8Array {
   const count = width * height;
-  const mask = new Uint8Array(count);
-  const dark = (index: number) => {
-    const o = index * 4;
-    const r = src[o] ?? 0;
-    const g = src[o + 1] ?? 0;
-    const b = src[o + 2] ?? 0;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    return max < 85 && max - min < 36;
-  };
-  for (let i = 0; i < count; i++) if (dark(i)) mask[i] = 1;
-  const closed = mask.slice();
+  const lum = new Int16Array(count);
+  for (let i = 0; i < count; i++) {
+    const o = i * 4;
+    lum[i] = (((src[o] ?? 0) * 299 + (src[o + 1] ?? 0) * 587 + (src[o + 2] ?? 0) * 114) / 1000) | 0;
+  }
+  const closed = greyClose(lum, width, height, 6);
+  const ink = new Uint8Array(count);
+  for (let i = 0; i < count; i++) {
+    if ((closed[i] ?? 0) - (lum[i] ?? 0) > 45 || (lum[i] ?? 0) < 45) ink[i] = 1;
+  }
+  const blobs = dilateCross(openDisk(ink, width, height, 6), width, height);
+  for (let i = 0; i < count; i++) if (blobs[i]) ink[i] = 0;
+  return ink;
+}
+
+function greyClose(src: Int16Array, width: number, height: number, radius: number): Int16Array {
+  return erodeSquare(dilateSquare(src, width, height, radius), width, height, radius);
+}
+
+function dilateSquare(src: Int16Array, width: number, height: number, radius: number): Int16Array {
+  return filterSquare(src, width, height, radius, true);
+}
+
+function erodeSquare(src: Int16Array, width: number, height: number, radius: number): Int16Array {
+  return filterSquare(src, width, height, radius, false);
+}
+
+function filterSquare(src: Int16Array, width: number, height: number, radius: number, max: boolean): Int16Array {
+  const tmp = new Int16Array(src.length);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(width - 1, x + radius);
+      let value = src[row + x0] ?? 0;
+      for (let k = x0 + 1; k <= x1; k++) {
+        const sample = src[row + k] ?? 0;
+        if (max ? sample > value : sample < value) value = sample;
+      }
+      tmp[row + x] = value;
+    }
+  }
+  const out = new Int16Array(src.length);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const y0 = Math.max(0, y - radius);
+      const y1 = Math.min(height - 1, y + radius);
+      let value = tmp[y0 * width + x] ?? 0;
+      for (let k = y0 + 1; k <= y1; k++) {
+        const sample = tmp[k * width + x] ?? 0;
+        if (max ? sample > value : sample < value) value = sample;
+      }
+      out[y * width + x] = value;
+    }
+  }
+  return out;
+}
+
+function diskOffsets(radius: number): { dx: number; dy: number }[] {
+  const limit = radius * radius;
+  const offsets: { dx: number; dy: number }[] = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy <= limit) offsets.push({ dx, dy });
+    }
+  }
+  return offsets;
+}
+
+function openDisk(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
+  const offsets = diskOffsets(radius);
+  const eroded = new Uint8Array(mask.length);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const index = y * width + x;
-      if (mask[index]) continue;
-      let neighbors = 0;
-      if (x > 0 && mask[index - 1]) neighbors++;
-      if (x + 1 < width && mask[index + 1]) neighbors++;
-      if (y > 0 && mask[index - width]) neighbors++;
-      if (y + 1 < height && mask[index + width]) neighbors++;
-      const o = index * 4;
-      const max = Math.max(src[o] ?? 0, src[o + 1] ?? 0, src[o + 2] ?? 0);
-      if (neighbors >= 3 && max < 170) closed[index] = 1;
+      if (!mask[index]) continue;
+      let keep = true;
+      for (const { dx, dy } of offsets) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height || !mask[ny * width + nx]) {
+          keep = false;
+          break;
+        }
+      }
+      if (keep) eroded[index] = 1;
     }
   }
-  return closed;
+  const opened = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!eroded[y * width + x]) continue;
+      for (const { dx, dy } of offsets) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        opened[ny * width + nx] = 1;
+      }
+    }
+  }
+  return opened;
+}
+
+function dilateCross(mask: Uint8Array, width: number, height: number): Uint8Array {
+  const out = mask.slice();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!mask[y * width + x]) continue;
+      if (x > 0) out[y * width + x - 1] = 1;
+      if (x + 1 < width) out[y * width + x + 1] = 1;
+      if (y > 0) out[(y - 1) * width + x] = 1;
+      if (y + 1 < height) out[(y + 1) * width + x] = 1;
+    }
+  }
+  return out;
 }
 
 function floodFills(
@@ -148,6 +239,121 @@ function floodFills(
     means.push(rgbToOklab(Math.round(r / area), Math.round(g / area), Math.round(b / area)));
   }
   return { labels: Uint16Array.from(labels), regions: means.length, means, areas };
+}
+
+/** Split an ink-bounded region when a second flat color covers a real area, not texture specks. */
+function splitFlatColors(
+  src: Uint8Array,
+  labels: Uint16Array,
+  width: number,
+  height: number,
+): { labels: Uint16Array; means: Lab[]; areas: number[] } {
+  const count = labels.length;
+  let regionCount = 0;
+  for (let i = 0; i < count; i++) {
+    const region = labels[i] ?? 0;
+    if (region !== OUTLINE && region + 1 > regionCount) regionCount = region + 1;
+  }
+  const lists: number[][] = Array.from({ length: regionCount }, () => []);
+  for (let i = 0; i < count; i++) {
+    const region = labels[i] ?? 0;
+    if (region === OUTLINE) continue;
+    lists[region]!.push(i);
+  }
+  const next = new Int32Array(count).fill(OUTLINE);
+  const means: Lab[] = [];
+  const areas: number[] = [];
+  const queue = new Int32Array(count);
+  for (const pixels of lists) {
+    if (pixels.length === 0) continue;
+    const parts = pixels.length >= 400 && mixedFill(src, pixels) ? colorParts(src, pixels, width, height, queue) : [pixels];
+    for (const part of parts) {
+      if (part.length === 0) continue;
+      const id = means.length;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (const index of part) {
+        next[index] = id;
+        const o = index * 4;
+        r += src[o] ?? 0;
+        g += src[o + 1] ?? 0;
+        b += src[o + 2] ?? 0;
+      }
+      areas.push(part.length);
+      means.push(rgbToOklab(Math.round(r / part.length), Math.round(g / part.length), Math.round(b / part.length)));
+    }
+  }
+  return { labels: Uint16Array.from(next), means, areas };
+}
+
+function bucket(src: Uint8Array, index: number): number {
+  const o = index * 4;
+  return ((src[o] ?? 0) / 40 | 0) * 49 + ((src[o + 1] ?? 0) / 40 | 0) * 7 + ((src[o + 2] ?? 0) / 40 | 0);
+}
+
+function mixedFill(src: Uint8Array, pixels: number[]): boolean {
+  const counts = new Map<number, number>();
+  for (const index of pixels) {
+    const key = bucket(src, index);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let first = 0;
+  let second = 0;
+  for (const count of counts.values()) {
+    if (count > first) {
+      second = first;
+      first = count;
+    } else if (count > second) second = count;
+  }
+  return second > pixels.length * 0.12;
+}
+
+function colorParts(
+  src: Uint8Array,
+  pixels: number[],
+  width: number,
+  height: number,
+  queue: Int32Array,
+): number[][] {
+  const owned = new Uint8Array(width * height);
+  for (const index of pixels) owned[index] = 1;
+  const seen = new Uint8Array(width * height);
+  const parts: number[][] = [];
+  for (const start of pixels) {
+    if (seen[start]) continue;
+    const key = bucket(src, start);
+    const part: number[] = [];
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = start;
+    seen[start] = 1;
+    while (head < tail) {
+      const index = queue[head++] ?? 0;
+      part.push(index);
+      const x = index % width;
+      const y = (index / width) | 0;
+      const push = (nx: number, ny: number) => {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) return;
+        const next = ny * width + nx;
+        if (!owned[next] || seen[next] || bucket(src, next) !== key) return;
+        seen[next] = 1;
+        queue[tail++] = next;
+      };
+      push(x - 1, y);
+      push(x + 1, y);
+      push(x, y - 1);
+      push(x, y + 1);
+    }
+    parts.push(part);
+  }
+  const keep = parts.filter((part) => part.length >= 80).sort((a, b) => b.length - a.length);
+  if (keep.length <= 1) return [pixels];
+  const kept = new Set(keep.flat());
+  const dust = pixels.filter((index) => !kept.has(index));
+  const host = keep[0]!;
+  for (const index of dust) host.push(index);
+  return keep;
 }
 
 function clusterFills(
@@ -218,20 +424,26 @@ export function absorbNarrow(
   width: number,
   height: number,
   minInr = MIN_INSCRIBED,
+  minArea = 0,
+  maxRegions = Number.POSITIVE_INFINITY,
 ): { labels: Uint16Array; colors: Int32Array } {
   let currentLabels = labels;
   let currentColors = colors;
-  for (let pass = 0; pass < 8; pass++) {
+  for (let pass = 0; pass < 12; pass++) {
     const regions = currentColors.length;
     const depth = maxInscribed(currentLabels, width, height, regions);
-    let narrow = 0;
-    for (let i = 0; i < regions; i++) if ((depth[i] ?? 0) < minInr) narrow++;
-    if (!narrow) break;
-    const area = new Int32Array(regions);
+    const areaProbe = new Int32Array(regions);
     for (let i = 0; i < currentLabels.length; i++) {
       const id = currentLabels[i] ?? 0;
-      if (id < regions) area[id] = (area[id] ?? 0) + 1;
+      if (id < regions) areaProbe[id] = (areaProbe[id] ?? 0) + 1;
     }
+    const overcrowded = regions > maxRegions;
+    let narrow = 0;
+    for (let i = 0; i < regions; i++) {
+      if ((depth[i] ?? 0) < minInr || (areaProbe[i] ?? 0) < minArea || overcrowded) narrow++;
+    }
+    if (!narrow) break;
+    const area = areaProbe;
     const parent = Array.from({ length: regions }, (_, index) => index);
     const alive = Array.from({ length: regions }, () => true);
     const adj: Map<number, number>[] = Array.from({ length: regions }, () => new Map());
@@ -246,7 +458,7 @@ export function absorbNarrow(
       return id < regions ? id : -1;
     };
     const acrossInk = (x: number, y: number, dx: number, dy: number): number => {
-      for (let step = 1; step <= 6; step++) {
+      for (let step = 1; step <= 14; step++) {
         const id = fillAt(x + dx * step, y + dy * step);
         if (id >= 0) return id;
         const nx = x + dx * step;
@@ -307,9 +519,20 @@ export function absorbNarrow(
       }
       return best;
     };
-    const order = Array.from({ length: regions }, (_, index) => index)
-      .filter((index) => (depth[index] ?? 0) < minInr)
-      .sort((a, b) => (depth[a] ?? 0) - (depth[b] ?? 0) || (area[a] ?? 0) - (area[b] ?? 0));
+    const small = Array.from({ length: regions }, (_, index) => index).filter(
+      (index) => (depth[index] ?? 0) < minInr || (area[index] ?? 0) < minArea,
+    );
+    const byArea = (a: number, b: number) => (area[a] ?? 0) - (area[b] ?? 0) || (depth[a] ?? 0) - (depth[b] ?? 0);
+    small.sort(byArea);
+    const order = small.slice();
+    if (regions - small.length > maxRegions) {
+      const skip = new Set(small);
+      const rest = Array.from({ length: regions }, (_, index) => index)
+        .filter((index) => !skip.has(index))
+        .sort(byArea);
+      const extra = regions - maxRegions - small.length;
+      for (let i = 0; i < extra && i < rest.length; i++) order.push(rest[i]!);
+    }
     for (const src of order) {
       if (!alive[src]) continue;
       const dst = neighbor(src);
@@ -339,7 +562,151 @@ export function absorbNarrow(
     currentColors = Int32Array.from(nextColors);
     if (currentColors.length === before) break;
   }
+  const folded = foldThin(currentLabels, currentColors, width, height, minInr, minArea);
+  currentLabels = folded.labels;
+  currentColors = folded.colors;
+  if (Number.isFinite(maxRegions) && currentColors.length > maxRegions) {
+    currentLabels = capByNearest(currentLabels, width, height, currentColors.length, maxRegions);
+    const kept: number[] = [];
+    const remap = new Int32Array(currentColors.length).fill(-1);
+    for (let i = 0; i < currentLabels.length; i++) {
+      const id = currentLabels[i] ?? 0;
+      if (id >= currentColors.length) continue;
+      if (remap[id] === -1) {
+        remap[id] = kept.length;
+        kept.push(currentColors[id] ?? 0);
+      }
+      currentLabels[i] = remap[id]!;
+    }
+    currentColors = Int32Array.from(kept);
+  }
   return { labels: currentLabels, colors: currentColors };
+}
+
+/** A speck walled in by a thick outline still joins the nearest fill. */
+function foldThin(
+  labels: Uint16Array,
+  colors: Int32Array,
+  width: number,
+  height: number,
+  minInr: number,
+  minArea: number,
+): { labels: Uint16Array; colors: Int32Array } {
+  const regions = colors.length;
+  const depth = maxInscribed(labels, width, height, regions);
+  const area = new Int32Array(regions);
+  for (let i = 0; i < labels.length; i++) {
+    const id = labels[i] ?? 0;
+    if (id < regions) area[id] = (area[id] ?? 0) + 1;
+  }
+  const thin = Array.from({ length: regions }, (_, index) => index).filter(
+    (index) => (area[index] ?? 0) > 0 && ((area[index] ?? 0) < minArea || (depth[index] ?? 0) < minInr),
+  );
+  if (!thin.length) return { labels, colors };
+  const joined = capByNearest(
+    labels,
+    width,
+    height,
+    regions,
+    regions,
+    new Set(thin),
+  );
+  const kept: number[] = [];
+  const remap = new Int32Array(regions).fill(-1);
+  const next = new Uint16Array(joined.length);
+  for (let i = 0; i < joined.length; i++) {
+    const id = joined[i] ?? 0;
+    if (id >= regions) {
+      next[i] = OUTLINE;
+      continue;
+    }
+    if (remap[id] === -1) {
+      remap[id] = kept.length;
+      kept.push(colors[id] ?? 0);
+    }
+    next[i] = remap[id]!;
+  }
+  return { labels: next, colors: Int32Array.from(kept) };
+}
+
+/** Fold the smallest leftover regions into the nearest fill when outlines block a merge. */
+function capByNearest(
+  labels: Uint16Array,
+  width: number,
+  height: number,
+  regions: number,
+  maxRegions: number,
+  must?: Set<number>,
+): Uint16Array {
+  const area = new Int32Array(regions);
+  const sumX = new Float64Array(regions);
+  const sumY = new Float64Array(regions);
+  for (let i = 0; i < labels.length; i++) {
+    const id = labels[i] ?? 0;
+    if (id >= regions) continue;
+    area[id] = (area[id] ?? 0) + 1;
+    sumX[id] = (sumX[id] ?? 0) + (i % width);
+    sumY[id] = (sumY[id] ?? 0) + ((i / width) | 0);
+  }
+  const parent = Array.from({ length: regions }, (_, index) => index);
+  const alive = area.map((count) => count > 0);
+  let live = alive.filter(Boolean).length;
+  const root = (id: number): number => {
+    let cursor = id;
+    while (parent[cursor] !== cursor) cursor = parent[cursor]!;
+    return cursor;
+  };
+  const pending = must ? [...must].filter((id) => alive[id]) : [];
+  while (pending.length || live > maxRegions) {
+    let src = -1;
+    if (pending.length) {
+      src = pending.pop() ?? -1;
+      if (src < 0 || !alive[src]) continue;
+    } else {
+      let smallest = Infinity;
+      for (let id = 0; id < regions; id++) {
+        if (!alive[id] || (area[id] ?? 0) >= smallest) continue;
+        smallest = area[id] ?? 0;
+        src = id;
+      }
+    }
+    if (src < 0) break;
+    const sx = (sumX[src] ?? 0) / Math.max(1, area[src] ?? 1);
+    const sy = (sumY[src] ?? 0) / Math.max(1, area[src] ?? 1);
+    let dst = -1;
+    let best = Infinity;
+    for (let id = 0; id < regions; id++) {
+      if (id === src || !alive[id]) continue;
+      if (must?.has(id) && pending.some((item) => item !== id)) continue;
+      const dx = (sumX[id] ?? 0) / Math.max(1, area[id] ?? 1) - sx;
+      const dy = (sumY[id] ?? 0) / Math.max(1, area[id] ?? 1) - sy;
+      const dist = dx * dx + dy * dy;
+      if (dist < best) {
+        best = dist;
+        dst = id;
+      }
+    }
+    if (dst < 0) {
+      for (let id = 0; id < regions; id++) {
+        if (id === src || !alive[id]) continue;
+        dst = id;
+        break;
+      }
+    }
+    if (dst < 0) break;
+    parent[src] = dst;
+    alive[src] = false;
+    sumX[dst] = (sumX[dst] ?? 0) + (sumX[src] ?? 0);
+    sumY[dst] = (sumY[dst] ?? 0) + (sumY[src] ?? 0);
+    area[dst] = (area[dst] ?? 0) + (area[src] ?? 0);
+    live--;
+  }
+  const next = new Uint16Array(labels.length);
+  for (let i = 0; i < labels.length; i++) {
+    const id = labels[i] ?? 0;
+    next[i] = id >= regions ? OUTLINE : root(id);
+  }
+  return next;
 }
 
 /** Rebuild geometry for an existing label map, keeping the current palette order. */

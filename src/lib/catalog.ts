@@ -12,9 +12,10 @@ import {
 } from './types';
 
 const modules = import.meta.glob('../puzzles/*.json', {
-  eager: true,
   import: 'default',
-}) as Record<string, PuzzleFile>;
+}) as Record<string, () => Promise<PuzzleFile>>;
+
+const files = await Promise.all(Object.values(modules).map((load) => load()));
 
 const categoryRank = new Map<Category, number>(CATEGORIES.map((category, index) => [category, index]));
 const difficultyRank: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
@@ -48,7 +49,7 @@ function decode(file: PuzzleFile): StoredPuzzle {
 }
 
 const byId = new Map<string, StoredPuzzle>();
-for (const file of Object.values(modules)) byId.set(file.id, decode(file));
+for (const file of files) byId.set(file.id, decode(file));
 
 function present(base: StoredPuzzle, record: ArtRecord | undefined, mystery: boolean): DecodedPuzzle {
   return {

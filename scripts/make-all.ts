@@ -3,9 +3,9 @@ import path from 'node:path';
 import type { Category, Difficulty } from '../src/lib/types';
 import { loadImage, resizeToLongEdge } from './image';
 import { makePuzzle, writePuzzle, writeSolutionThumb } from './make-puzzle';
-import { segmentImage } from './segment';
+import { segmentLineArt } from './segment';
 
-const ART_DIRS = ['/tmp/coloring-art', '/tmp/holiday-art', '/tmp/animal-art'];
+const ART_DIRS = [path.join('content', 'sources'), '/tmp/coloring-art', '/tmp/holiday-art', '/tmp/animal-art'];
 
 const PICTURES: {
   file: string;
@@ -20,7 +20,7 @@ const PICTURES: {
   outlineReach?: number;
 }[] = [
   { file: 'animals-cat-window', title: 'Cat in the Window', category: 'Animals', difficulty: 'hard' },
-  { file: 'animals-fox-family', title: 'Fox Family', category: 'Animals' },
+  { file: 'animals-fox-family', title: 'Fox Family', category: 'Animals', difficulty: 'hard' },
   { file: 'animals-sea-turtle', title: 'Sea Turtle', category: 'Animals', difficulty: 'hard' },
   { file: 'animals-clownfish-reef', title: 'Clownfish Reef', category: 'Animals', difficulty: 'hard' },
   { file: 'animals-octopus-garden', title: 'Octopus Garden', category: 'Animals', difficulty: 'easy' },
@@ -33,12 +33,6 @@ const PICTURES: {
     title: 'Lion Cub',
     category: 'Animals',
     difficulty: 'medium',
-    size: 768,
-    colors: 26,
-    outlineReach: 1.05,
-    minArea: 22,
-    sameColorArea: 40,
-    maxRegions: 900,
   },
   { file: 'animals-toucan-macaw', title: 'Toucan & Macaw', category: 'Animals', difficulty: 'hard' },
   { file: 'animals-tree-frog', title: 'Red-Eyed Tree Frog', category: 'Animals', difficulty: 'hard' },
@@ -47,35 +41,33 @@ const PICTURES: {
     title: 'Jungle Tiger',
     category: 'Animals',
     difficulty: 'medium',
-    size: 768,
-    colors: 26,
-    outlineReach: 1.05,
-    minArea: 22,
-    sameColorArea: 40,
-    maxRegions: 900,
   },
   { file: 'flowers-lotus-pond', title: 'Lotus Pond', category: 'Flowers', difficulty: 'easy' },
   { file: 'flowers-cottage-garden', title: 'Cottage Garden', category: 'Flowers', difficulty: 'hard' },
-  { file: 'flowers-peony-bouquet', title: 'Peony Bouquet', category: 'Flowers' },
+  { file: 'flowers-peony-bouquet', title: 'Peony Bouquet', category: 'Flowers', difficulty: 'hard' },
   { file: 'food-bakery-sweets', title: 'Bakery Sweets', category: 'Food', difficulty: 'hard' },
   { file: 'food-ice-cream-sundae', title: 'Ice Cream Sundae', category: 'Food', difficulty: 'easy' },
-  { file: 'food-picnic', title: 'Picnic', category: 'Food' },
-  { file: 'fantasy-unicorn', title: 'Unicorn', category: 'Fantasy' },
-  { file: 'fantasy-mermaid', title: 'Mermaid', category: 'Fantasy' },
-  { file: 'fantasy-castle', title: 'Castle on the Hill', category: 'Fantasy' },
+  { file: 'food-picnic', title: 'Picnic', category: 'Food', difficulty: 'hard' },
+  { file: 'fantasy-unicorn', title: 'Unicorn', category: 'Fantasy', difficulty: 'hard' },
+  { file: 'fantasy-mermaid', title: 'Mermaid', category: 'Fantasy', difficulty: 'hard' },
+  { file: 'fantasy-castle', title: 'Castle on the Hill', category: 'Fantasy', difficulty: 'hard' },
   { file: 'patterns-folk-art', title: 'Folk Art', category: 'Patterns', difficulty: 'easy' },
-  { file: 'patterns-stained-glass', title: 'Stained Glass', category: 'Patterns' },
+  { file: 'patterns-stained-glass', title: 'Stained Glass', category: 'Patterns', difficulty: 'medium' },
+  { file: 'science-butterfly-life-cycle', title: 'Butterfly Life Cycle', category: 'Science', difficulty: 'medium' },
+  { file: 'science-solar-system', title: 'Solar System', category: 'Science', difficulty: 'medium' },
+  { file: 'science-water-cycle', title: 'Water Cycle', category: 'Science', difficulty: 'medium' },
   { file: 'patterns-mandala', title: 'Mandala', category: 'Patterns', difficulty: 'hard' },
   { file: 'thanksgiving-turkey', title: 'Thanksgiving Turkey', category: 'Thanksgiving', difficulty: 'easy' },
   { file: 'thanksgiving-dinner', title: 'Thanksgiving Dinner', category: 'Thanksgiving', difficulty: 'hard' },
   { file: 'thanksgiving-porch', title: 'Thanksgiving Porch', category: 'Thanksgiving', difficulty: 'hard' },
-  { file: 'thanksgiving-cornucopia', title: 'Cornucopia', category: 'Thanksgiving' },
-  { file: 'thanksgiving-pumpkin-patch', title: 'Pumpkin Patch', category: 'Thanksgiving' },
+  { file: 'thanksgiving-cornucopia', title: 'Cornucopia', category: 'Thanksgiving', difficulty: 'medium' },
+  { file: 'thanksgiving-pumpkin-patch', title: 'Pumpkin Patch', category: 'Thanksgiving', difficulty: 'hard' },
+  { file: 'thanksgiving-first-harvest', title: 'The First Harvest (1621)', category: 'Thanksgiving', difficulty: 'hard' },
   { file: 'christmas-snowman', title: 'Snowman', category: 'Christmas', difficulty: 'easy' },
   { file: 'christmas-wreath-cocoa', title: 'Wreath and Cocoa', category: 'Christmas', difficulty: 'easy' },
   { file: 'christmas-tree-fireplace', title: 'Tree by the Fireplace', category: 'Christmas', difficulty: 'hard' },
   { file: 'christmas-gingerbread-village', title: 'Gingerbread Village', category: 'Christmas', difficulty: 'hard' },
-  { file: 'christmas-reindeer-sleigh', title: 'Reindeer Sleigh', category: 'Christmas' },
+  { file: 'christmas-reindeer-sleigh', title: 'Reindeer Sleigh', category: 'Christmas', difficulty: 'hard' },
 ];
 
 function sourceFile(id: string): string {
@@ -96,9 +88,6 @@ for (const name of fs.readdirSync(puzzleDir)) {
   if (name.endsWith('.json')) fs.unlinkSync(path.join(puzzleDir, name));
 }
 for (const name of fs.readdirSync(thumbDir)) fs.unlinkSync(path.join(thumbDir, name));
-for (const name of fs.readdirSync(sourceDir)) {
-  if (!name.startsWith('.')) fs.unlinkSync(path.join(sourceDir, name));
-}
 
 const lines = [
   '# Image licenses',
@@ -117,11 +106,11 @@ for (const picture of PICTURES) {
   fs.copyFileSync(source, path.join(sourceDir, `${picture.file}.jpg`));
   let difficulty = picture.difficulty;
   if (!difficulty) {
-    const probe = segmentImage(resizeToLongEdge(image, 512), {
+    const probe = segmentLineArt(resizeToLongEdge(image, 1024), {
       colors: 22,
       minColors: 14,
       maxColors: 26,
-      minArea: 22,
+      minArea: 60,
       maxRegions: 5000,
       seed: 2,
     });
@@ -133,7 +122,8 @@ for (const picture of PICTURES) {
     title: picture.title,
     category: picture.category,
     difficulty,
-    size: picture.size,
+    size: picture.size ?? 1024,
+    lineArt: true,
     colors: picture.colors,
     minArea: picture.minArea,
     sameColorArea: picture.sameColorArea,
