@@ -17,6 +17,7 @@ export interface BackupFile {
   exportedAt: string;
   settings: Settings;
   progress: Record<string, ProgressSave>;
+  favorites: string[];
 }
 
 function normalizeSettings(value: Partial<Settings> | undefined): Settings {
@@ -69,6 +70,20 @@ export async function loadAllProgress(): Promise<Record<string, ProgressSave>> {
   return out;
 }
 
+export async function loadFavorites(): Promise<string[]> {
+  try {
+    const stored = await get<unknown>('favorites', store);
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((id): id is string => typeof id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+export async function saveFavorites(ids: string[]): Promise<void> {
+  await set('favorites', [...new Set(ids)], store);
+}
+
 export async function resetAllProgress(): Promise<void> {
   const all = await keys(store);
   await Promise.all(
@@ -85,6 +100,7 @@ export async function exportBackup(): Promise<BackupFile> {
     exportedAt: new Date().toISOString(),
     settings: await loadSettings(),
     progress: await loadAllProgress(),
+    favorites: await loadFavorites(),
   };
 }
 
@@ -99,6 +115,7 @@ export function parseBackup(text: string): BackupFile {
     exportedAt: typeof data.exportedAt === 'string' ? data.exportedAt : new Date().toISOString(),
     settings: normalizeSettings(data.settings),
     progress: data.progress,
+    favorites: Array.isArray(data.favorites) ? data.favorites.filter((id): id is string => typeof id === 'string') : [],
   };
 }
 
@@ -115,4 +132,5 @@ export async function importBackup(data: BackupFile): Promise<void> {
     });
   }
   await saveSettings(normalizeSettings(data.settings));
+  await saveFavorites(data.favorites);
 }

@@ -46,6 +46,7 @@ export class Renderer {
   private cameraReady = false;
   private replaying = false;
   private pulseUntil = 0;
+  private hintIndex = -1;
   private artFade: { from: number; to: number; start: number; ms: number } | null = null;
   private anim: Anim | null = null;
   private raf = 0;
@@ -151,7 +152,26 @@ export class Renderer {
     this.requestDraw();
   }
 
-  focusCells(indices: number[]): void {
+  /** World point currently in the middle of the canvas. */
+  viewCenter(): { x: number; y: number } {
+    return {
+      x: (this.cssW / 2 - this.panX) / this.scale,
+      y: (this.cssH / 2 - this.panY) / this.scale,
+    };
+  }
+
+  isZoomedIn(): boolean {
+    return this.scale > this.minScale() * 1.25;
+  }
+
+  /** Frame one region, about 2.5 times its box, and never looser than a close zoom. */
+  focusRegion(index: number): void {
+    this.hintIndex = index;
+    this.view.dataset.hint = String(index);
+    this.focusCells([index], 2.5);
+  }
+
+  focusCells(indices: number[], frame = 0): void {
     if (!indices.length || this.cssW < 2 || this.cssH < 2) return;
     let minX = this.puzzle.width;
     let minY = this.puzzle.height;
@@ -167,7 +187,9 @@ export class Renderer {
     const pad = 28;
     const bw = Math.max(1, maxX - minX);
     const bh = Math.max(1, maxY - minY);
-    const scale = this.clampScale(Math.min((this.cssW - pad * 2) / bw, (this.cssH - pad * 2) / bh));
+    const fitted = Math.min((this.cssW - pad * 2) / bw, (this.cssH - pad * 2) / bh);
+    const framed = frame > 1 ? Math.max(Math.min(this.cssW / (bw * frame), this.cssH / (bh * frame)), this.minScale() * 1.75) : fitted;
+    const scale = this.clampScale(framed);
     const saved = this.camera();
     this.scale = scale;
     this.panX = this.cssW / 2 - ((minX + maxX) / 2) * scale;
@@ -320,12 +342,13 @@ export class Renderer {
       if (!path) continue;
       const color = this.puzzle.regionColors[i] ?? 0;
       const selected = color === this.selected;
+      const pulsing = i === this.hintIndex && now < this.pulseUntil;
       ctx.fillStyle = selected ? (this.tint[color] ?? OPEN) : OPEN;
-      ctx.globalAlpha = selected ? pulse : 1;
+      ctx.globalAlpha = pulsing ? pulse : 1;
       ctx.fill(path, 'evenodd');
     }
     ctx.globalAlpha = 1;
-    const showGhost = this.artAlpha < 0.05 && this.artImage.complete && this.artImage.naturalWidth > 0;
+    const showGhost = !this.puzzle.mystery && this.artAlpha < 0.05 && this.artImage.complete && this.artImage.naturalWidth > 0;
     if (showGhost) {
       ctx.globalAlpha = GHOST;
       ctx.imageSmoothingEnabled = true;
@@ -336,7 +359,7 @@ export class Renderer {
         const path = this.paths[i]!;
         if (!path) continue;
         if ((this.puzzle.regionColors[i] ?? 0) !== this.selected) continue;
-        ctx.globalAlpha = pulse;
+        ctx.globalAlpha = i === this.hintIndex && now < this.pulseUntil ? pulse : 1;
         ctx.fillStyle = this.tint[this.selected] ?? OPEN;
         ctx.fill(path, 'evenodd');
       }
@@ -356,6 +379,16 @@ export class Renderer {
     ctx.lineCap = 'round';
     ctx.miterLimit = 2;
     for (const path of this.paths) ctx.stroke(path);
+    if (this.hintIndex >= 0 && now < this.pulseUntil) {
+      const hinted = this.paths[this.hintIndex];
+      if (hinted) {
+        ctx.strokeStyle = '#c45d45';
+        ctx.lineWidth = 2 / this.scale;
+        ctx.globalAlpha = pulse;
+        ctx.stroke(hinted);
+        ctx.globalAlpha = 1;
+      }
+    }
 
     let numbers = false;
     if (!this.replaying && this.artAlpha < 0.35) {
@@ -390,5 +423,6 @@ export class Renderer {
     this.view.dataset.panX = String(this.panX);
     this.view.dataset.panY = String(this.panY);
     this.view.dataset.numbers = numbers ? '1' : '0';
+    this.view.dataset.ghost = showGhost ? '1' : '0';
   }
 }

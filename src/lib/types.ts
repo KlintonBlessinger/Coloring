@@ -51,6 +51,29 @@ export interface PuzzleFile {
   art: string;
 }
 
+export interface ArtTags {
+  subject: string[];
+  setting: string[];
+  season: string[];
+  mood: string[];
+  palette: string[];
+  style: string[];
+  complexity: string;
+}
+
+/** Catalog metadata. A mystery entry with `source` reuses that picture's art. */
+export interface ArtRecord {
+  id: string;
+  title: string;
+  category: Category;
+  difficulty: Difficulty;
+  mystery: boolean;
+  source?: string;
+  tags: ArtTags;
+}
+
 export interface DecodedPuzzle extends Omit<PuzzleFile, 'labels'> {
   labels: Uint16Array;
+  mystery: boolean;
+  tags: ArtTags;
 }

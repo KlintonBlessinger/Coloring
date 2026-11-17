@@ -1,6 +1,7 @@
 import { Sfx, buzz } from './audio';
 import { base64ToBytes, bytesToBase64, decodeOrder, encodeOrder } from './codec';
 import { getPuzzle } from './catalog';
+import { nextHintRegion } from './hint';
 import { Renderer } from './renderer';
 import { loadProgress, saveProgress, type ProgressSave } from './storage';
 import type { DecodedPuzzle } from './types';
@@ -50,6 +51,7 @@ export class Game {
   private dirty = false;
   private dead = false;
   private celebrated = false;
+  private hintRegion = -1;
   private replaying = false;
   private replayRaf = 0;
   private saveTimer = 0;
@@ -157,6 +159,7 @@ export class Game {
 
   select(index: number): void {
     if (index < 0 || index >= this.totals.length || this.replaying) return;
+    if (index !== this.selected) this.hintRegion = -1;
     this.selected = index;
     this.renderer.setSelected(index);
     this.markDirty();
@@ -164,12 +167,32 @@ export class Game {
   }
 
   hint(): void {
-    if (this.replaying) return;
-    const regions: number[] = [];
-    for (let i = 0; i < this.puzzle.regionColors.length; i++) {
-      if (!this.filled[i] && this.puzzle.regionColors[i] === this.selected) regions.push(i);
+    if (this.replaying || this.filledCount === this.filled.length) return;
+    if ((this.done[this.selected] ?? 0) >= (this.totals[this.selected] ?? 0)) {
+      this.advance();
+      this.hintRegion = -1;
+      this.markDirty();
+      this.emit();
     }
-    this.renderer.focusCells(regions);
+    const leftovers: number[] = [];
+    for (let i = 0; i < this.puzzle.regionColors.length; i++) {
+      if (!this.filled[i] && this.puzzle.regionColors[i] === this.selected) leftovers.push(i);
+    }
+    if (!leftovers.length) return;
+    const center = this.renderer.viewCenter();
+    const next = nextHintRegion({
+      leftovers,
+      area: this.puzzle.area,
+      previous: this.hintRegion,
+      zoomed: this.renderer.isZoomedIn(),
+      cx: this.puzzle.cx,
+      cy: this.puzzle.cy,
+      viewX: center.x,
+      viewY: center.y,
+    });
+    if (next < 0) return;
+    this.hintRegion = next;
+    this.renderer.focusRegion(next);
   }
 
   undo(): void {

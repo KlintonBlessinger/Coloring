@@ -1,0 +1,489 @@
+{
+  "pictures": [
+    {
+      "id": "animals-cat-window",
+      "title": "Cat in the Window",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["cat", "window"],
+        "setting": ["indoors", "windowsill"],
+        "season": ["any"],
+        "mood": ["cozy", "quiet"],
+        "palette": ["cream", "warm gray", "soft green"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "animals-fox-family",
+      "title": "Fox Family",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["fox", "family"],
+        "setting": ["forest"],
+        "season": ["any"],
+        "mood": ["playful", "warm"],
+        "palette": ["orange", "green", "cream"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "animals-sea-turtle",
+      "title": "Sea Turtle",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["sea turtle", "fish", "coral", "starfish"],
+        "setting": ["underwater", "reef"],
+        "season": ["any"],
+        "mood": ["calm", "curious"],
+        "palette": ["aqua", "coral", "sand"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "flowers-lotus-pond",
+      "title": "Lotus Pond",
+      "category": "Flowers",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["lotus", "pond", "flowers"],
+        "setting": ["garden pond"],
+        "season": ["summer"],
+        "mood": ["peaceful"],
+        "palette": ["pink", "green", "water blue"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "flowers-cottage-garden",
+      "title": "Cottage Garden",
+      "category": "Flowers",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["cottage", "garden", "flowers"],
+        "setting": ["cottage garden"],
+        "season": ["summer"],
+        "mood": ["cheerful"],
+        "palette": ["green", "pink", "cream"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "flowers-peony-bouquet",
+      "title": "Peony Bouquet",
+      "category": "Flowers",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["peony", "bouquet"],
+        "setting": ["still life"],
+        "season": ["spring"],
+        "mood": ["gentle"],
+        "palette": ["pink", "cream", "green"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "food-bakery-sweets",
+      "title": "Bakery Sweets",
+      "category": "Food",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["cupcake", "cake", "macaron"],
+        "setting": ["bakery"],
+        "season": ["any"],
+        "mood": ["sweet", "cheerful"],
+        "palette": ["pink", "pastel", "cream"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "food-ice-cream-sundae",
+      "title": "Ice Cream Sundae",
+      "category": "Food",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["ice cream", "sundae"],
+        "setting": ["dessert"],
+        "season": ["summer"],
+        "mood": ["playful"],
+        "palette": ["pink", "cream", "chocolate"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "food-picnic",
+      "title": "Picnic",
+      "category": "Food",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["picnic", "basket", "blanket"],
+        "setting": ["outdoors"],
+        "season": ["summer"],
+        "mood": ["relaxed"],
+        "palette": ["green", "red", "cream"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "fantasy-unicorn",
+      "title": "Unicorn",
+      "category": "Fantasy",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["unicorn"],
+        "setting": ["meadow"],
+        "season": ["spring"],
+        "mood": ["magical", "gentle"],
+        "palette": ["pastel", "gold", "green"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "fantasy-mermaid",
+      "title": "Mermaid",
+      "category": "Fantasy",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["mermaid", "ocean"],
+        "setting": ["sea"],
+        "season": ["summer"],
+        "mood": ["dreamy"],
+        "palette": ["teal", "pink", "sand"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "fantasy-castle",
+      "title": "Castle on the Hill",
+      "category": "Fantasy",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["castle", "hill"],
+        "setting": ["countryside"],
+        "season": ["any"],
+        "mood": ["grand"],
+        "palette": ["stone", "green", "sky"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "patterns-folk-art",
+      "title": "Folk Art",
+      "category": "Patterns",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["folk pattern", "flowers"],
+        "setting": ["decorative"],
+        "season": ["any"],
+        "mood": ["festive"],
+        "palette": ["red", "blue", "cream"],
+        "style": ["folk pattern"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "patterns-stained-glass",
+      "title": "Stained Glass",
+      "category": "Patterns",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": ["stained glass", "geometric"],
+        "setting": ["window"],
+        "season": ["any"],
+        "mood": ["luminous"],
+        "palette": ["jewel tones"],
+        "style": ["stained glass"],
+        "complexity": "medium"
+      }
+    },
+    {
+      "id": "patterns-mandala",
+      "title": "Mandala",
+      "category": "Patterns",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["mandala", "pattern"],
+        "setting": ["decorative"],
+        "season": ["any"],
+        "mood": ["meditative"],
+        "palette": ["jewel tones"],
+        "style": ["pattern"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "thanksgiving-turkey",
+      "title": "Thanksgiving Turkey",
+      "category": "Thanksgiving",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["turkey", "leaves", "acorns"],
+        "setting": ["autumn yard"],
+        "season": ["autumn"],
+        "mood": ["cheerful"],
+        "palette": ["brown", "orange", "cream"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "thanksgiving-dinner",
+      "title": "Thanksgiving Dinner",
+      "category": "Thanksgiving",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["turkey dinner", "pie", "table"],
+        "setting": ["dining room"],
+        "season": ["autumn"],
+        "mood": ["warm", "grateful"],
+        "palette": ["brown", "cream", "orange"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "thanksgiving-porch",
+      "title": "Thanksgiving Porch",
+      "category": "Thanksgiving",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["porch", "pumpkins"],
+        "setting": ["front porch"],
+        "season": ["autumn"],
+        "mood": ["welcoming"],
+        "palette": ["orange", "brown", "cream"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "thanksgiving-cornucopia",
+      "title": "Cornucopia",
+      "category": "Thanksgiving",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": ["cornucopia", "harvest", "fruit"],
+        "setting": ["table"],
+        "season": ["autumn"],
+        "mood": ["abundant"],
+        "palette": ["orange", "gold", "green"],
+        "style": ["storybook"],
+        "complexity": "medium"
+      }
+    },
+    {
+      "id": "thanksgiving-pumpkin-patch",
+      "title": "Pumpkin Patch",
+      "category": "Thanksgiving",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["pumpkins", "barn", "wagon"],
+        "setting": ["farm"],
+        "season": ["autumn"],
+        "mood": ["cheerful"],
+        "palette": ["orange", "red", "green"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "christmas-snowman",
+      "title": "Snowman",
+      "category": "Christmas",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["snowman", "trees", "bird"],
+        "setting": ["snowy yard"],
+        "season": ["winter"],
+        "mood": ["cheerful"],
+        "palette": ["white", "blue", "red"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "christmas-wreath-cocoa",
+      "title": "Wreath and Cocoa",
+      "category": "Christmas",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["wreath", "cocoa", "cookies"],
+        "setting": ["indoors"],
+        "season": ["winter"],
+        "mood": ["cozy"],
+        "palette": ["green", "red", "cream"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "christmas-tree-fireplace",
+      "title": "Tree by the Fireplace",
+      "category": "Christmas",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["christmas tree", "fireplace", "stockings", "dog"],
+        "setting": ["living room"],
+        "season": ["winter"],
+        "mood": ["cozy", "festive"],
+        "palette": ["red", "green", "cream"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "christmas-gingerbread-village",
+      "title": "Gingerbread Village",
+      "category": "Christmas",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["gingerbread", "houses", "snow"],
+        "setting": ["village"],
+        "season": ["winter"],
+        "mood": ["sweet", "festive"],
+        "palette": ["brown", "white", "candy colors"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "christmas-reindeer-sleigh",
+      "title": "Reindeer Sleigh",
+      "category": "Christmas",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["reindeer", "sleigh"],
+        "setting": ["snowy night"],
+        "season": ["winter"],
+        "mood": ["magical"],
+        "palette": ["brown", "red", "snow"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "mystery-animals-sea-turtle",
+      "title": "Sea Turtle",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": true,
+      "source": "animals-sea-turtle",
+      "tags": {
+        "subject": ["sea turtle", "fish", "coral", "starfish"],
+        "setting": ["underwater", "reef"],
+        "season": ["any"],
+        "mood": ["calm", "curious"],
+        "palette": ["aqua", "coral", "sand"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "mystery-christmas-snowman",
+      "title": "Snowman",
+      "category": "Christmas",
+      "difficulty": "easy",
+      "mystery": true,
+      "source": "christmas-snowman",
+      "tags": {
+        "subject": ["snowman", "trees", "bird"],
+        "setting": ["snowy yard"],
+        "season": ["winter"],
+        "mood": ["cheerful"],
+        "palette": ["white", "blue", "red"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "mystery-flowers-lotus-pond",
+      "title": "Lotus Pond",
+      "category": "Flowers",
+      "difficulty": "easy",
+      "mystery": true,
+      "source": "flowers-lotus-pond",
+      "tags": {
+        "subject": ["lotus", "pond", "flowers"],
+        "setting": ["garden pond"],
+        "season": ["summer"],
+        "mood": ["peaceful"],
+        "palette": ["pink", "green", "water blue"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    },
+    {
+      "id": "mystery-fantasy-unicorn",
+      "title": "Unicorn",
+      "category": "Fantasy",
+      "difficulty": "hard",
+      "mystery": true,
+      "source": "fantasy-unicorn",
+      "tags": {
+        "subject": ["unicorn"],
+        "setting": ["meadow"],
+        "season": ["spring"],
+        "mood": ["magical", "gentle"],
+        "palette": ["pastel", "gold", "green"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      }
+    },
+    {
+      "id": "mystery-food-ice-cream-sundae",
+      "title": "Ice Cream Sundae",
+      "category": "Food",
+      "difficulty": "easy",
+      "mystery": true,
+      "source": "food-ice-cream-sundae",
+      "tags": {
+        "subject": ["ice cream", "sundae"],
+        "setting": ["dessert"],
+        "season": ["summer"],
+        "mood": ["playful"],
+        "palette": ["pink", "cream", "chocolate"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      }
+    }
+  ]
+}

@@ -10,12 +10,16 @@
   let {
     puzzleId,
     settings,
+    favorite,
     onBack,
+    onToggleFavorite,
     onSaved,
   }: {
     puzzleId: string;
     settings: Settings;
+    favorite: boolean;
     onBack: () => void;
+    onToggleFavorite: () => void;
     onSaved: (id: string, save: ProgressSave) => void;
   } = $props();
 
@@ -112,6 +116,7 @@
   });
 
   const quiet = $derived(!!snapshot?.complete && !celebrate);
+  const hiddenTitle = $derived(!!puzzle?.mystery && !snapshot?.complete);
   const ring = 2 * Math.PI * 19;
 
   async function saveImage() {
@@ -140,11 +145,30 @@
         </svg>
       </button>
       <div class="titles">
-        <h1>{puzzle.title}</h1>
+        <h1 class:unveil={!!puzzle.mystery && !!snapshot?.complete}>{hiddenTitle ? 'Mystery' : puzzle.title}</h1>
         <p class="sub">
-          {snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {puzzle.category}
+          {snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? 'Mystery' : puzzle.category}
         </p>
       </div>
+      <button
+        class="icon-btn fave"
+        class:on={favorite}
+        type="button"
+        data-testid="favorite-play"
+        aria-pressed={favorite}
+        aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+        onclick={onToggleFavorite}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M12 19.4 4.8 12.6a4.2 4.2 0 0 1 5.9-6 3.6 3.6 0 0 1 1.3 1.3 3.6 3.6 0 0 1 1.3-1.3 4.2 4.2 0 0 1 5.9 6Z"
+            fill={favorite ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
       <button class="icon-btn hint" type="button" data-testid="hint" onclick={() => gameRef?.hint()}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <circle cx="12" cy="12" r="3.1" fill="currentColor" />
@@ -173,10 +197,18 @@
           </div>
           <div class="card-pop">
             <p class="eyebrow">Finished</p>
-            <h2>That's a beauty.</h2>
-            <p>Every spot in {puzzle.title} is filled.</p>
+            <h2>{puzzle.mystery ? puzzle.title : "That's a beauty."}</h2>
+            <p>{puzzle.mystery ? `The mystery picture is ${puzzle.title}.` : `Every spot in ${puzzle.title} is filled.`}</p>
             <div class="actions">
               <button class="btn secondary" type="button" data-testid="replay" onclick={() => gameRef?.replay()}>Replay</button>
+              <button
+                class="btn secondary fave-text"
+                class:on={favorite}
+                type="button"
+                data-testid="favorite-complete"
+                aria-pressed={favorite}
+                onclick={onToggleFavorite}
+              >{favorite ? 'Favorited' : 'Favorite'}</button>
               <button class="btn" type="button" data-testid="save-image" disabled={saving} onclick={saveImage}>Save image</button>
             </div>
             <button class="linkish" type="button" data-testid="back-gallery" onclick={onBack}>Back to the shelf</button>
@@ -186,6 +218,14 @@
         <div class="finished-bar">
           <strong>Finished</strong>
           <button class="btn secondary" type="button" data-testid="replay" onclick={() => gameRef?.replay()}>Replay</button>
+          <button
+            class="btn secondary fave-text"
+            class:on={favorite}
+            type="button"
+            data-testid="favorite-complete"
+            aria-pressed={favorite}
+            onclick={onToggleFavorite}
+          >{favorite ? 'Favorited' : 'Favorite'}</button>
           <button class="btn" type="button" data-testid="save-image" disabled={saving} onclick={saveImage}>Save image</button>
         </div>
       {/if}

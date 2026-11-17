@@ -35,8 +35,12 @@ export function drawThumbnail(canvas: HTMLCanvasElement, puzzle: DecodedPuzzle, 
   if (canvas.height !== size) canvas.height = size;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const image = imageFor(puzzle.art);
   const ratio = progressRatio(filled, puzzle.regionColors.length);
+  if (puzzle.mystery && ratio < 1) {
+    drawHidden(ctx, size);
+    return;
+  }
+  const image = imageFor(puzzle.art);
   const paint = () => {
     ctx.fillStyle = PAPER;
     ctx.fillRect(0, 0, size, size);
@@ -67,6 +71,20 @@ export function drawThumbnail(canvas: HTMLCanvasElement, puzzle: DecodedPuzzle, 
   };
   if (image.complete && image.naturalWidth) paint();
   else image.addEventListener('load', paint, { once: true });
+}
+
+function drawHidden(ctx: CanvasRenderingContext2D, size: number): void {
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#e7e0d4';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2 + 8, size * 0.34, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8a7b72';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `800 ${Math.round(size * 0.42)}px Nunito, sans-serif`;
+  ctx.fillText('?', size / 2, size / 2 + 4);
 }
 
 function soften(data: Uint8ClampedArray): void {

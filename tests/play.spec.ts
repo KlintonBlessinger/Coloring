@@ -148,7 +148,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(25);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(30);
   await page.locator('[data-category="Flowers"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await expect(page.locator('[data-id="flowers-lotus-pond"]')).toBeVisible();
@@ -270,6 +270,7 @@ test('settings backup, sound default, and reset', async ({ page }) => {
   const backup = fs.readFileSync(backupPath!, 'utf8');
   expect(backup).toContain('Color Cozy');
   expect(backup).toContain('flowers-lotus-pond');
+  expect(backup).toContain('"favorites"');
 
   await page.getByTestId('reset-progress').click();
   await page.getByTestId('reset-confirm').click();
@@ -374,4 +375,111 @@ test('screenshots of gallery, fit, half colored, and a finished hard picture', a
   await expect(page.getByTestId('complete')).toBeVisible();
   await page.waitForTimeout(2800);
   await page.screenshot({ path: path.join(mediaDir, 'finished-hard.png') });
+});
+
+test('hint, mystery, favorites, and share', async ({ page }) => {
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.addInitScript(() => {
+    try {
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        writable: true,
+        value: (data: { text?: string }) => {
+          sessionStorage.setItem('color-cozy-share', data?.text ?? '');
+          return Promise.resolve();
+        },
+      });
+    } catch {
+      /* The app still stores the text it is about to share. */
+    }
+  });
+
+  const lotus = puzzle('flowers-lotus-pond');
+  const counts = new Map<number, number>();
+  for (const color of lotus.regionColors) counts.set(color, (counts.get(color) ?? 0) + 1);
+  let cycleColor = 0;
+  let cycleCount = Infinity;
+  let smallColor = 0;
+  let smallCount = Infinity;
+  for (const [color, count] of counts) {
+    if (count >= 2 && count < cycleCount) {
+      cycleColor = color;
+      cycleCount = count;
+    }
+    if (count < smallCount) {
+      smallColor = color;
+      smallCount = count;
+    }
+  }
+  await openPuzzle(page, 'flowers-lotus-pond');
+  await page.locator(`.swatch[data-index="${cycleColor}"]`).click();
+  const scaleBefore = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  await page.getByTestId('hint').click();
+  await expect
+    .poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale')))
+    .toBeGreaterThan(scaleBefore * 1.4);
+  const firstHint = await page.locator('canvas.surface').getAttribute('data-hint');
+  expect(firstHint).toBeTruthy();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(mediaDir, 'hint-zoom.png') });
+  await page.getByTestId('hint').click();
+  await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-hint')).not.toBe(firstHint);
+
+  const smallRegions = lotus.regionColors.flatMap((color, index) => (color === smallColor ? [index] : []));
+  await paintRegions(page, lotus, smallRegions);
+  await page.locator(`.swatch[data-index="${smallColor}"]`).click();
+  await page.getByTestId('hint').click();
+  await expect(page.locator('.swatch.selected')).not.toHaveAttribute('data-index', String(smallColor));
+
+  await page.getByTestId('back').click();
+  await page.locator('[data-category="Mystery"]').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(5);
+  await expect(page.locator('.card-title').first()).toHaveText('Mystery');
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(mediaDir, 'mystery-shelf.png') });
+
+  const turtle = puzzle('animals-sea-turtle');
+  await page.locator('[data-id="mystery-animals-sea-turtle"]').click();
+  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await expect(page.locator('.titles h1')).toHaveText('Mystery');
+  const turtleOrder = turtle.area
+    .map((value, index) => [value, index] as const)
+    .sort((a, b) => b[0] - a[0])
+    .slice(0, 12)
+    .map(([, index]) => index);
+  await paintRegions(page, turtle, turtleOrder);
+  await expect.poll(async () => page.locator('.sub').innerText()).toMatch(/[1-9]\d?%/);
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  await expect(page.locator('.titles h1')).toHaveText('Mystery');
+  await page.screenshot({ path: path.join(mediaDir, 'mystery-coloring.png') });
+
+  await page.getByTestId('back').click();
+  await page.locator('[data-category="Mystery"]').click();
+  const sundae = puzzle('food-ice-cream-sundae');
+  await page.locator('[data-id="mystery-food-ice-cream-sundae"]').click();
+  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await paintRegions(page, sundae, sundae.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await expect(page.locator('.titles h1')).toHaveText('Ice Cream Sundae');
+  await page.waitForTimeout(2200);
+  await page.screenshot({ path: path.join(mediaDir, 'mystery-reveal.png') });
+
+  await page.getByTestId('back').click();
+  await page.locator('[data-category="All"]').click();
+  await page.locator('[data-testid="favorite"][data-favorite="thanksgiving-turkey"]').click();
+  await page.locator('[data-testid="favorite"][data-favorite="christmas-snowman"]').click();
+  await page.locator('[data-category="Favorites"]').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(2);
+  await expect(page.locator('[data-testid="favorite"][data-on="1"]')).toHaveCount(2);
+  await page.screenshot({ path: path.join(mediaDir, 'favorites.png') });
+
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('share-favorites').click();
+  await expect(page.getByTestId('settings-status')).toContainText(/shared|copied/i);
+  const shared = await page.evaluate(() => sessionStorage.getItem('color-cozy-share') ?? '');
+  expect(shared).toContain('thanksgiving-turkey — Thanksgiving Turkey');
+  expect(shared).toContain('christmas-snowman — Snowman');
+  expect(shared).toContain('Subject:');
+  expect(shared).toMatch(/not started|in progress|finished/);
+  fs.writeFileSync(path.join(mediaDir, 'share-favorites.txt'), shared.endsWith('\n') ? shared : `${shared}\n`);
 });

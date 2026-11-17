@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { listPuzzles } from '../lib/catalog';
+  import { formatFavoritesShare, sharePlainText } from '../lib/favorites-share';
   import { downloadBlob } from '../lib/download';
   import type { Settings } from '../lib/settings';
   import {
     exportBackup,
     importBackup,
     loadAllProgress,
+    loadFavorites,
     parseBackup,
     resetAllProgress,
     type ProgressSave,
@@ -12,15 +15,21 @@
 
   let {
     settings,
+    progress,
+    favorites,
     onBack,
     onChange,
     onProgress,
+    onFavorites,
     onSettings,
   }: {
     settings: Settings;
+    progress: Record<string, ProgressSave>;
+    favorites: string[];
     onBack: () => void;
     onChange: (settings: Settings) => void;
     onProgress: (progress: Record<string, ProgressSave>) => void;
+    onFavorites: (favorites: string[]) => void;
     onSettings: (settings: Settings) => void;
   } = $props();
 
@@ -29,6 +38,12 @@
 
   function toggle(key: keyof Settings) {
     onChange({ ...settings, [key]: !settings[key] });
+  }
+
+  async function shareFavorites() {
+    const text = formatFavoritesShare(favorites, progress, listPuzzles());
+    const how = await sharePlainText(text);
+    status = how === 'shared' ? 'Favorites shared.' : 'Favorites copied.';
   }
 
   async function exportFile() {
@@ -47,6 +62,7 @@
       const data = parseBackup(await file.text());
       await importBackup(data);
       onProgress(await loadAllProgress());
+      onFavorites(await loadFavorites());
       onSettings(data.settings);
       status = 'Backup imported.';
     } catch (error) {
@@ -89,6 +105,7 @@
       <i class="switch" class:on={settings.haptics}></i>
     </button>
 
+    <button class="btn wide" type="button" data-testid="share-favorites" onclick={shareFavorites}>Share favorites</button>
     <button class="btn wide" type="button" data-testid="export-backup" onclick={exportFile}>Export backup</button>
     <label class="file-btn">
       Import backup
