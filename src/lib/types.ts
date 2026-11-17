@@ -25,6 +25,12 @@ export const DIFFICULTY_PRESETS: Record<
 
 export const OUTLINE = 65535;
 
+/** Furthest the canvas will zoom. A region must be able to show a 10px label here. */
+export const MAX_SCALE = 28;
+
+/** Regions thinner than this inscribed radius are merged into a neighbor. */
+export const MIN_INSCRIBED = 1.5;
+
 /**
  * Region puzzle. `labels` is a uint16 RLE of the label map (65535 = not a region).
  * Region i has `regionColors[i]`, an SVG `paths[i]` in label-map coordinates, and
@@ -44,6 +50,8 @@ export interface PuzzleFile {
   paths: string[];
   cx: number[];
   cy: number[];
+  /** Radius of the largest inscribed circle, in picture pixels. */
+  inr: number[];
   area: number[];
   /** minX, minY, maxX, maxY per region, packed. */
   box: number[];

@@ -409,7 +409,7 @@ h1 {
   flex: 1;
   min-height: 0;
   position: relative;
-  background: var(--desk);
+  background: #fff;
 }
 .mode-overlay {
   position: absolute;
@@ -499,13 +499,58 @@ h1 {
   font-weight: 700;
 }
 
+.palette-dock {
+  background: #fff;
+  border-top: 1px solid #ececec;
+  padding-bottom: env(safe-area-inset-bottom);
+  min-width: 0;
+  width: 100%;
+}
+
+.overall {
+  position: relative;
+  height: 16px;
+  margin: 6px 16px 0;
+}
+
+.overall-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  height: 3px;
+  border-radius: 99px;
+  background: #e6e6e6;
+  overflow: hidden;
+}
+
+.overall-track span {
+  display: block;
+  height: 100%;
+  background: #36c46a;
+}
+
+.overall em {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  background: #fff;
+  color: #222;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 16px;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
 .palette {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   overflow-x: auto;
-  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
-  background: var(--paper-2);
-  border-top: 1px solid var(--line);
+  padding: 8px 12px 12px;
+  background: #fff;
   scrollbar-width: none;
 }
 
@@ -514,36 +559,26 @@ h1 {
 
 .swatch {
   position: relative;
-  width: 54px;
-  height: 54px;
   flex: none;
   border: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.swatch .ring { width: 54px; height: 54px; display: block; }
-.swatch .track, .swatch .prog { fill: none; stroke-width: 3; }
-.swatch .track { stroke: rgba(60, 47, 44, 0.12); }
-.swatch .prog {
-  stroke: var(--ink);
-  stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: 27px 27px;
+  padding: 3px;
+  border-radius: 999px;
+  background: conic-gradient(#36c46a calc(var(--pct) * 1turn), #e4e4e4 0);
 }
 
 .face {
-  position: absolute;
-  inset: 9px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 14px;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1;
 }
 
-.swatch.selected { transform: translateY(-6px); }
-.swatch.selected .prog { stroke: var(--coral-deep); }
+.swatch.selected { transform: scale(1.08); box-shadow: 0 0 0 2px #d5d5d5; }
 .swatch.done .face { font-size: 0; }
 
 .celebrate, .finished-bar {
@@ -712,24 +747,21 @@ h1 {
 .card-pop { position: relative; z-index: 1; max-height: min(72vh, 540px); overflow: auto; }
 
 .palette.words { align-items: center; }
-.palette.words .swatch { width: auto; max-width: 104px; height: auto; min-height: 48px; }
-.palette.words .ring { display: none; }
 .palette.words .face {
-  position: relative;
-  inset: auto;
+  width: auto;
+  min-width: 54px;
+  max-width: 112px;
   height: auto;
-  min-height: 40px;
-  max-width: 96px;
-  min-width: 44px;
-  padding: 6px 8px;
-  border-radius: 20px;
-  font-size: 13px;
-  line-height: 1.05;
+  min-height: 54px;
+  padding: 6px 10px;
+  border-radius: 27px;
+  font-size: 14px;
+  line-height: 1.1;
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
 }
-.palette.words .swatch.selected { transform: translateY(-4px); }
+.palette.words .swatch.selected { transform: scale(1.06); }
 .dots, .tally { display: flex; align-items: center; justify-content: center; gap: 2px; }
 .dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .tally { height: 16px; }

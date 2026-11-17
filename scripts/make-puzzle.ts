@@ -56,6 +56,7 @@ export function makePuzzle(opts: MakeOptions): PuzzleFile {
     paths: segment.paths,
     cx: segment.cx,
     cy: segment.cy,
+    inr: segment.inr,
     area: segment.area,
     box: segment.box,
     art: `art/${opts.id}.jpg`,

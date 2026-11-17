@@ -157,7 +157,7 @@
 
   const quiet = $derived(!!snapshot?.complete && !celebrate);
   const hiddenTitle = $derived(!!puzzle?.mystery && !snapshot?.complete);
-  const ring = 2 * Math.PI * 19;
+  const overall = $derived(snapshot && snapshot.total ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0);
   const factList = $derived(playSettings.language === 'es' ? (puzzle?.factsEs ?? []) : (puzzle?.facts ?? []));
   const swatchMarks = $derived(puzzle ? paletteMarks(puzzle.palette, playSettings, puzzle.id) : []);
   const modeName = $derived(committed === 'math' ? 'modeMath' : committed === 'espanol' ? 'modeEspanol' : 'modeNormal');
@@ -324,6 +324,11 @@
       <p class="save-error">{t(copy, 'saveError')}</p>
     {/if}
 
+    <div class="palette-dock" data-testid="palette-bar">
+      <div class="overall" aria-hidden="true">
+        <span class="overall-track"><span style="width: {overall}%"></span></span>
+        <em>{overall}%</em>
+      </div>
     <div class="palette" class:words={playSettings.labels !== 'numbers'} class:loading={!snapshot} bind:this={paletteEl} data-testid="palette" role="listbox" aria-label={t(copy, 'palette')}>
       {#each puzzle.palette as color, index (index)}
         {@const total = snapshot?.totals[index] ?? 0}
@@ -342,19 +347,16 @@
           data-testid="swatch"
           data-index={index}
           data-label={markText(mark)}
+          style="--pct: {pct}"
           onclick={() => {
             if (playSettings.labels !== 'numbers') speak(markText(mark), playSettings.language, 0.9);
             gameRef?.select(index);
           }}
         >
-          <svg class="ring" viewBox="0 0 54 54" aria-hidden="true">
-            <circle class="track" cx="27" cy="27" r="19" />
-            <circle class="prog" cx="27" cy="27" r="19" stroke-dasharray="{pct * ring} {ring}" />
-          </svg>
           <span class="face" style="background:{color}; color:{inkOn(color)}">
             {#if finished}
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                <path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             {:else if mark.kind === 'dots'}
               <span class="dots" aria-hidden="true">{#each Array(mark.count) as _, dot (dot)}<i></i>{/each}</span>
@@ -370,6 +372,7 @@
           </span>
         </button>
       {/each}
+    </div>
     </div>
     {#if pickerOpen}
       <div class="mode-overlay" data-testid="mode-picker" role="dialog" aria-modal="true" aria-label={t(settings.language, 'howToColor')}>

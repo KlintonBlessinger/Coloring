@@ -26,7 +26,7 @@ export function luma(hex: string): number {
 }
 
 export function inkOn(hex: string): string {
-  return luma(hex) > 0.62 ? '#3c2f2c' : '#fffaf6';
+  return luma(hex) > 0.62 ? '#222222' : '#ffffff';
 }
 
 function srgbToLinear(u: number): number {

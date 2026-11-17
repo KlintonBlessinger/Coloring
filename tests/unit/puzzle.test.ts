@@ -6,7 +6,7 @@ import { encode } from 'jpeg-js';
 import { APP_NAME } from '../../src/lib/brand';
 import { decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
 import { hexToOklab, hexToRgb, labDist2, oklabToHex } from '../../src/lib/color';
-import { CATEGORIES, DIFFICULTY_PRESETS, type PuzzleFile } from '../../src/lib/types';
+import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, type PuzzleFile } from '../../src/lib/types';
 import { loadImage, writePng } from '../../scripts/image';
 import { makePuzzle } from '../../scripts/make-puzzle';
 import { quantize } from '../../scripts/quantize';
@@ -132,6 +132,8 @@ test('starter puzzles cover every shelf', () => {
     assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 34, puzzle.id);
     assert.ok(puzzle.regionColors.length >= 30, puzzle.id);
     assert.equal(puzzle.paths.length, puzzle.regionColors.length);
+    assert.equal(puzzle.inr.length, puzzle.regionColors.length, puzzle.id);
+    for (const radius of puzzle.inr) assert.ok(1.1 * radius * MAX_SCALE >= 10, `${puzzle.id} ${radius}`);
     const labels = decodeRLE16(puzzle.labels, puzzle.width * puzzle.height);
     for (const region of labels) assert.ok(region < puzzle.regionColors.length);
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);

@@ -1,13 +1,15 @@
-import { mixHex } from './color';
 import { regionMarks, type RegionMark } from './labels';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
-import type { DecodedPuzzle } from './types';
+import { MAX_SCALE, type DecodedPuzzle } from './types';
 
-const PAPER = '#f4f1eb';
-const OPEN = '#e7e2da';
-const INK = '#7d756c';
-const NUMBER = '#4a3f3a';
-const GHOST = 0.12;
+const PAPER = '#ffffff';
+const INK = '#262626';
+const NUMBER = '#111111';
+const CHECKER_DARK = '#C9C9C9';
+const CHECKER_LIGHT = '#E6E6E6';
+const LABEL_FONT = '-apple-system, "Helvetica Neue", Arial, sans-serif';
+
+export { MAX_SCALE };
 
 interface Camera {
   panX: number;
@@ -37,7 +39,7 @@ export class Renderer {
   private readonly view: HTMLCanvasElement;
   private readonly viewCtx: CanvasRenderingContext2D;
   private readonly paths: Path2D[];
-  private readonly tint: string[];
+  private readonly outer: (Path2D | undefined)[];
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
   private selected = 0;
@@ -55,7 +57,7 @@ export class Renderer {
   private anim: Anim | null = null;
   private raf = 0;
   private dead = false;
-  private readonly maxScale = 28;
+  private readonly maxScale = MAX_SCALE;
   private readonly ro: ResizeObserver;
   readonly artImage: HTMLImageElement;
 
@@ -72,7 +74,7 @@ export class Renderer {
     if (!viewCtx) throw new Error('Canvas is not available.');
     this.viewCtx = viewCtx;
     this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
-    this.tint = puzzle.palette.map((hex) => mixHex(OPEN, hex, 0.55));
+    this.outer = new Array(puzzle.paths.length);
     this.artImage = new Image();
     this.artImage.onload = () => this.requestDraw();
     const base = import.meta.env.BASE_URL || '/';
@@ -280,6 +282,11 @@ export class Renderer {
     return Math.max(this.minScale(), Math.min(this.maxScale, scale));
   }
 
+  private fitScale(): number {
+    if (this.cssW < 2 || this.cssH < 2) return 1;
+    return Math.min((this.cssW - 16) / this.puzzle.width, (this.cssH - 16) / this.puzzle.height);
+  }
+
   private minScale(): number {
     if (this.cssW < 2 || this.cssH < 2) return 1;
     return Math.min((this.cssW - 12) / this.puzzle.width, (this.cssH - 12) / this.puzzle.height) * 0.92;
@@ -351,59 +358,48 @@ export class Renderer {
     ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
     ctx.fillStyle = PAPER;
     ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
-    const pulse = now < this.pulseUntil ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80)) : 1;
+    const pulsing = now < this.pulseUntil;
+    const pulse = pulsing ? 0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80) : 0;
+    const checker = screenChecker(ctx, dpr, this.scale, CHECKER_DARK, CHECKER_LIGHT);
+    const hintDark = mixHex(CHECKER_DARK, '#8d8d8d', 0.35 + 0.65 * pulse);
+    const hintLight = mixHex(CHECKER_LIGHT, '#bdbdbd', 0.25 + 0.45 * pulse);
+    const hintChecker = pulsing ? screenChecker(ctx, dpr, this.scale, hintDark, hintLight) : checker;
     for (let i = 0; i < this.paths.length; i++) {
       if (this.isFilled(i)) continue;
       const path = this.paths[i]!;
       if (!path) continue;
-      const color = this.puzzle.regionColors[i] ?? 0;
-      const selected = color === this.selected;
-      const pulsing = i === this.hintIndex && now < this.pulseUntil;
-      ctx.fillStyle = selected ? (this.tint[color] ?? OPEN) : OPEN;
-      ctx.globalAlpha = pulsing ? pulse : 1;
-      ctx.fill(path, 'evenodd');
-    }
-    ctx.globalAlpha = 1;
-    const showGhost = !this.puzzle.mystery && this.artAlpha < 0.05 && this.artImage.complete && this.artImage.naturalWidth > 0;
-    if (showGhost) {
-      ctx.globalAlpha = GHOST;
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(this.artImage, 0, 0, this.puzzle.width, this.puzzle.height);
-      ctx.globalAlpha = 1;
-      for (let i = 0; i < this.paths.length; i++) {
-        if (this.isFilled(i)) continue;
-        const path = this.paths[i]!;
-        if (!path) continue;
-        if ((this.puzzle.regionColors[i] ?? 0) !== this.selected) continue;
-        ctx.globalAlpha = i === this.hintIndex && now < this.pulseUntil ? pulse : 1;
-        ctx.fillStyle = this.tint[this.selected] ?? OPEN;
+      const selected = (this.puzzle.regionColors[i] ?? 0) === this.selected;
+      if (!selected) {
+        ctx.fillStyle = PAPER;
         ctx.fill(path, 'evenodd');
+        continue;
       }
-      ctx.globalAlpha = 1;
+      const hinted = pulsing && i === this.hintIndex;
+      ctx.fillStyle = (hinted ? hintChecker : checker) ?? PAPER;
+      ctx.fill(path, 'evenodd');
     }
     for (let i = 0; i < this.paths.length; i++) {
       if (!this.isFilled(i)) continue;
       const path = this.paths[i]!;
       if (!path) continue;
       const color = this.puzzle.regionColors[i] ?? 0;
-      ctx.fillStyle = this.puzzle.palette[color] ?? OPEN;
+      ctx.fillStyle = this.puzzle.palette[color] ?? PAPER;
       ctx.fill(path, 'evenodd');
     }
-    ctx.lineWidth = 1 / this.scale;
+    const fit = this.fitScale();
+    const outlineCss = Math.min(1.75, Math.max(1.25, 1.25 * Math.sqrt(this.scale / fit)));
+    ctx.lineWidth = outlineCss / this.scale;
     ctx.strokeStyle = INK;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.miterLimit = 2;
     for (const path of this.paths) ctx.stroke(path);
-    if (this.hintIndex >= 0 && now < this.pulseUntil) {
-      const hinted = this.paths[this.hintIndex];
-      if (hinted) {
-        ctx.strokeStyle = '#c45d45';
-        ctx.lineWidth = 2 / this.scale;
-        ctx.globalAlpha = pulse;
-        ctx.stroke(hinted);
-        ctx.globalAlpha = 1;
-      }
+    if (pulsing && this.hintIndex >= 0 && !this.isFilled(this.hintIndex)) {
+      ctx.strokeStyle = NUMBER;
+      ctx.lineWidth = 2.4 / this.scale;
+      ctx.globalAlpha = 0.55 + 0.45 * pulse;
+      ctx.stroke(this.outerContour(this.hintIndex));
+      ctx.globalAlpha = 1;
     }
 
     let numbers = false;
@@ -415,25 +411,22 @@ export class Renderer {
       ctx.strokeStyle = NUMBER;
       for (let i = 0; i < this.puzzle.regionColors.length; i++) {
         if (this.isFilled(i)) continue;
-        const radius = Math.sqrt((this.puzzle.area[i] ?? 0) / Math.PI) * this.scale;
+        const inr = this.puzzle.inr[i] ?? 0;
+        const px = labelPx(inr, this.scale, fit);
+        if (px < 10) continue;
+        const room = 1.6 * inr * this.scale;
         const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
         const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
         const mark = this.marks[i] ?? { kind: 'text' as const, text: String((this.puzzle.regionColors[i] ?? 0) + 1) };
         if (mark.kind === 'dots') {
-          if (drawDots(ctx, mark.count, x, y, radius)) numbers = true;
+          if (drawDots(ctx, mark.count, x, y, px, room)) numbers = true;
           continue;
         }
         if (mark.kind === 'tally') {
-          if (drawTally(ctx, mark.count, x, y, radius)) numbers = true;
+          if (drawTally(ctx, mark.count, x, y, px, room)) numbers = true;
           continue;
         }
-        const fitted = drawFittedText(ctx, mark.text, x, y, radius, this.big, {
-          left: this.panX + 2,
-          right: this.panX + this.puzzle.width * this.scale - 2,
-          top: this.panY + 2,
-          bottom: this.panY + this.puzzle.height * this.scale - 2,
-        });
-        if (fitted) numbers = true;
+        if (drawLabel(ctx, mark.text, x, y, px, room)) numbers = true;
       }
     }
 
@@ -449,15 +442,97 @@ export class Renderer {
     this.view.dataset.panX = String(this.panX);
     this.view.dataset.panY = String(this.panY);
     this.view.dataset.numbers = numbers ? '1' : '0';
-    this.view.dataset.ghost = showGhost ? '1' : '0';
+    this.view.dataset.ghost = '0';
+  }
+
+  private outerContour(index: number): Path2D {
+    const cached = this.outer[index];
+    if (cached) return cached;
+    const path = outerContour(this.puzzle.paths[index] ?? '');
+    this.outer[index] = path;
+    return path;
   }
 }
 
-function drawDots(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, radius: number): boolean {
-  const dot = Math.min(5.5, Math.max(2.2, radius * 0.22));
+function labelPx(inr: number, scale: number, fitScale: number): number {
+  if (!(inr > 0) || !(fitScale > 0)) return 0;
+  return Math.min(1.1 * inr * scale, 13 * (scale / fitScale), 72);
+}
+
+function screenChecker(
+  ctx: CanvasRenderingContext2D,
+  dpr: number,
+  scale: number,
+  dark: string,
+  light: string,
+): CanvasPattern | null {
+  const cell = Math.max(1, Math.round(4 * dpr));
+  const tile = document.createElement('canvas');
+  tile.width = cell * 2;
+  tile.height = cell * 2;
+  const pen = tile.getContext('2d');
+  if (!pen) return null;
+  pen.fillStyle = light;
+  pen.fillRect(0, 0, tile.width, tile.height);
+  pen.fillStyle = dark;
+  pen.fillRect(0, 0, cell, cell);
+  pen.fillRect(cell, cell, cell, cell);
+  const pattern = ctx.createPattern(tile, 'repeat');
+  if (!pattern) return null;
+  pattern.setTransform(new DOMMatrix().scale(1 / (dpr * Math.max(scale, 0.01))));
+  return pattern;
+}
+
+function mixHex(from: string, to: string, t: number): string {
+  const parse = (hex: string) => {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  };
+  const a = parse(from);
+  const b = parse(to);
+  const channel = (index: number) => Math.round((a[index] ?? 0) + ((b[index] ?? 0) - (a[index] ?? 0)) * t);
+  return `#${[channel(0), channel(1), channel(2)].map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function outerContour(d: string): Path2D {
+  const parts = d.split(/(?=M)/).filter((part) => part.startsWith('M'));
+  if (parts.length <= 1) return new Path2D(d || undefined);
+  let best = parts[0]!;
+  let bestArea = -1;
+  for (const part of parts) {
+    const area = Math.abs(loopArea(part));
+    if (area > bestArea) {
+      bestArea = area;
+      best = part;
+    }
+  }
+  return new Path2D(best);
+}
+
+function loopArea(d: string): number {
+  const points: { x: number; y: number }[] = [];
+  const commands = d.matchAll(/([MC])([^MCZ]*)/g);
+  for (const command of commands) {
+    const nums = command[2]!.trim().split(/[\s,]+/).map(Number).filter((value) => !Number.isNaN(value));
+    if (command[1] === 'M' && nums.length >= 2) points.push({ x: nums[0]!, y: nums[1]! });
+    if (command[1] === 'C') {
+      for (let i = 0; i + 5 < nums.length; i += 6) points.push({ x: nums[i + 4]!, y: nums[i + 5]! });
+    }
+  }
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    area += a.x * b.y - b.x * a.y;
+  }
+  return area / 2;
+}
+
+function drawDots(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, px: number, room: number): boolean {
+  const dot = Math.min(px * 0.28, 8);
   const gap = dot * 0.7;
   const width = count * dot * 2 + Math.max(0, count - 1) * gap;
-  if (width > radius * 1.85 || dot < 2.2) return false;
+  if (width > room) return false;
   ctx.fillStyle = NUMBER;
   const start = x - width / 2 + dot;
   for (let i = 0; i < count; i++) {
@@ -468,17 +543,16 @@ function drawDots(ctx: CanvasRenderingContext2D, count: number, x: number, y: nu
   return true;
 }
 
-function drawTally(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, radius: number): boolean {
-  const markW = Math.min(8, Math.max(3, radius * 0.22));
+function drawTally(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, px: number, room: number): boolean {
+  const markW = Math.min(px * 0.28, 10);
   const gap = markW * 0.35;
   const groupW = 4 * markW + 3 * gap;
   const groups = Math.ceil(count / 5);
-  const extras = count % 5;
-  const width = groups * groupW + Math.max(0, groups - 1) * markW + (extras === 0 ? 0 : 0);
-  if (width > radius * 1.95 || markW < 3) return false;
-  const height = Math.min(radius * 1.15, markW * 3.2);
+  const width = groups * groupW + Math.max(0, groups - 1) * markW;
+  if (width > room) return false;
+  const height = Math.min(px, markW * 3.2);
   ctx.strokeStyle = NUMBER;
-  ctx.lineWidth = Math.max(1.4, markW * 0.28);
+  ctx.lineWidth = Math.max(1.25, markW * 0.22);
   ctx.lineCap = 'round';
   let cursor = x - width / 2;
   let left = count;
@@ -505,44 +579,13 @@ function drawTally(ctx: CanvasRenderingContext2D, count: number, x: number, y: n
   return true;
 }
 
-function drawFittedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  radius: number,
-  big: boolean,
-  bounds?: { left: number; right: number; top: number; bottom: number },
-): boolean {
+function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, px: number, room: number): boolean {
   const lines = text.includes(' ') && text.length > 8 ? text.split(' ') : [text];
-  const short = text.length <= 2 && lines.length === 1;
-  const numeric = /^\d+$/.test(text);
-  if (short) {
-    const need = (numeric && text.length >= 2 ? 15 : 11) * (big ? 0.78 : 1);
-    if (radius < need) return false;
-  }
-  let font = Math.min(big ? 30 : 20, radius * (big ? 0.95 : 0.72));
-  if (!short) font = Math.min(font, big ? 22 : 16);
-  const room = bounds ? Math.max(12, Math.min(x - bounds.left, bounds.right - x) * 2) : Infinity;
-  const heightRoom = bounds ? Math.max(12, Math.min(y - bounds.top, bounds.bottom - y) * 2) : Infinity;
+  ctx.font = `500 ${px}px ${LABEL_FONT}`;
   ctx.fillStyle = NUMBER;
-  const fit = () => {
-    ctx.font = `800 ${font}px Nunito, sans-serif`;
-    return Math.max(...lines.map((line) => ctx.measureText(line).width));
-  };
-  let width = fit();
-  const maxWidth = Math.min(radius * 1.65, room);
-  const lineHeight = font * 1.05;
-  const block = lineHeight * lines.length;
-  if (width > maxWidth || block > Math.min(radius * 1.7, heightRoom)) {
-    const widthScale = width > maxWidth ? maxWidth / width : 1;
-    const heightScale = block > heightRoom ? heightRoom / block : 1;
-    font *= Math.min(widthScale, heightScale);
-    if (font < 8) return false;
-    width = fit();
-    if (width > maxWidth * 1.05) return false;
-  }
-  const step = font * 1.05;
+  const width = Math.max(...lines.map((line) => ctx.measureText(line).width));
+  if (width > room) return false;
+  const step = px * 1.05;
   const start = y - ((lines.length - 1) * step) / 2;
   lines.forEach((line, index) => ctx.fillText(line, x, start + index * step));
   return true;

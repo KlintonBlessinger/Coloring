@@ -1,4 +1,5 @@
 import { labDist2, oklabToHex, rgbToOklab, type Lab } from '../src/lib/color';
+import { MIN_INSCRIBED } from '../src/lib/types';
 import type { Raster } from './image';
 import { traceRegions } from './paths';
 
@@ -24,6 +25,7 @@ export interface Segment {
   paths: string[];
   cx: number[];
   cy: number[];
+  inr: number[];
   area: number[];
   box: number[];
 }
@@ -47,7 +49,132 @@ export function segmentImage(raster: Raster, opts: SegmentOptions): Segment {
     Math.max(opts.minArea, opts.sameColorArea ?? opts.minArea),
     opts.maxRegions,
   );
-  return describe(merged.labels, merged.colors, quant.palette, width, height);
+  const numbered = absorbNarrow(merged.labels, merged.colors, width, height, MIN_INSCRIBED);
+  return describe(numbered.labels, numbered.colors, quant.palette, width, height);
+}
+
+/**
+ * Merge regions whose inscribed radius is below `minInr` so every remaining
+ * region can show a number at max zoom. Same-color neighbors win the tie.
+ */
+export function absorbNarrow(
+  labels: Uint16Array,
+  colors: Int32Array,
+  width: number,
+  height: number,
+  minInr = MIN_INSCRIBED,
+): { labels: Uint16Array; colors: Int32Array } {
+  let currentLabels = labels;
+  let currentColors = colors;
+  for (let pass = 0; pass < 8; pass++) {
+    const regions = currentColors.length;
+    const depth = maxInscribed(currentLabels, width, height, regions);
+    let narrow = 0;
+    for (let i = 0; i < regions; i++) if ((depth[i] ?? 0) < minInr) narrow++;
+    if (!narrow) break;
+    const area = new Int32Array(regions);
+    for (let i = 0; i < currentLabels.length; i++) area[currentLabels[i] ?? 0] = (area[currentLabels[i] ?? 0] ?? 0) + 1;
+    const parent = Array.from({ length: regions }, (_, index) => index);
+    const alive = Array.from({ length: regions }, () => true);
+    const adj: Map<number, number>[] = Array.from({ length: regions }, () => new Map());
+    const link = (a: number, b: number) => {
+      if (a === b) return;
+      adj[a]!.set(b, (adj[a]!.get(b) ?? 0) + 1);
+      adj[b]!.set(a, (adj[b]!.get(a) ?? 0) + 1);
+    };
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      for (let x = 0; x < width; x++) {
+        const id = currentLabels[row + x] ?? 0;
+        if (x + 1 < width) link(id, currentLabels[row + x + 1] ?? 0);
+        if (y + 1 < height) link(id, currentLabels[row + width + x] ?? 0);
+      }
+    }
+    const root = (id: number): number => {
+      let cursor = id;
+      while (parent[cursor] !== cursor) {
+        parent[cursor] = parent[parent[cursor]!]!;
+        cursor = parent[cursor]!;
+      }
+      return cursor;
+    };
+    const absorb = (src: number, dst: number) => {
+      parent[src] = dst;
+      area[dst] = (area[dst] ?? 0) + (area[src] ?? 0);
+      alive[src] = false;
+      for (const [neighbor, weight] of adj[src]!) {
+        adj[neighbor]?.delete(src);
+        const other = root(neighbor);
+        if (other === dst || !alive[other]) continue;
+        adj[dst]!.set(other, (adj[dst]!.get(other) ?? 0) + weight);
+        adj[other]!.set(dst, (adj[other]!.get(dst) ?? 0) + weight);
+      }
+      adj[src] = new Map();
+      adj[dst]!.delete(src);
+    };
+    const neighbor = (src: number): number => {
+      let best = -1;
+      let score = -1;
+      for (const [id, weight] of adj[src]!) {
+        const other = root(id);
+        if (other === src || !alive[other]) continue;
+        const same = currentColors[other] === currentColors[src];
+        const value = weight * (same ? 4 : 1) + ((depth[other] ?? 0) >= minInr ? 0.5 : 0);
+        if (value > score) {
+          score = value;
+          best = other;
+        }
+      }
+      return best;
+    };
+    const order = Array.from({ length: regions }, (_, index) => index)
+      .filter((index) => (depth[index] ?? 0) < minInr)
+      .sort((a, b) => (depth[a] ?? 0) - (depth[b] ?? 0) || (area[a] ?? 0) - (area[b] ?? 0));
+    for (const src of order) {
+      if (!alive[src]) continue;
+      const dst = neighbor(src);
+      if (dst < 0) continue;
+      absorb(root(src), dst);
+    }
+    const remap = new Map<number, number>();
+    const next = new Uint16Array(currentLabels.length);
+    const nextColors: number[] = [];
+    for (let i = 0; i < currentLabels.length; i++) {
+      const id = root(currentLabels[i] ?? 0);
+      let dense = remap.get(id);
+      if (dense === undefined) {
+        dense = remap.size;
+        remap.set(id, dense);
+        nextColors.push(currentColors[id] ?? 0);
+      }
+      next[i] = dense;
+    }
+    const before = regions;
+    currentLabels = next;
+    currentColors = Int32Array.from(nextColors);
+    if (currentColors.length === before) break;
+  }
+  return { labels: currentLabels, colors: currentColors };
+}
+
+/** Rebuild geometry for an existing label map, keeping the current palette order. */
+export function fitRegions(
+  labels: Uint16Array,
+  regionColors: number[],
+  width: number,
+  height: number,
+): {
+  labels: Uint16Array;
+  regionColors: number[];
+  paths: string[];
+  cx: number[];
+  cy: number[];
+  inr: number[];
+  area: number[];
+  box: number[];
+} {
+  const fitted = absorbNarrow(labels, Int32Array.from(regionColors), width, height, MIN_INSCRIBED);
+  return measure(fitted.labels, fitted.colors, width, height);
 }
 
 function lumaSat(src: Uint8Array, index: number): { y: number; sat: number } {
@@ -522,15 +649,8 @@ function absorbLines(
   return { labels: nextLabels, colors };
 }
 
-/** Fattest interior pixel of each region, so numbers sit in a tappable spot. */
-function interiorPoints(
-  labels: Uint16Array,
-  width: number,
-  height: number,
-  regions: number,
-  seedX: Int32Array,
-  seedY: Int32Array,
-): { x: number[]; y: number[] } {
+/** Distance from each pixel to the edge of its region. */
+function edgeDistance(labels: Uint16Array, width: number, height: number): Float32Array {
   const count = width * height;
   const dist = new Float32Array(count).fill(1e6);
   for (let y = 0; y < height; y++) {
@@ -571,10 +691,34 @@ function interiorPoints(
       if (x > 0 && y + 1 < height) relax(i, i + width - 1, 1.414);
     }
   }
+  return dist;
+}
+
+function maxInscribed(labels: Uint16Array, width: number, height: number, regions: number): Float32Array {
+  const dist = edgeDistance(labels, width, height);
+  const best = new Float32Array(regions);
+  for (let i = 0; i < labels.length; i++) {
+    const region = labels[i] ?? 0;
+    const depth = dist[i] ?? 0;
+    if (depth > (best[region] ?? 0)) best[region] = depth;
+  }
+  return best;
+}
+
+/** Fattest interior pixel of each region, so numbers sit in a tappable spot. */
+function interiorPoints(
+  labels: Uint16Array,
+  width: number,
+  height: number,
+  regions: number,
+  seedX: Int32Array,
+  seedY: Int32Array,
+): { x: number[]; y: number[]; inr: number[] } {
+  const dist = edgeDistance(labels, width, height);
   const best = new Float32Array(regions);
   const x = Array.from({ length: regions }, (_, i) => (seedX[i] ?? 0) + 0.5);
   const y = Array.from({ length: regions }, (_, i) => (seedY[i] ?? 0) + 0.5);
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < labels.length; i++) {
     const region = labels[i] ?? 0;
     const depth = dist[i] ?? 0;
     if (depth < (best[region] ?? 0)) continue;
@@ -582,7 +726,7 @@ function interiorPoints(
     x[region] = (i % width) + 0.5;
     y[region] = ((i / width) | 0) + 0.5;
   }
-  return { x, y };
+  return { x, y, inr: Array.from(best, (value) => Math.round(value * 100) / 100) };
 }
 
 function describe(
@@ -635,6 +779,7 @@ function describe(
   const placed = interiorPoints(labels, width, height, regions, seedX, seedY);
   const cx = placed.x;
   const cy = placed.y;
+  const inr = placed.inr;
 
   const paths = traceRegions(labels, width, height, regions);
   for (let i = 0; i < regions; i++) {
@@ -654,6 +799,71 @@ function describe(
     paths,
     cx,
     cy,
+    inr,
+    area,
+    box,
+  };
+}
+
+function measure(
+  labels: Uint16Array,
+  rawIds: Int32Array,
+  width: number,
+  height: number,
+): {
+  labels: Uint16Array;
+  regionColors: number[];
+  paths: string[];
+  cx: number[];
+  cy: number[];
+  inr: number[];
+  area: number[];
+  box: number[];
+} {
+  const count = labels.length;
+  const regions = rawIds.length;
+  const area = new Array<number>(regions).fill(0);
+  const box = new Array<number>(regions * 4);
+  const seedX = new Int32Array(regions);
+  const seedY = new Int32Array(regions);
+  for (let i = 0; i < regions; i++) {
+    box[i * 4] = width;
+    box[i * 4 + 1] = height;
+    box[i * 4 + 2] = 0;
+    box[i * 4 + 3] = 0;
+  }
+  for (let i = 0; i < count; i++) {
+    const region = labels[i] ?? 0;
+    const x = i % width;
+    const y = (i / width) | 0;
+    area[region] = (area[region] ?? 0) + 1;
+    if ((area[region] ?? 0) === 1) {
+      seedX[region] = x;
+      seedY[region] = y;
+    }
+    const o = region * 4;
+    if (x < (box[o] ?? 0)) box[o] = x;
+    if (y < (box[o + 1] ?? 0)) box[o + 1] = y;
+    if (x + 1 > (box[o + 2] ?? 0)) box[o + 2] = x + 1;
+    if (y + 1 > (box[o + 3] ?? 0)) box[o + 3] = y + 1;
+  }
+  const placed = interiorPoints(labels, width, height, regions, seedX, seedY);
+  const paths = traceRegions(labels, width, height, regions);
+  for (let i = 0; i < regions; i++) {
+    if ((paths[i]?.length ?? 0) >= 8) continue;
+    const minX = box[i * 4] ?? 0;
+    const minY = box[i * 4 + 1] ?? 0;
+    const maxX = box[i * 4 + 2] ?? minX + 1;
+    const maxY = box[i * 4 + 3] ?? minY + 1;
+    paths[i] = `M${minX} ${minY}L${maxX} ${minY}L${maxX} ${maxY}L${minX} ${maxY}Z`;
+  }
+  return {
+    labels,
+    regionColors: Array.from(rawIds),
+    paths,
+    cx: placed.x,
+    cy: placed.y,
+    inr: placed.inr,
     area,
     box,
   };

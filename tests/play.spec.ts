@@ -706,3 +706,59 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.waitForTimeout(400);
   await jpg('facts-two.jpg');
 });
+
+test('classic numbering on clownfish and lotus', async ({ page }) => {
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 60 });
+  };
+  await openPuzzle(page, 'animals-clownfish-reef');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-numbers', '1');
+  await page.waitForTimeout(400);
+  await jpg('clownfish-fit.jpg');
+  const fitted = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: id,
+          pointerType: 'touch',
+          isPrimary: id === 1,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: type === 'pointerup' ? 0 : 1,
+        }),
+      );
+    };
+    const start = 28;
+    const end = 84;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale'))).toBeGreaterThan(fitted * 2.4);
+  await page.waitForTimeout(300);
+  await jpg('clownfish-zoom.jpg');
+
+  await page.getByTestId('back').click();
+  await openPuzzle(page, 'flowers-lotus-pond');
+  await page.locator('.swatch.selected').waitFor();
+  await page.waitForTimeout(300);
+  await jpg('lotus-checker.jpg');
+  await jpg('palette-bar.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
