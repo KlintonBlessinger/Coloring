@@ -3,6 +3,10 @@
 Starter pictures in Color Cozy are original illustrations made for this project.
 No third-party artwork is shipped. The Nunito font is bundled from [@fontsource/nunito](https://fontsource.org/fonts/nunito) under the SIL Open Font License.
 
+# Sound
+
+Effects and the background loop are original synthesis in `src/lib/audio.ts`. Nothing is sampled from Freesound, Kenney, or any other library. There are no audio files to ship. The paint pop, color chime, math-mode boop, finish cheer, and mystery shimmer are layered oscillators and filtered noise with envelopes. The music is a 72 second pentatonic loop scheduled on the same Web Audio graph. Both are original, made for Color Cozy.
+
 | File | Puzzle | Source | License |
 | --- | --- | --- | --- |
 | `content/sources/animals-cat-window.jpg` | Cat in the Window | Original project art | Original, made for Color Cozy |

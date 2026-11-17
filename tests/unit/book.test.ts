@@ -69,6 +69,14 @@ test('a backup without favorites still imports', () => {
   const parsed = parseBackup(JSON.stringify({ version: 1, progress: {}, settings: { sound: true } }));
   assert.deepEqual(parsed.favorites, []);
   assert.equal(parsed.settings.sound, true);
+  assert.equal(parsed.settings.music, false);
+  assert.equal(parsed.settings.volume, 0.55);
+  assert.equal(parsed.settings.musicVolume, 0.4);
+  const quiet = parseBackup(JSON.stringify({ version: 1, progress: {}, settings: { sound: false, volume: 4, musicVolume: -2 } }));
+  assert.equal(quiet.settings.sound, false);
+  assert.equal(quiet.settings.music, false);
+  assert.equal(quiet.settings.volume, 1);
+  assert.equal(quiet.settings.musicVolume, 0);
   assert.equal(parsed.settings.numberStyle, 'plain');
   assert.equal(parsed.settings.labels, 'numbers');
   assert.equal(parsed.settings.language, 'en');

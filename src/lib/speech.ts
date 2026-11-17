@@ -1,3 +1,4 @@
+import { holdMusicForSpeech } from './audio';
 import type { Language } from './settings';
 
 /**
@@ -26,6 +27,9 @@ export function speak(text: string, language: Language, rate = 0.85): void {
   } catch {
     /* The utterance lang is enough when the voice list is not ready. */
   }
+  const release = holdMusicForSpeech();
+  utterance.onend = release;
+  utterance.onerror = release;
   synth.cancel();
   try {
     synth.resume();

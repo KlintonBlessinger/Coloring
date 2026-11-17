@@ -12,7 +12,14 @@ export const MATH_RANGES = ['add10', 'add20', 'times5', 'times10'] as const;
 export type MathRange = (typeof MATH_RANGES)[number];
 
 export interface Settings {
+  /** Effect pops, chimes, and the finish cheer. On at a gentle volume. */
   sound: boolean;
+  /** Optional calm loop. Off until someone turns it on. */
+  music: boolean;
+  /** Master level for effects and music, from 0 to 1. */
+  volume: number;
+  /** Music level, from 0 to 1, under the master volume. */
+  musicVolume: number;
   haptics: boolean;
   bigNumbers: boolean;
   /** How numbers are drawn when labels are numbers. Kept separate for a future per-child profile. */
@@ -26,7 +33,10 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  sound: false,
+  sound: true,
+  music: false,
+  volume: 0.55,
+  musicVolume: 0.4,
   haptics: true,
   bigNumbers: false,
   numberStyle: 'plain',
@@ -34,6 +44,12 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'en',
   mathRange: 'add10',
 };
+
+export function clampUnit(value: unknown, fallback: number): number {
+  const number = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(1, Math.max(0, number));
+}
 
 export function pickSetting<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;

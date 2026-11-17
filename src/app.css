@@ -27,6 +27,34 @@ html, body, #app {
   background: var(--paper);
 }
 
+.haptic-host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  z-index: -1;
+}
+
+.haptic-host input,
+.haptic-host label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  appearance: none;
+  font-size: 16px;
+}
+
 body {
   position: fixed;
   inset: 0;
@@ -615,6 +643,14 @@ h1 {
   height: 1px;
   opacity: 0;
   overflow: hidden;
+}
+.row.slider { gap: 16px; }
+.row.slider span { flex: 1; min-width: 0; }
+.row input[type='range'] {
+  width: 112px;
+  flex: none;
+  accent-color: var(--coral);
+  margin: 0;
 }
 .row small, .note { color: var(--ink-soft); font-weight: 700; }
 .row strong, .file-btn { font-weight: 800; }

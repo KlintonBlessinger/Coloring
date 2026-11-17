@@ -19,6 +19,10 @@
     <title>Color Cozy</title>
   </head>
   <body>
+    <div class="haptic-host" aria-hidden="true">
+      <input id="haptic-switch" type="checkbox" switch tabindex="-1" aria-hidden="true" />
+      <label id="haptic-tick" for="haptic-switch"></label>
+    </div>
     <div id="app"></div>
     <noscript>Color Cozy needs JavaScript to play.</noscript>
     <script type="module" src="/src/main.ts"></script>

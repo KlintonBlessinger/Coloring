@@ -269,10 +269,22 @@ test('settings backup, sound default, and reset', async ({ page }) => {
   const match = nearestRegion(book, selected);
   const point = await regionPoint(page, book, match);
   await page.touchscreen.tap(point.x, point.y);
+  const focused = await page.evaluate(() => document.activeElement?.id ?? '');
+  expect(focused).not.toBe('haptic-switch');
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
-  await expect(page.getByTestId('sound-toggle')).toHaveAttribute('aria-checked', 'false');
-  await page.getByTestId('sound-toggle').click();
+  await expect(page.getByTestId('sound-toggle')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('music-toggle')).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('haptics-toggle')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('master-volume')).toHaveValue('55');
+  await expect(page.getByTestId('music-volume')).toHaveValue('40');
+  const haptic = await page.locator('.haptic-host').evaluate((el) => {
+    const style = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return style.opacity === '0' && style.pointerEvents === 'none' && rect.width <= 2 && rect.height <= 2;
+  });
+  expect(haptic).toBe(true);
+  await page.getByTestId('music-toggle').click();
   await page.getByTestId('big-numbers-toggle').click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -299,6 +311,7 @@ test('settings backup, sound default, and reset', async ({ page }) => {
   });
   await expect(page.getByTestId('settings-status')).toContainText('imported');
   await expect(page.getByTestId('sound-toggle')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('music-toggle')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('back').click();
   await page.getByTestId('tab-in-progress').click();
   await expect(page.locator('[data-id="flowers-lotus-pond"]')).toBeVisible();

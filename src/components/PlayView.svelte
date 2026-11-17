@@ -42,7 +42,7 @@
   let pickerOpen = $state(false);
   let decided = $state(false);
 
-  const live = untrack(() => ({ ...settings }));
+  const live = untrack(() => ({ ...settings, mathMode: false }));
   const playSettings = $derived(applyPictureMode(settings, committed ?? draft));
   const copy = $derived(committed ? playSettings.language : settings.language);
 
@@ -85,6 +85,7 @@
   $effect(() => {
     live.sound = settings.sound;
     live.haptics = settings.haptics;
+    live.mathMode = committed === 'math';
     live.bigNumbers = settings.bigNumbers;
     live.numberStyle = playSettings.numberStyle;
     live.labels = playSettings.labels;
@@ -101,6 +102,7 @@
     void Game.open(canvas, puzzle.id, live.bigNumbers, {
       getSound: () => live.sound,
       getHaptics: () => live.haptics,
+      getMathMode: () => live.mathMode,
       onChange: (next) => {
         if (!gone) snapshot = next;
       },

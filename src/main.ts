@@ -5,10 +5,12 @@ import { mount } from 'svelte';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.svelte';
 import './app.css';
+import { installAudio } from './lib/audio';
 import { APP_NAME } from './lib/brand';
 import { loadSettings } from './lib/storage';
 
 document.title = APP_NAME;
+installAudio();
 
 registerSW({ immediate: true });
 

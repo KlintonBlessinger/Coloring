@@ -3,6 +3,7 @@
   import Gallery from './components/Gallery.svelte';
   import PlayView from './components/PlayView.svelte';
   import SettingsPanel from './components/SettingsPanel.svelte';
+  import { applyAudioSettings } from './lib/audio';
   import { getPuzzle } from './lib/catalog';
   import type { Settings } from './lib/settings';
   import { loadAllProgress, loadFavorites, saveFavorites, saveSettings, type ProgressSave } from './lib/storage';
@@ -31,6 +32,15 @@
     screen = 'gallery';
     puzzleId = null;
   }
+
+  $effect(() => {
+    applyAudioSettings({
+      effects: settings.sound,
+      music: settings.music,
+      volume: settings.volume,
+      musicVolume: settings.musicVolume,
+    });
+  });
 
   $effect(() => {
     if (!history.state || !history.state.screen) history.replaceState({ screen: 'gallery' }, '');

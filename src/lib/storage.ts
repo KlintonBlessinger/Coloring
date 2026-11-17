@@ -1,7 +1,7 @@
 import { createStore, del, get, keys, set } from 'idb-keyval';
 import { APP_NAME } from './brand';
 import { isPictureMode, type PictureMode } from './picture-mode';
-import { DEFAULT_SETTINGS, LABEL_MODES, LANGUAGES, MATH_RANGES, NUMBER_STYLES, pickSetting, type Settings } from './settings';
+import { clampUnit, DEFAULT_SETTINGS, LABEL_MODES, LANGUAGES, MATH_RANGES, NUMBER_STYLES, pickSetting, type Settings } from './settings';
 
 const store = createStore('color-cozy', 'book');
 
@@ -34,7 +34,10 @@ function sanitizeModes(value: unknown): Record<string, PictureMode> {
 
 function normalizeSettings(value: Partial<Settings> | undefined): Settings {
   return {
-    sound: value?.sound === true,
+    sound: value?.sound !== false,
+    music: value?.music === true,
+    volume: clampUnit(value?.volume, DEFAULT_SETTINGS.volume),
+    musicVolume: clampUnit(value?.musicVolume, DEFAULT_SETTINGS.musicVolume),
     haptics: value?.haptics !== false,
     bigNumbers: value?.bigNumbers === true,
     numberStyle: pickSetting(value?.numberStyle, NUMBER_STYLES, DEFAULT_SETTINGS.numberStyle),

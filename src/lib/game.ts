@@ -26,6 +26,7 @@ export interface GameHooks {
   onShake: () => void;
   getSound: () => boolean;
   getHaptics: () => boolean;
+  getMathMode: () => boolean;
 }
 
 export class Game {
@@ -415,7 +416,8 @@ export class Game {
       const cell = this.down.cell;
       if (cell >= 0 && !this.filled[cell] && this.puzzle.regionColors[cell] !== this.selected && !this.replaying) {
         this.hooks.onShake();
-        this.haptic(12, true);
+        if (this.hooks.getMathMode()) this.sfx.wrong();
+        this.haptic('wrong');
       }
     }
     this.finishStroke();
@@ -434,10 +436,18 @@ export class Game {
     this.renderer.paintIndex(index);
     this.markDirty();
     this.sfx.tap();
-    this.haptic(8);
+    this.haptic('tap');
     if ((this.done[this.selected] ?? 0) >= (this.totals[this.selected] ?? 0)) {
-      this.sfx.colorDone();
-      this.haptic(22, true);
+      const finishedPicture = this.filledCount === this.filled.length && !this.celebrated;
+      if (finishedPicture) {
+        this.celebrated = true;
+        this.sfx.win();
+        if (this.puzzle.mystery) this.sfx.reveal();
+        this.haptic('finish');
+      } else {
+        this.sfx.colorDone();
+        this.haptic('done');
+      }
       this.finishStroke();
       this.advance();
       this.mode = 'pan';
@@ -445,12 +455,7 @@ export class Game {
       if (current) {
         this.panAnchor = { x: current.x, y: current.y, panX: this.renderer.panX, panY: this.renderer.panY };
       }
-      if (this.filledCount === this.filled.length && !this.celebrated) {
-        this.celebrated = true;
-        this.sfx.win();
-        this.haptic(40, true);
-        this.hooks.onComplete();
-      }
+      if (finishedPicture) this.hooks.onComplete();
       return false;
     }
     return true;
@@ -538,11 +543,11 @@ export class Game {
 
   private lastHaptic = 0;
 
-  private haptic(ms: number, force = false): void {
+  private haptic(kind: 'tap' | 'done' | 'wrong' | 'finish'): void {
     const now = performance.now();
-    if (!force && now - this.lastHaptic < 50) return;
+    if (kind === 'tap' && now - this.lastHaptic < 80) return;
     this.lastHaptic = now;
-    buzz(ms, this.hooks.getHaptics());
+    buzz(kind, this.hooks.getHaptics());
   }
 
   private async flushSave(force = false): Promise<void> {

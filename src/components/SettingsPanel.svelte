@@ -40,7 +40,7 @@
     settings.numberStyle === 'adding' ? (['add10', 'add20'] as const) : (['times5', 'times10'] as const),
   );
 
-  function toggle(key: 'sound' | 'haptics' | 'bigNumbers') {
+  function toggle(key: 'sound' | 'music' | 'haptics' | 'bigNumbers') {
     onChange({ ...settings, [key]: !settings[key] });
   }
 
@@ -149,6 +149,36 @@
       <span><strong>{t(settings.language, 'sound')}</strong><small>{t(settings.language, 'soundHint')}</small></span>
       <i class="switch" class:on={settings.sound}></i>
     </button>
+    <label class="row slider">
+      <span><strong>{t(settings.language, 'volume')}</strong></span>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        data-testid="master-volume"
+        aria-label={t(settings.language, 'volume')}
+        value={Math.round(settings.volume * 100)}
+        oninput={(event) => onChange({ ...settings, volume: Number(event.currentTarget.value) / 100 })}
+      />
+    </label>
+    <button class="row" type="button" data-testid="music-toggle" role="switch" aria-checked={settings.music} onclick={() => toggle('music')}>
+      <span><strong>{t(settings.language, 'music')}</strong><small>{t(settings.language, 'musicHint')}</small></span>
+      <i class="switch" class:on={settings.music}></i>
+    </button>
+    <label class="row slider">
+      <span><strong>{t(settings.language, 'musicVolume')}</strong></span>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        data-testid="music-volume"
+        aria-label={t(settings.language, 'musicVolume')}
+        value={Math.round(settings.musicVolume * 100)}
+        oninput={(event) => onChange({ ...settings, musicVolume: Number(event.currentTarget.value) / 100 })}
+      />
+    </label>
     <button class="row" type="button" data-testid="haptics-toggle" role="switch" aria-checked={settings.haptics} onclick={() => toggle('haptics')}>
       <span><strong>{t(settings.language, 'haptics')}</strong><small>{t(settings.language, 'hapticsHint')}</small></span>
       <i class="switch" class:on={settings.haptics}></i>
