@@ -24,8 +24,8 @@ export function applyPictureMode(settings: Settings, mode: PictureMode): Setting
 }
 
 /** A picture with at least one filled region is already in progress. */
-export function hasFills(save: { filled: string } | null, regionCount: number): boolean {
-  if (!save || regionCount <= 0) return false;
+export function hasFills(save: { filled: string; v?: number } | null, regionCount: number): boolean {
+  if (!save || save.v !== 2 || regionCount <= 0) return false;
   try {
     const bytes = base64ToBytes(save.filled);
     if (bytes.length !== regionCount) return false;

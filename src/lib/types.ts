@@ -32,9 +32,8 @@ export const MAX_SCALE = 28;
 export const MIN_INSCRIBED = 1.5;
 
 /**
- * Region puzzle. `labels` is a uint16 RLE of the label map (65535 = not a region).
- * Region i has `regionColors[i]`, an SVG `paths[i]` in label-map coordinates, and
- * `cx`/`cy`/`area`/`box` for numbers and hints.
+ * Legacy raster puzzle written by scripts/make-puzzle.ts. The app paints the
+ * vector files in public/puzzles instead.
  */
 export interface PuzzleFile {
   id: string;
@@ -84,8 +83,29 @@ export interface ArtRecord {
   factsEs: string[];
 }
 
-export interface DecodedPuzzle extends Omit<PuzzleFile, 'labels'> {
-  labels: Uint16Array;
+/** A picture ready to draw. Region paths and the ink path are in picture pixels. */
+export interface DecodedPuzzle {
+  id: string;
+  title: string;
+  category: Category;
+  difficulty: Difficulty;
+  width: number;
+  height: number;
+  palette: string[];
+  /** Palette index for each region. */
+  regionColors: number[];
+  paths: string[];
+  ink: string;
+  cx: number[];
+  cy: number[];
+  /** Inscribed radius at the label point, in picture pixels. */
+  inr: number[];
+  area: number[];
+  /** minX, minY, maxX, maxY per region, packed. */
+  box: number[];
+  art: string;
+  /** Fingerprint stored with progress. A mismatch resets the picture. */
+  map: string;
   mystery: boolean;
   tags: ArtTags;
   facts: string[];

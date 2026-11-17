@@ -1,9 +1,10 @@
 import { regionMarks, type RegionMark } from './labels';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
-import { MAX_SCALE, OUTLINE, type DecodedPuzzle } from './types';
+import { MAX_SCALE, type DecodedPuzzle } from './types';
 
 const PAPER = '#ffffff';
-const INK = '#262626';
+const INK = '#1a1a1a';
+const SEAM = '#1e1e1e';
 const NUMBER = '#111111';
 const CHECKER_DARK = '#C9C9C9';
 const CHECKER_LIGHT = '#E6E6E6';
@@ -25,8 +26,9 @@ interface Anim {
 }
 
 /**
- * Vector coloring surface. Region paths share smoothed edges, so fills meet
- * without stair-steps, and strokes stay a constant width on screen.
+ * Vector coloring surface. Each region is a Path2D, and the ink is one more.
+ * Fills are cached at 2x for panning. Zoom past that cache redraws the paths
+ * so the edges stay smooth.
  */
 export class Renderer {
   readonly puzzle: DecodedPuzzle;
@@ -39,13 +41,8 @@ export class Renderer {
   private readonly view: HTMLCanvasElement;
   private readonly viewCtx: CanvasRenderingContext2D;
   private readonly paths: Path2D[];
-  private readonly outer: (Path2D | undefined)[];
-  private readonly ink: HTMLCanvasElement | null;
-  private readonly fillCanvas: HTMLCanvasElement | null;
-  private readonly fillImage: ImageData | null;
-  private readonly runs: Uint32Array[];
-  private readonly underRuns: Uint32Array[];
-  private fillDirty = false;
+  private readonly inkPath: Path2D;
+  private readonly ids: Uint16Array;
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
   private selected = 0;
@@ -65,6 +62,11 @@ export class Renderer {
   private dead = false;
   private readonly maxScale = MAX_SCALE;
   private readonly ro: ResizeObserver;
+  private fillCache: HTMLCanvasElement | null = null;
+  private readonly fillScale = 2;
+  private cacheDirty = true;
+  private readonly dirtyRegions = new Set<number>();
+  private lastFrameMs = 0;
   readonly artImage: HTMLImageElement;
 
   constructor(view: HTMLCanvasElement, puzzle: DecodedPuzzle, filled: Uint8Array, bigNumbers: boolean) {
@@ -80,18 +82,11 @@ export class Renderer {
     if (!viewCtx) throw new Error('Canvas is not available.');
     this.viewCtx = viewCtx;
     this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
-    this.outer = new Array(puzzle.paths.length);
-    this.ink = inkLayer(puzzle);
-    const raster = this.ink ? rasterFill(puzzle) : null;
-    this.fillCanvas = raster?.canvas ?? null;
-    this.fillImage = raster?.image ?? null;
-    this.runs = raster?.runs ?? [];
-    this.underRuns = raster?.underRuns ?? [];
-    if (this.fillImage) this.fillDirty = true;
+    this.inkPath = new Path2D(puzzle.ink || undefined);
+    this.ids = buildIdMap(puzzle.width, puzzle.height, this.paths);
     this.artImage = new Image();
     this.artImage.onload = () => this.requestDraw();
-    const base = import.meta.env.BASE_URL || '/';
-    this.artImage.src = `${base.endsWith('/') ? base : `${base}/`}${puzzle.art}`;
+    this.artImage.src = assetUrl(puzzle.art);
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(view.parentElement ?? view);
     this.resize();
@@ -131,7 +126,8 @@ export class Renderer {
 
   setVisual(visual: Uint8Array | null): void {
     this.visual = visual;
-    this.repaintAll();
+    this.cacheDirty = true;
+    this.dirtyRegions.clear();
     this.requestDraw();
   }
 
@@ -152,7 +148,7 @@ export class Renderer {
   }
 
   paintIndex(index: number): void {
-    this.stamp(index);
+    this.dirtyRegions.add(index);
     this.requestDraw();
   }
 
@@ -185,7 +181,6 @@ export class Renderer {
     this.requestDraw();
   }
 
-  /** World point currently in the middle of the canvas. */
   viewCenter(): { x: number; y: number } {
     return {
       x: (this.cssW / 2 - this.panX) / this.scale,
@@ -197,36 +192,18 @@ export class Renderer {
     return this.scale > this.minScale() * 1.25;
   }
 
-  /** Frame one region, about 2.5 times its box, and never looser than a close zoom. */
+  /** Center a region's label point and zoom until its number is easy to read. */
   focusRegion(index: number): void {
     this.hintIndex = index;
     this.view.dataset.hint = String(index);
-    this.focusCells([index], 2.5);
-  }
-
-  focusCells(indices: number[], frame = 0): void {
-    if (!indices.length || this.cssW < 2 || this.cssH < 2) return;
-    let minX = this.puzzle.width;
-    let minY = this.puzzle.height;
-    let maxX = 0;
-    let maxY = 0;
-    for (const index of indices) {
-      const o = index * 4;
-      minX = Math.min(minX, this.puzzle.box[o] ?? minX);
-      minY = Math.min(minY, this.puzzle.box[o + 1] ?? minY);
-      maxX = Math.max(maxX, this.puzzle.box[o + 2] ?? maxX);
-      maxY = Math.max(maxY, this.puzzle.box[o + 3] ?? maxY);
-    }
-    const pad = 28;
-    const bw = Math.max(1, maxX - minX);
-    const bh = Math.max(1, maxY - minY);
-    const fitted = Math.min((this.cssW - pad * 2) / bw, (this.cssH - pad * 2) / bh);
-    const framed = frame > 1 ? Math.max(Math.min(this.cssW / (bw * frame), this.cssH / (bh * frame)), this.minScale() * 1.75) : fitted;
-    const scale = this.clampScale(framed);
+    const x = this.puzzle.cx[index] ?? this.puzzle.width / 2;
+    const y = this.puzzle.cy[index] ?? this.puzzle.height / 2;
+    const radius = Math.max(6, this.puzzle.inr[index] ?? 6);
+    const scale = this.clampScale(Math.max(this.minScale() * 1.8, 28 / (0.9 * radius)));
     const saved = this.camera();
     this.scale = scale;
-    this.panX = this.cssW / 2 - ((minX + maxX) / 2) * scale;
-    this.panY = this.cssH / 2 - ((minY + maxY) / 2) * scale;
+    this.panX = this.cssW / 2 - x * scale;
+    this.panY = this.cssH / 2 - y * scale;
     this.clampPan();
     const to = this.camera();
     this.applyCamera(saved);
@@ -243,14 +220,23 @@ export class Renderer {
 
   hit(clientX: number, clientY: number): number | null {
     const rect = this.view.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    const cx = Math.floor((x - this.panX) / this.scale);
-    const cy = Math.floor((y - this.panY) / this.scale);
-    if (cx < 0 || cy < 0 || cx >= this.puzzle.width || cy >= this.puzzle.height) return null;
-    const region = this.puzzle.labels[cy * this.puzzle.width + cx] ?? 0;
-    if (region === OUTLINE || region >= this.puzzle.regionColors.length) return null;
-    return region;
+    const x = (clientX - rect.left - this.panX) / this.scale;
+    const y = (clientY - rect.top - this.panY) / this.scale;
+    // Labels are stored at a pixel center (n + 0.5). Floor keeps the tap on that pixel.
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const direct = this.sampleId(ix, iy);
+    if (direct > 0) return direct - 1;
+    for (let radius = 1; radius <= 3; radius++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+          const near = this.sampleId(ix + dx, iy + dy);
+          if (near > 0) return near - 1;
+        }
+      }
+    }
+    return null;
   }
 
   async renderBlob(): Promise<Blob> {
@@ -261,26 +247,15 @@ export class Renderer {
     canvas.height = Math.round(this.puzzle.height * scale);
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Could not create image');
-    if (this.artImage.complete && this.artImage.naturalWidth) {
+    if (this.artAlpha > 0.5 && this.artImage.complete && this.artImage.naturalWidth) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(this.artImage, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      ctx.fillStyle = PAPER;
-      ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
-      for (let i = 0; i < this.paths.length; i++) {
-        ctx.fillStyle = this.puzzle.palette[this.puzzle.regionColors[i] ?? 0] ?? PAPER;
-        ctx.fill(this.paths[i]!, 'evenodd');
-      }
-      ctx.lineWidth = 1.4;
-      ctx.strokeStyle = INK;
-      ctx.lineJoin = 'round';
-      if (this.ink) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(this.ink, 0, 0, this.puzzle.width, this.puzzle.height);
-      } else {
-        for (const path of this.paths) ctx.stroke(path);
-      }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      this.paintPicture(ctx, true);
     }
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('Could not create image');
@@ -353,8 +328,15 @@ export class Renderer {
   private frame(): void {
     this.raf = 0;
     if (this.dead) return;
+    const started = performance.now();
     this.draw();
+    this.lastFrameMs = performance.now() - started;
+    this.view.dataset.frameMs = this.lastFrameMs.toFixed(1);
     if (this.anim || this.artFade || performance.now() < this.pulseUntil) this.requestDraw();
+  }
+
+  private crisp(): boolean {
+    return this.scale * this.dpr > this.fillScale * 1.2;
   }
 
   private draw(): void {
@@ -379,70 +361,116 @@ export class Renderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.view.width, this.view.height);
     ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
-    if (this.fillCanvas && this.fillImage && this.fillDirty) {
-      const flat = this.fillCanvas.getContext('2d');
-      flat?.putImageData(this.fillImage, 0, 0);
-      this.fillDirty = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    const crisp = this.crisp();
+    if (crisp) {
+      this.paintPicture(ctx, true);
+    } else {
+      this.syncFillCache();
+      if (this.fillCache) ctx.drawImage(this.fillCache, 0, 0, this.puzzle.width, this.puzzle.height);
     }
-    if (this.fillCanvas) {
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(this.fillCanvas, 0, 0);
+    this.paintChecker(ctx, dpr);
+    if (!crisp) {
+      this.strokeSeams(ctx, (index) => this.visible(index) && !this.isFilled(index) && (this.puzzle.regionColors[index] ?? 0) === this.selected);
     }
-    const pulsing = now < this.pulseUntil;
-    const pulse = pulsing ? 0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80) : 0;
-    const checker = screenChecker(ctx, dpr, this.scale, CHECKER_DARK, CHECKER_LIGHT);
-    const hintDark = mixHex(CHECKER_DARK, '#8d8d8d', 0.35 + 0.65 * pulse);
-    const hintLight = mixHex(CHECKER_LIGHT, '#bdbdbd', 0.25 + 0.45 * pulse);
-    const hintChecker = pulsing ? screenChecker(ctx, dpr, this.scale, hintDark, hintLight) : checker;
-    for (let i = 0; i < this.paths.length; i++) {
-      if (this.isFilled(i)) continue;
-      if (this.fillCanvas && (this.puzzle.regionColors[i] ?? 0) !== this.selected) continue;
-      const path = this.paths[i]!;
-      if (!path) continue;
-      const selected = (this.puzzle.regionColors[i] ?? 0) === this.selected;
-      if (!selected) {
-        ctx.fillStyle = PAPER;
-        ctx.fill(path, 'evenodd');
-        continue;
-      }
-      const hinted = pulsing && i === this.hintIndex;
-      ctx.fillStyle = (hinted ? hintChecker : checker) ?? PAPER;
-      ctx.fill(path, 'evenodd');
-    }
-    if (!this.fillCanvas) {
-      for (let i = 0; i < this.paths.length; i++) {
-        if (!this.isFilled(i)) continue;
-        const path = this.paths[i]!;
-        if (!path) continue;
-        const color = this.puzzle.regionColors[i] ?? 0;
-        ctx.fillStyle = this.puzzle.palette[color] ?? PAPER;
-        ctx.fill(path, 'evenodd');
-      }
-    }
-    const fit = this.fitScale();
-    if (this.ink) {
+    this.paintInk(ctx);
+    this.paintHint(ctx, now);
+    this.paintNumbers(ctx, dpr);
+    if (this.view.dataset.hideArt !== '1' && this.artAlpha > 0.01 && this.artImage.complete && this.artImage.naturalWidth) {
+      ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
+      ctx.globalAlpha = this.artAlpha;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(this.ink, 0, 0, this.puzzle.width, this.puzzle.height);
-    } else {
-      const outlineCss = Math.min(1.75, Math.max(1.25, 1.25 * Math.sqrt(this.scale / fit)));
-      ctx.lineWidth = outlineCss / this.scale;
-      ctx.strokeStyle = INK;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.miterLimit = 2;
-      for (const path of this.paths) ctx.stroke(path);
-    }
-    if (pulsing && this.hintIndex >= 0 && !this.isFilled(this.hintIndex)) {
-      ctx.strokeStyle = NUMBER;
-      ctx.lineWidth = 2.4 / this.scale;
-      ctx.globalAlpha = 0.55 + 0.45 * pulse;
-      ctx.stroke(this.outerContour(this.hintIndex));
+      ctx.drawImage(this.artImage, 0, 0, this.puzzle.width, this.puzzle.height);
       ctx.globalAlpha = 1;
     }
+    this.view.dataset.scale = String(this.scale);
+    this.view.dataset.panX = String(this.panX);
+    this.view.dataset.panY = String(this.panY);
+    this.view.dataset.ghost = '0';
+  }
 
+  /** White or painted fills, thin seams, then ink. Checker and numbers are separate. */
+  private paintPicture(ctx: CanvasRenderingContext2D, cull: boolean): void {
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
+    for (let i = 0; i < this.paths.length; i++) {
+      if (cull && !this.visible(i)) continue;
+      const path = this.paths[i];
+      if (!path) continue;
+      ctx.fillStyle = this.isFilled(i) ? this.colorHex(i) : PAPER;
+      ctx.fill(path, 'evenodd');
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 1.15;
+      ctx.lineJoin = 'round';
+      ctx.stroke(path);
+    }
+    this.strokeSeams(ctx, (index) => !cull || this.visible(index));
+    this.paintInk(ctx);
+  }
+
+  private strokeSeams(ctx: CanvasRenderingContext2D, keep: (index: number) => boolean): void {
+    ctx.strokeStyle = SEAM;
+    ctx.lineWidth = 0.55;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.9;
+    for (let i = 0; i < this.paths.length; i++) {
+      if (!keep(i)) continue;
+      const path = this.paths[i];
+      if (path) ctx.stroke(path);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  private paintInk(ctx: CanvasRenderingContext2D): void {
+    if (!this.puzzle.ink) return;
+    ctx.fillStyle = INK;
+    ctx.fill(this.inkPath, 'evenodd');
+  }
+
+  private paintChecker(ctx: CanvasRenderingContext2D, dpr: number): void {
+    const combined = new Path2D();
+    let any = false;
+    for (let i = 0; i < this.paths.length; i++) {
+      if (this.isFilled(i) || (this.puzzle.regionColors[i] ?? 0) !== this.selected) continue;
+      const path = this.paths[i];
+      if (!path || !this.visible(i)) continue;
+      combined.addPath(path);
+      any = true;
+    }
+    if (!any) return;
+    const pulsing = performance.now() < this.pulseUntil;
+    const pulse = pulsing ? 0.5 + 0.5 * Math.sin((this.pulseUntil - performance.now()) / 80) : 0;
+    const dark = pulsing && this.hintIndex >= 0 ? mixHex(CHECKER_DARK, '#8d8d8d', 0.35 + 0.65 * pulse) : CHECKER_DARK;
+    const light = pulsing && this.hintIndex >= 0 ? mixHex(CHECKER_LIGHT, '#bdbdbd', 0.25 + 0.45 * pulse) : CHECKER_LIGHT;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.beginPath();
+    ctx.transform(this.scale, 0, 0, this.scale, this.panX, this.panY);
+    ctx.clip(combined);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pattern = screenChecker(ctx, dark, light);
+    ctx.fillStyle = pattern ?? light;
+    ctx.fillRect(0, 0, this.cssW, this.cssH);
+    ctx.restore();
+  }
+
+  private paintHint(ctx: CanvasRenderingContext2D, now: number): void {
+    if (now >= this.pulseUntil || this.hintIndex < 0 || this.isFilled(this.hintIndex)) return;
+    const path = this.paths[this.hintIndex];
+    if (!path) return;
+    const pulse = 0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80);
+    ctx.save();
+    ctx.strokeStyle = NUMBER;
+    ctx.lineWidth = 2.4 / this.scale;
+    ctx.globalAlpha = 0.55 + 0.45 * pulse;
+    ctx.stroke(path);
+    ctx.restore();
+  }
+
+  private paintNumbers(ctx: CanvasRenderingContext2D, dpr: number): void {
     let numbers = false;
     if (!this.replaying && this.artAlpha < 0.35) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -450,12 +478,12 @@ export class Renderer {
       ctx.textBaseline = 'middle';
       ctx.fillStyle = NUMBER;
       ctx.strokeStyle = NUMBER;
-      for (let i = 0; i < this.puzzle.regionColors.length; i++) {
+      for (let i = 0; i < this.paths.length; i++) {
         if (this.isFilled(i)) continue;
-        const inr = this.puzzle.inr[i] ?? 0;
-        const px = labelPx(inr, this.scale, fit);
+        const radius = this.puzzle.inr[i] ?? 0;
+        const px = 0.9 * radius * this.scale * (this.big ? 1.35 : 1);
         if (px < 8) continue;
-        const room = 1.6 * inr * this.scale;
+        const room = radius * 1.8 * this.scale;
         const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
         const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
         const mark = this.marks[i] ?? { kind: 'text' as const, text: String((this.puzzle.regionColors[i] ?? 0) + 1) };
@@ -470,243 +498,95 @@ export class Renderer {
         if (drawLabel(ctx, mark.text, x, y, px, room)) numbers = true;
       }
     }
-
-    if (this.view.dataset.hideArt !== '1' && this.artAlpha > 0.01 && this.artImage.complete && this.artImage.naturalWidth) {
-      ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
-      ctx.globalAlpha = this.artAlpha;
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(this.artImage, 0, 0, this.puzzle.width, this.puzzle.height);
-      ctx.globalAlpha = 1;
-    }
-
-    this.view.dataset.scale = String(this.scale);
-    this.view.dataset.panX = String(this.panX);
-    this.view.dataset.panY = String(this.panY);
     this.view.dataset.numbers = numbers ? '1' : '0';
-    this.view.dataset.ghost = '0';
   }
 
-  private repaintAll(): void {
-    if (!this.fillImage) return;
-    const data = this.fillImage.data;
-    data.fill(255);
-    for (let index = 0; index < this.puzzle.regionColors.length; index++) {
-      if (!this.isFilled(index)) continue;
-      this.writeRegion(index, this.colorBytes(index));
+  private visible(index: number): boolean {
+    const o = index * 4;
+    const minX = this.panX + (this.puzzle.box[o] ?? 0) * this.scale;
+    const minY = this.panY + (this.puzzle.box[o + 1] ?? 0) * this.scale;
+    const maxX = this.panX + (this.puzzle.box[o + 2] ?? 0) * this.scale;
+    const maxY = this.panY + (this.puzzle.box[o + 3] ?? 0) * this.scale;
+    return maxX >= -8 && minX <= this.cssW + 8 && maxY >= -8 && minY <= this.cssH + 8;
+  }
+
+  private colorHex(index: number): string {
+    return this.puzzle.palette[this.puzzle.regionColors[index] ?? 0] ?? PAPER;
+  }
+
+  private syncFillCache(): void {
+    if (!this.fillCache) {
+      const canvas = document.createElement('canvas');
+      canvas.width = this.puzzle.width * this.fillScale;
+      canvas.height = this.puzzle.height * this.fillScale;
+      this.fillCache = canvas;
+      this.cacheDirty = true;
     }
-    this.fillDirty = true;
-  }
-
-  private stamp(index: number): void {
-    if (!this.fillImage || index < 0 || index >= this.runs.length) return;
-    this.writeRegion(index, this.isFilled(index) ? this.colorBytes(index) : [255, 255, 255]);
-    this.fillDirty = true;
-  }
-
-  private colorBytes(index: number): [number, number, number] {
-    const hex = this.puzzle.palette[this.puzzle.regionColors[index] ?? 0] ?? PAPER;
-    const h = hex.replace('#', '');
-    const n = Number.parseInt(h, 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  }
-
-  private writeRegion(index: number, rgb: [number, number, number]): void {
-    const data = this.fillImage?.data;
-    const runs = this.runs[index];
-    if (!data || !runs) return;
-    for (let i = 0; i < runs.length; i += 2) {
-      const start = runs[i] ?? 0;
-      const count = runs[i + 1] ?? 0;
-      for (let pixel = start; pixel < start + count; pixel++) {
-        const o = pixel * 4;
-        data[o] = rgb[0];
-        data[o + 1] = rgb[1];
-        data[o + 2] = rgb[2];
-        data[o + 3] = 255;
-      }
+    const ctx = this.fillCache.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(this.fillScale, 0, 0, this.fillScale, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    if (this.cacheDirty) {
+      this.paintPicture(ctx, false);
+      this.cacheDirty = false;
+      this.dirtyRegions.clear();
+      return;
     }
-    const tucked = this.underRuns[index];
-    if (!tucked) return;
-    for (let i = 0; i < tucked.length; i++) {
-      const o = (tucked[i] ?? 0) * 4;
-      data[o] = rgb[0];
-      data[o + 1] = rgb[1];
-      data[o + 2] = rgb[2];
-      data[o + 3] = 255;
+    if (!this.dirtyRegions.size) return;
+    for (const index of this.dirtyRegions) {
+      const path = this.paths[index];
+      if (!path) continue;
+      ctx.fillStyle = this.isFilled(index) ? this.colorHex(index) : PAPER;
+      ctx.fill(path, 'evenodd');
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 1.15;
+      ctx.lineJoin = 'round';
+      ctx.stroke(path);
     }
+    this.dirtyRegions.clear();
+    this.strokeSeams(ctx, () => true);
+    this.paintInk(ctx);
   }
 
-  private outerContour(index: number): Path2D {
-    const cached = this.outer[index];
-    if (cached) return cached;
-    const path = outerContour(this.puzzle.paths[index] ?? '');
-    this.outer[index] = path;
-    return path;
+  private sampleId(x: number, y: number): number {
+    if (x < 0 || y < 0 || x >= this.puzzle.width || y >= this.puzzle.height) return 0;
+    return this.ids[y * this.puzzle.width + x] ?? 0;
   }
 }
 
-function inkLayer(puzzle: DecodedPuzzle): HTMLCanvasElement | null {
-  let found = false;
-  for (let i = 0; i < puzzle.labels.length; i++) {
-    if (puzzle.labels[i] === OUTLINE) {
-      found = true;
-      break;
-    }
-  }
-  if (!found) return null;
-  const { width, height } = puzzle;
-  const distInk = chamfer(
-    puzzle.labels,
-    width,
-    height,
-    (id) => id === OUTLINE,
-  );
-  const distFill = chamfer(
-    puzzle.labels,
-    width,
-    height,
-    (id) => id !== OUTLINE,
-  );
+function assetUrl(path: string): string {
+  const base = import.meta.env.BASE_URL || '/';
+  const root = base.endsWith('/') ? base : `${base}/`;
+  return `${root}${path.replace(/^\//, '')}`;
+}
+
+function buildIdMap(width: number, height: number, paths: Path2D[]): Uint16Array {
   const canvas = document.createElement('canvas');
-  canvas.width = width * 2;
-  canvas.height = height * 2;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  const image = ctx.createImageData(canvas.width, canvas.height);
-  const data = image.data;
-  for (let y = 0; y < canvas.height; y++) {
-    const fy = (y + 0.5) / 2 - 0.5;
-    for (let x = 0; x < canvas.width; x++) {
-      const fx = (x + 0.5) / 2 - 0.5;
-      const sdf = bilinear(distFill, width, height, fx, fy) - bilinear(distInk, width, height, fx, fy);
-      const alpha = Math.max(0, Math.min(1, sdf * 1.45 + 0.2));
-      if (alpha <= 0) continue;
-      const o = (y * canvas.width + x) * 4;
-      data[o] = 0x26;
-      data[o + 1] = 0x26;
-      data[o + 2] = 0x26;
-      data[o + 3] = Math.round(alpha * 255);
-    }
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const ids = new Uint16Array(width * height);
+  if (!ctx) return ids;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, width, height);
+  for (let index = 0; index < paths.length; index++) {
+    const path = paths[index];
+    if (!path) continue;
+    const n = index + 1;
+    ctx.fillStyle = `rgb(${n & 255},${(n >> 8) & 255},${(n >> 16) & 255})`;
+    ctx.fill(path, 'evenodd');
   }
-  ctx.putImageData(image, 0, 0);
-  return canvas;
-}
-
-function rasterFill(puzzle: DecodedPuzzle): {
-  canvas: HTMLCanvasElement;
-  image: ImageData;
-  runs: Uint32Array[];
-  underRuns: Uint32Array[];
-} | null {
-  const canvas = document.createElement('canvas');
-  canvas.width = puzzle.width;
-  canvas.height = puzzle.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  const image = ctx.createImageData(puzzle.width, puzzle.height);
-  image.data.fill(255);
-  const runs = Array.from({ length: puzzle.regionColors.length }, () => [] as number[]);
-  const tucked = Array.from({ length: puzzle.regionColors.length }, () => [] as number[]);
-  let start = -1;
-  let current = -1;
-  const close = (end: number) => {
-    if (start < 0 || current < 0 || current >= runs.length) return;
-    runs[current]!.push(start, end - start);
-  };
-  for (let i = 0; i <= puzzle.labels.length; i++) {
-    const id = i === puzzle.labels.length ? -1 : (puzzle.labels[i] ?? 0);
-    const region = id === OUTLINE || id >= puzzle.regionColors.length ? -1 : id;
-    if (region !== current) {
-      close(i);
-      start = region >= 0 ? i : -1;
-      current = region;
-    }
-    if (id !== OUTLINE) continue;
-    const near = nearestRegion(puzzle, i);
-    if (near >= 0) tucked[near]!.push(i);
+  const image = ctx.getImageData(0, 0, width, height).data;
+  for (let i = 0, pixel = 0; i < ids.length; i++, pixel += 4) {
+    const id = (image[pixel] ?? 0) | ((image[pixel + 1] ?? 0) << 8) | ((image[pixel + 2] ?? 0) << 16);
+    if (id > 0 && id <= paths.length) ids[i] = id;
   }
-  return {
-    canvas,
-    image,
-    runs: runs.map((pairs) => Uint32Array.from(pairs)),
-    underRuns: tucked.map((pixels) => Uint32Array.from(pixels)),
-  };
+  return ids;
 }
 
-function nearestRegion(puzzle: DecodedPuzzle, index: number): number {
-  const { width, height } = puzzle;
-  const x = index % width;
-  const y = (index / width) | 0;
-  for (let radius = 1; radius <= 4; radius++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      const ny = y + dy;
-      if (ny < 0 || ny >= height) continue;
-      for (let dx = -radius; dx <= radius; dx++) {
-        const nx = x + dx;
-        if (nx < 0 || nx >= width) continue;
-        const id = puzzle.labels[ny * width + nx] ?? 0;
-        if (id !== OUTLINE && id < puzzle.regionColors.length) return id;
-      }
-    }
-  }
-  return -1;
-}
-
-function chamfer(labels: Uint16Array, width: number, height: number, source: (id: number) => boolean): Float32Array {
-  const dist = new Float32Array(labels.length);
-  for (let i = 0; i < labels.length; i++) dist[i] = source(labels[i] ?? 0) ? 0 : 1e6;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const index = y * width + x;
-      let best = dist[index] ?? 1e6;
-      if (x > 0) best = Math.min(best, (dist[index - 1] ?? 1e6) + 1);
-      if (y > 0) best = Math.min(best, (dist[index - width] ?? 1e6) + 1);
-      if (x > 0 && y > 0) best = Math.min(best, (dist[index - width - 1] ?? 1e6) + 1.414);
-      if (x + 1 < width && y > 0) best = Math.min(best, (dist[index - width + 1] ?? 1e6) + 1.414);
-      dist[index] = best;
-    }
-  }
-  for (let y = height - 1; y >= 0; y--) {
-    for (let x = width - 1; x >= 0; x--) {
-      const index = y * width + x;
-      let best = dist[index] ?? 1e6;
-      if (x + 1 < width) best = Math.min(best, (dist[index + 1] ?? 1e6) + 1);
-      if (y + 1 < height) best = Math.min(best, (dist[index + width] ?? 1e6) + 1);
-      if (x + 1 < width && y + 1 < height) best = Math.min(best, (dist[index + width + 1] ?? 1e6) + 1.414);
-      if (x > 0 && y + 1 < height) best = Math.min(best, (dist[index + width - 1] ?? 1e6) + 1.414);
-      dist[index] = best;
-    }
-  }
-  return dist;
-}
-
-function bilinear(dist: Float32Array, width: number, height: number, x: number, y: number): number {
-  const x0 = Math.max(0, Math.min(width - 1, Math.floor(x)));
-  const y0 = Math.max(0, Math.min(height - 1, Math.floor(y)));
-  const x1 = Math.min(width - 1, x0 + 1);
-  const y1 = Math.min(height - 1, y0 + 1);
-  const tx = Math.max(0, Math.min(1, x - x0));
-  const ty = Math.max(0, Math.min(1, y - y0));
-  const a = dist[y0 * width + x0] ?? 0;
-  const b = dist[y0 * width + x1] ?? 0;
-  const c = dist[y1 * width + x0] ?? 0;
-  const d = dist[y1 * width + x1] ?? 0;
-  return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
-}
-
-function labelPx(inr: number, scale: number, fitScale: number): number {
-  if (!(inr > 0) || !(fitScale > 0)) return 0;
-  return Math.min(1.1 * inr * scale, 13 * (scale / fitScale), 72);
-}
-
-function screenChecker(
-  ctx: CanvasRenderingContext2D,
-  dpr: number,
-  scale: number,
-  dark: string,
-  light: string,
-): CanvasPattern | null {
-  const cell = Math.max(1, Math.round(4 * dpr));
+function screenChecker(ctx: CanvasRenderingContext2D, dark: string, light: string): CanvasPattern | null {
+  const cell = 4;
   const tile = document.createElement('canvas');
   tile.width = cell * 2;
   tile.height = cell * 2;
@@ -717,10 +597,7 @@ function screenChecker(
   pen.fillStyle = dark;
   pen.fillRect(0, 0, cell, cell);
   pen.fillRect(cell, cell, cell, cell);
-  const pattern = ctx.createPattern(tile, 'repeat');
-  if (!pattern) return null;
-  pattern.setTransform(new DOMMatrix().scale(1 / (dpr * Math.max(scale, 0.01))));
-  return pattern;
+  return ctx.createPattern(tile, 'repeat');
 }
 
 function mixHex(from: string, to: string, t: number): string {
@@ -732,40 +609,6 @@ function mixHex(from: string, to: string, t: number): string {
   const b = parse(to);
   const channel = (index: number) => Math.round((a[index] ?? 0) + ((b[index] ?? 0) - (a[index] ?? 0)) * t);
   return `#${[channel(0), channel(1), channel(2)].map((part) => part.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function outerContour(d: string): Path2D {
-  const parts = d.split(/(?=M)/).filter((part) => part.startsWith('M'));
-  if (parts.length <= 1) return new Path2D(d || undefined);
-  let best = parts[0]!;
-  let bestArea = -1;
-  for (const part of parts) {
-    const area = Math.abs(loopArea(part));
-    if (area > bestArea) {
-      bestArea = area;
-      best = part;
-    }
-  }
-  return new Path2D(best);
-}
-
-function loopArea(d: string): number {
-  const points: { x: number; y: number }[] = [];
-  const commands = d.matchAll(/([MC])([^MCZ]*)/g);
-  for (const command of commands) {
-    const nums = command[2]!.trim().split(/[\s,]+/).map(Number).filter((value) => !Number.isNaN(value));
-    if (command[1] === 'M' && nums.length >= 2) points.push({ x: nums[0]!, y: nums[1]! });
-    if (command[1] === 'C') {
-      for (let i = 0; i + 5 < nums.length; i += 6) points.push({ x: nums[i + 4]!, y: nums[i + 5]! });
-    }
-  }
-  let area = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i]!;
-    const b = points[(i + 1) % points.length]!;
-    area += a.x * b.y - b.x * a.y;
-  }
-  return area / 2;
 }
 
 function drawDots(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, px: number, room: number): boolean {
@@ -827,6 +670,6 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   if (width > room) return false;
   const step = px * 1.05;
   const start = y - ((lines.length - 1) * step) / 2;
-  lines.forEach((line, index) => ctx.fillText(line, x, start + index * step));
+  for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i]!, x, start + i * step);
   return true;
 }

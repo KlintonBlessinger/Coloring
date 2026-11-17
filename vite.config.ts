@@ -36,6 +36,16 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            urlPattern: /\/puzzles\/.*\.json\.(gz|br)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'puzzles',
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
       },
       devOptions: { enabled: false },
     }),

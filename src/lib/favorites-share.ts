@@ -6,7 +6,8 @@ export interface SharePicture {
   id: string;
   title: string;
   mystery: boolean;
-  regionColors: number[];
+  regionColors?: number[];
+  regionCount?: number;
   tags: ArtTags;
 }
 
@@ -56,7 +57,7 @@ export function formatFavoritesShare(
       tagLine('Palette', tags.palette),
       tagLine('Style', tags.style),
       tagLine('Complexity', [tags.complexity]),
-      progressLine(progress[puzzle.id], puzzle.regionColors.length),
+      progressLine(progress[puzzle.id], puzzle.regionCount ?? puzzle.regionColors?.length ?? 0),
       `Mystery: ${puzzle.mystery ? 'yes' : 'no'}`,
       '',
     );

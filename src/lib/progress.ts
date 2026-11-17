@@ -1,6 +1,9 @@
 import { base64ToBytes } from './codec';
 import type { ProgressSave } from './storage';
 
+/** Saves from the raster pictures. A vector picture only accepts this version. */
+export const SAVE_VERSION = 2;
+
 /** Short fingerprint of the region map, so a rebuilt picture does not reuse old taps. */
 export function regionMapKey(width: number, height: number, labels: ArrayLike<number>, regionCount: number): string {
   let hash = (regionCount + 1) * 131 + width * 17 + height;
@@ -15,16 +18,15 @@ export function regionMapKey(width: number, height: number, labels: ArrayLike<nu
  * picture was rebuilt and the old taps should be dropped.
  */
 export function progressFits(
-  save: Pick<ProgressSave, 'filled' | 'map'> | null,
+  save: Pick<ProgressSave, 'filled' | 'map' | 'v'> | null,
   regionCount: number,
   mapKey: string,
 ): boolean {
-  if (!save) return false;
+  if (!save || save.v !== SAVE_VERSION) return false;
   try {
     const bytes = base64ToBytes(save.filled);
     if (bytes.length !== regionCount) return false;
-    if (save.map && save.map !== mapKey) return false;
-    return true;
+    return save.map === mapKey;
   } catch {
     return false;
   }

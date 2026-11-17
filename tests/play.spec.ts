@@ -1,16 +1,42 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { decodeRLE16 } from '../src/lib/codec';
-import type { PuzzleFile } from '../src/lib/types';
-
 const mediaDir = '/cursor/stores/bc-c04895d7-9d46-4e3a-be6d-526b6b12be78/media';
 
-function puzzle(id: string): PuzzleFile {
-  return JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles', `${id}.json`), 'utf8')) as PuzzleFile;
+interface Book {
+  width: number;
+  height: number;
+  palette: string[];
+  regionColors: number[];
+  cx: number[];
+  cy: number[];
+  inr: number[];
+  area: number[];
 }
 
-function nearestRegion(book: PuzzleFile, color: number): number {
+function puzzle(id: string): Book {
+  const file = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/puzzles', `${id}.json`), 'utf8')) as {
+    w: number;
+    h: number;
+    palette: { n: number; hex: string }[];
+    regions: { id: number; n: number; label: { x: number; y: number; r: number } }[];
+  };
+  const palette = file.palette.slice().sort((a, b) => a.n - b.n);
+  const colorIndex = new Map(palette.map((item, index) => [item.n, index]));
+  const regions = file.regions.slice().sort((a, b) => a.id - b.id);
+  return {
+    width: file.w,
+    height: file.h,
+    palette: palette.map((item) => item.hex),
+    regionColors: regions.map((region) => colorIndex.get(region.n) ?? 0),
+    cx: regions.map((region) => region.label.x),
+    cy: regions.map((region) => region.label.y),
+    inr: regions.map((region) => region.label.r),
+    area: regions.map((region) => Math.PI * region.label.r * region.label.r),
+  };
+}
+
+function nearestRegion(book: Book, color: number): number {
   let best = -1;
   let bestDistance = Infinity;
   for (let index = 0; index < book.cx.length; index++) {
@@ -51,7 +77,7 @@ async function openPuzzle(page: Page, id: string, mode?: 'normal' | 'math' | 'es
   await beginPicture(page, mode);
 }
 
-async function regionPoint(page: Page, book: PuzzleFile, index: number): Promise<{ x: number; y: number }> {
+async function regionPoint(page: Page, book: Book, index: number): Promise<{ x: number; y: number }> {
   return page.evaluate(
     ({ cx, cy }) => {
       const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
@@ -65,25 +91,11 @@ async function regionPoint(page: Page, book: PuzzleFile, index: number): Promise
   );
 }
 
-function interiorPoints(book: PuzzleFile): { x: number; y: number }[] {
-  const labels = decodeRLE16(book.labels, book.width * book.height);
-  const points: ({ x: number; y: number } | undefined)[] = new Array(book.regionColors.length);
-  for (let index = 0; index < points.length; index++) {
-    const x = Math.round(book.cx[index] ?? 0);
-    const y = Math.round(book.cy[index] ?? 0);
-    if (x >= 0 && y >= 0 && x < book.width && y < book.height && labels[y * book.width + x] === index) {
-      points[index] = { x, y };
-    }
-  }
-  for (let pixel = 0; pixel < labels.length; pixel++) {
-    const id = labels[pixel] ?? 65535;
-    if (id === 65535 || points[id]) continue;
-    points[id] = { x: pixel % book.width, y: Math.floor(pixel / book.width) };
-  }
-  return points.map((point, index) => point ?? { x: Math.round(book.cx[index] ?? 0), y: Math.round(book.cy[index] ?? 0) });
+function interiorPoints(book: Book): { x: number; y: number }[] {
+  return book.cx.map((x, index) => ({ x, y: book.cy[index] ?? 0 }));
 }
 
-async function paintRegions(page: Page, book: PuzzleFile, indices: number[]): Promise<void> {
+async function paintRegions(page: Page, book: Book, indices: number[]): Promise<void> {
   const spots = interiorPoints(book);
   await page.evaluate(
     ({ colors, spots, indices }) => {
@@ -135,7 +147,7 @@ async function paintRegions(page: Page, book: PuzzleFile, indices: number[]): Pr
   );
 }
 
-async function sample(page: Page, book: PuzzleFile, index: number): Promise<number[]> {
+async function sample(page: Page, book: Book, index: number): Promise<number[]> {
   return page.evaluate(
     ({ cx, cy }) => {
       const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
@@ -780,7 +792,7 @@ test('line art gallery, clownfish, unicorn, harvest, and a finished picture', as
   };
   await page.goto('/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
-  await expect(page.locator('[data-id="animals-clownfish-reef"] canvas.thumb')).toBeVisible();
+  await expect(page.locator('[data-id="animals-clownfish-reef"] img.thumb')).toBeVisible();
   await page.waitForTimeout(400);
   await jpg('lineart-gallery.jpg');
 
@@ -864,7 +876,7 @@ test('owner review: colors, solid fills, smooth ink, numbers, and line-art thumb
 
   await page.goto('/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
-  await expect(page.locator('[data-id="animals-clownfish-reef"] canvas.thumb')).toBeVisible();
+  await expect(page.locator('[data-id="animals-clownfish-reef"] img.thumb')).toBeVisible();
   await page.waitForTimeout(300);
   await jpg('fix-gallery.jpg');
 
@@ -967,5 +979,129 @@ test('owner review: colors, solid fills, smooth ink, numbers, and line-art thumb
   await page.locator('#fix-compare img').evaluate((img: HTMLImageElement) => (img.complete ? true : new Promise((resolve) => img.addEventListener('load', () => resolve(true), { once: true }))));
   await page.waitForTimeout(200);
   await jpg('fix-turkey-compare.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('vector gallery, turkey, clownfish, harvest, and math', async ({ page }) => {
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await expect(page.locator('[data-id="thanksgiving-turkey"] img.thumb')).toBeVisible();
+  await page.waitForTimeout(300);
+  await jpg('vector-gallery.jpg');
+
+  await openPuzzle(page, 'animals-clownfish-reef');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  await page.waitForTimeout(250);
+  await jpg('vector-clownfish-fit.jpg');
+  const fitted = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  const pan = await page.evaluate(async () => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const samples: number[] = [];
+    const rect = canvas.getBoundingClientRect();
+    let x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const fire = (type: string, clientX: number) => {
+      canvas.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch', isPrimary: true,
+        clientX, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+      }));
+    };
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    fire('pointerdown', x);
+    await nextFrame();
+    for (let i = 0; i < 12; i++) {
+      x += 8;
+      fire('pointermove', x);
+      await nextFrame();
+      samples.push(Number(canvas.dataset.frameMs ?? '0'));
+    }
+    fire('pointerup', x);
+    return { samples, frame: canvas.dataset.frameMs ?? '' };
+  });
+  console.log('pan ms', pan.samples.map((n) => n.toFixed(1)).join(','), 'frame', pan.frame);
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1,
+        clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+      }));
+    };
+    const start = 28;
+    const end = 90;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale'))).toBeGreaterThan(fitted * 2.4);
+  await page.waitForTimeout(300);
+  await jpg('vector-clownfish-zoom.jpg');
+
+  await page.getByTestId('back').click();
+  const harvest = puzzle('thanksgiving-first-harvest');
+  await openPuzzle(page, 'thanksgiving-first-harvest');
+  const upper = harvest.cy.flatMap((y, index) => (y < harvest.height * 0.48 ? [index] : []));
+  await paintRegions(page, harvest, upper);
+  await page.waitForTimeout(300);
+  await jpg('vector-harvest-half.jpg');
+
+  await page.getByTestId('back').click();
+  await openPuzzle(page, 'fantasy-unicorn', 'math');
+  await expect(page.locator('[data-testid="play"]')).toHaveAttribute('data-mode', 'math');
+  await page.waitForTimeout(300);
+  await jpg('vector-math.jpg');
+
+  await page.getByTestId('back').click();
+  const turkey = puzzle('thanksgiving-turkey');
+  await openPuzzle(page, 'thanksgiving-turkey');
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface');
+    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+  });
+  await paintRegions(page, turkey, turkey.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  // The finish replay clears the fills and paints them back over about 1.4s.
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="complete"]');
+    if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+    const surface = document.querySelector('canvas.surface') as HTMLCanvasElement | null;
+    const host = document.createElement('div');
+    host.id = 'vector-compare';
+    host.style.cssText = 'position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:#fff';
+    const top = document.createElement('canvas');
+    const bottom = document.createElement('img');
+    top.style.cssText = 'width:100%;height:50%;object-fit:contain;background:#fff';
+    bottom.style.cssText = 'width:100%;height:50%;object-fit:contain;background:#fff';
+    bottom.src = '/art/thanksgiving-turkey.jpg';
+    host.append(top, bottom);
+    document.body.append(host);
+    if (surface) {
+      top.width = surface.width;
+      top.height = surface.height;
+      top.getContext('2d')?.drawImage(surface, 0, 0);
+    }
+  });
+  await page.locator('#vector-compare img').evaluate((img: HTMLImageElement) => (img.complete ? true : new Promise((resolve) => img.addEventListener('load', () => resolve(true), { once: true }))));
+  await page.waitForTimeout(200);
+  await jpg('vector-turkey-compare.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });

@@ -6,11 +6,13 @@ import { clampUnit, DEFAULT_SETTINGS, LABEL_MODES, LANGUAGES, MATH_RANGES, NUMBE
 const store = createStore('color-cozy', 'book');
 
 export interface ProgressSave {
+  /** 2 is the vector picture format. Older saves are dropped. */
+  v?: number;
   filled: string;
   order: string;
   selected: number;
   updatedAt: number;
-  /** Fingerprint of the region map. Absent on saves made before line-art rebuilds. */
+  /** Fingerprint of the region paths. */
   map?: string;
 }
 
@@ -178,9 +180,10 @@ export function parseBackup(text: string): BackupFile {
 export async function importBackup(data: BackupFile): Promise<void> {
   await resetAllProgress();
   for (const [id, save] of Object.entries(data.progress)) {
-    if (!save || typeof save.filled !== 'string' || typeof save.order !== 'string') continue;
+    if (!save || save.v !== 2 || typeof save.filled !== 'string' || typeof save.order !== 'string') continue;
     if (!Number.isFinite(save.selected)) continue;
     await saveProgress(id, {
+      v: 2,
       filled: save.filled,
       order: save.order,
       selected: save.selected,

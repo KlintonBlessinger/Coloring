@@ -1,0 +1,197 @@
+{
+  "animals-cat-window": {
+    "file": "animals-cat-window",
+    "regions": 782,
+    "colors": 40
+  },
+  "animals-fox-family": {
+    "file": "animals-fox-family",
+    "regions": 1161,
+    "colors": 40
+  },
+  "animals-sea-turtle": {
+    "file": "animals-sea-turtle",
+    "regions": 735,
+    "colors": 40
+  },
+  "animals-clownfish-reef": {
+    "file": "animals-clownfish-reef",
+    "regions": 516,
+    "colors": 34
+  },
+  "animals-octopus-garden": {
+    "file": "animals-octopus-garden",
+    "regions": 364,
+    "colors": 19
+  },
+  "animals-humpback-calf": {
+    "file": "animals-humpback-calf",
+    "regions": 635,
+    "colors": 23
+  },
+  "animals-seahorse-meadow": {
+    "file": "animals-seahorse-meadow",
+    "regions": 562,
+    "colors": 28
+  },
+  "animals-giraffe-sunset": {
+    "file": "animals-giraffe-sunset",
+    "regions": 655,
+    "colors": 24
+  },
+  "animals-elephant-waterhole": {
+    "file": "animals-elephant-waterhole",
+    "regions": 494,
+    "colors": 23
+  },
+  "animals-lion-cub": {
+    "file": "animals-lion-cub",
+    "regions": 523,
+    "colors": 27
+  },
+  "animals-toucan-macaw": {
+    "file": "animals-toucan-macaw",
+    "regions": 817,
+    "colors": 40
+  },
+  "animals-tree-frog": {
+    "file": "animals-tree-frog",
+    "regions": 1317,
+    "colors": 31
+  },
+  "animals-jungle-tiger": {
+    "file": "animals-jungle-tiger",
+    "regions": 920,
+    "colors": 26
+  },
+  "flowers-lotus-pond": {
+    "file": "flowers-lotus-pond",
+    "regions": 420,
+    "colors": 16
+  },
+  "flowers-cottage-garden": {
+    "file": "flowers-cottage-garden",
+    "regions": 1424,
+    "colors": 33
+  },
+  "flowers-peony-bouquet": {
+    "file": "flowers-peony-bouquet",
+    "regions": 531,
+    "colors": 24
+  },
+  "food-bakery-sweets": {
+    "file": "food-bakery-sweets",
+    "regions": 377,
+    "colors": 23
+  },
+  "food-ice-cream-sundae": {
+    "file": "food-ice-cream-sundae",
+    "regions": 295,
+    "colors": 26
+  },
+  "food-picnic": {
+    "file": "food-picnic",
+    "regions": 1771,
+    "colors": 40
+  },
+  "fantasy-unicorn": {
+    "file": "fantasy-unicorn",
+    "regions": 836,
+    "colors": 27
+  },
+  "fantasy-mermaid": {
+    "file": "fantasy-mermaid",
+    "regions": 624,
+    "colors": 28
+  },
+  "fantasy-castle": {
+    "file": "fantasy-castle",
+    "regions": 975,
+    "colors": 31
+  },
+  "patterns-folk-art": {
+    "file": "patterns-folk-art",
+    "regions": 620,
+    "colors": 17
+  },
+  "patterns-stained-glass": {
+    "file": "patterns-stained-glass",
+    "regions": 657,
+    "colors": 37
+  },
+  "science-butterfly-life-cycle": {
+    "file": "science-butterfly-life-cycle",
+    "regions": 299,
+    "colors": 16
+  },
+  "science-solar-system": {
+    "file": "science-solar-system",
+    "regions": 176,
+    "colors": 24
+  },
+  "science-water-cycle": {
+    "file": "science-water-cycle",
+    "regions": 232,
+    "colors": 24
+  },
+  "patterns-mandala": {
+    "file": "patterns-mandala",
+    "regions": 446,
+    "colors": 18
+  },
+  "thanksgiving-turkey": {
+    "file": "thanksgiving-turkey",
+    "regions": 301,
+    "colors": 22
+  },
+  "thanksgiving-dinner": {
+    "file": "thanksgiving-dinner",
+    "regions": 668,
+    "colors": 27
+  },
+  "thanksgiving-porch": {
+    "file": "thanksgiving-porch",
+    "regions": 619,
+    "colors": 24
+  },
+  "thanksgiving-cornucopia": {
+    "file": "thanksgiving-cornucopia",
+    "regions": 609,
+    "colors": 16
+  },
+  "thanksgiving-pumpkin-patch": {
+    "file": "thanksgiving-pumpkin-patch",
+    "regions": 1617,
+    "colors": 37
+  },
+  "thanksgiving-first-harvest": {
+    "file": "thanksgiving-first-harvest",
+    "regions": 706,
+    "colors": 37
+  },
+  "christmas-snowman": {
+    "file": "christmas-snowman",
+    "regions": 366,
+    "colors": 23
+  },
+  "christmas-wreath-cocoa": {
+    "file": "christmas-wreath-cocoa",
+    "regions": 617,
+    "colors": 21
+  },
+  "christmas-tree-fireplace": {
+    "file": "christmas-tree-fireplace",
+    "regions": 797,
+    "colors": 22
+  },
+  "christmas-gingerbread-village": {
+    "file": "christmas-gingerbread-village",
+    "regions": 1039,
+    "colors": 23
+  },
+  "christmas-reindeer-sleigh": {
+    "file": "christmas-reindeer-sleigh",
+    "regions": 611,
+    "colors": 40
+  }
+}

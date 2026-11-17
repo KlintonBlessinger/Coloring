@@ -3,7 +3,8 @@
   import { Game, type Snapshot } from '../lib/game';
   import { inkOn } from '../lib/color';
   import { shareOrDownload } from '../lib/download';
-  import { getPuzzle } from '../lib/catalog';
+  import { getPuzzle, loadPuzzle } from '../lib/catalog';
+  import type { DecodedPuzzle } from '../lib/types';
   import { categoryLabel, fill, t } from '../lib/i18n';
   import { markText, paletteMarks } from '../lib/labels';
   import { applyPictureMode, hasFills, type PictureMode } from '../lib/picture-mode';
@@ -27,7 +28,8 @@
     onSaved: (id: string, save: ProgressSave) => void;
   } = $props();
 
-  const puzzle = untrack(() => getPuzzle(puzzleId));
+  const entry = untrack(() => getPuzzle(puzzleId));
+  let puzzle = $state<DecodedPuzzle | null>(null);
   let canvasEl = $state<HTMLCanvasElement | null>(null);
   let paletteEl = $state<HTMLDivElement | null>(null);
   let gameRef = $state<Game | null>(null);
@@ -46,18 +48,32 @@
   const playSettings = $derived(applyPictureMode(settings, committed ?? draft));
   const copy = $derived(committed ? playSettings.language : settings.language);
 
-  const pieces = puzzle
-    ? Array.from({ length: 26 }, (_, i) => ({
-        x: (i * 37) % 100,
-        color: puzzle.palette[i % puzzle.palette.length] ?? '#e07a5f',
-        delay: (i % 7) * 0.12,
-        dur: 2.6 + (i % 5) * 0.28,
-      }))
-    : [];
+  const pieces = $derived.by(() => {
+    const book = puzzle;
+    if (!book) return [];
+    return Array.from({ length: 26 }, (_, i) => ({
+      x: (i * 37) % 100,
+      color: book.palette[i % book.palette.length] ?? '#e07a5f',
+      delay: (i % 7) * 0.12,
+      dur: 2.6 + (i % 5) * 0.28,
+    }));
+  });
 
   $effect(() => {
     const id = puzzleId;
-    const regions = puzzle?.regionColors.length ?? 0;
+    let gone = false;
+    puzzle = null;
+    void loadPuzzle(id).then((loaded) => {
+      if (!gone) puzzle = loaded;
+    });
+    return () => {
+      gone = true;
+    };
+  });
+
+  $effect(() => {
+    const id = puzzleId;
+    const regions = entry?.regionCount ?? 0;
     let gone = false;
     decided = false;
     pickerOpen = false;
@@ -96,10 +112,11 @@
 
   $effect(() => {
     const canvas = canvasEl;
-    if (!canvas || !puzzle) return;
+    const book = puzzle;
+    if (!canvas || !book) return;
     let gone = false;
     let opened: Game | null = null;
-    void Game.open(canvas, puzzle.id, live.bigNumbers, {
+    void Game.open(canvas, book.id, live.bigNumbers, {
       getSound: () => live.sound,
       getHaptics: () => live.haptics,
       getMathMode: () => live.mathMode,
@@ -115,7 +132,7 @@
       },
       onSaved: (save) => {
         saveError = false;
-        onSaved(puzzle.id, save);
+        onSaved(book.id, save);
       },
       onSaveError: () => {
         saveError = true;
@@ -156,12 +173,12 @@
   });
 
   const quiet = $derived(!!snapshot?.complete && !celebrate);
-  const hiddenTitle = $derived(!!puzzle?.mystery && !snapshot?.complete);
+  const hiddenTitle = $derived(!!entry?.mystery && !snapshot?.complete);
   const overall = $derived(snapshot && snapshot.total ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0);
-  const factList = $derived(playSettings.language === 'es' ? (puzzle?.factsEs ?? []) : (puzzle?.facts ?? []));
+  const factList = $derived(playSettings.language === 'es' ? (entry?.factsEs ?? []) : (entry?.facts ?? []));
   const swatchMarks = $derived(puzzle ? paletteMarks(puzzle.palette, playSettings, puzzle.id) : []);
   const modeName = $derived(committed === 'math' ? 'modeMath' : committed === 'espanol' ? 'modeEspanol' : 'modeNormal');
-  const pickerTitle = $derived(puzzle?.mystery ? t(settings.language, 'mystery') : (puzzle?.title ?? ''));
+  const pickerTitle = $derived(entry?.mystery ? t(settings.language, 'mystery') : (entry?.title ?? ''));
 
   function openPicker() {
     if (committed) draft = committed;
@@ -169,10 +186,10 @@
   }
 
   async function confirmMode() {
-    if (!puzzle) return;
+    if (!entry) return;
     const next = draft;
     try {
-      await Promise.all([savePictureMode(puzzle.id, next), saveLastMode(next)]);
+      await Promise.all([savePictureMode(entry.id, next), saveLastMode(next)]);
     } catch {
       saveError = true;
     }
@@ -192,7 +209,7 @@
   }
 </script>
 
-{#if !puzzle}
+{#if !entry}
   <div class="screen">
     <p class="empty">{t(copy, 'missing')}</p>
     <button class="btn" type="button" onclick={onBack}>{t(copy, 'back')}</button>
@@ -206,9 +223,9 @@
         </svg>
       </button>
       <div class="titles">
-        <h1 class:unveil={!!puzzle.mystery && !!snapshot?.complete}>{hiddenTitle ? t(copy, 'mystery') : puzzle.title}</h1>
+        <h1 class:unveil={!!entry.mystery && !!snapshot?.complete}>{hiddenTitle ? t(copy, 'mystery') : entry.title}</h1>
         <p class="sub">
-          <span>{snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? t(copy, 'mystery') : categoryLabel(copy, puzzle.category)}</span>
+          <span>{snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? t(copy, 'mystery') : categoryLabel(copy, entry.category)}</span>
           {#if committed}
             <button class="mode-chip" type="button" data-testid="mode-chip" data-mode={committed} onclick={openPicker}>{t(copy, modeName)}</button>
           {/if}
@@ -264,8 +281,8 @@
           </div>
           <div class="card-pop">
             <p class="eyebrow">{t(copy, 'finished')}</p>
-            <h2>{puzzle.mystery ? puzzle.title : t(copy, 'beauty')}</h2>
-            <p>{puzzle.mystery ? fill(t(copy, 'mysteryReveal'), { title: puzzle.title }) : fill(t(copy, 'everySpot'), { title: puzzle.title })}</p>
+            <h2>{entry.mystery ? entry.title : t(copy, 'beauty')}</h2>
+            <p>{entry.mystery ? fill(t(copy, 'mysteryReveal'), { title: entry.title }) : fill(t(copy, 'everySpot'), { title: entry.title })}</p>
             {#if factList.length}
               <div class="facts-row">
                 <ul class="facts">
@@ -330,7 +347,7 @@
         <em>{overall}%</em>
       </div>
     <div class="palette" class:words={playSettings.labels !== 'numbers'} class:loading={!snapshot} bind:this={paletteEl} data-testid="palette" role="listbox" aria-label={t(copy, 'palette')}>
-      {#each puzzle.palette as color, index (index)}
+      {#each puzzle?.palette ?? [] as color, index (index)}
         {@const total = snapshot?.totals[index] ?? 0}
         {@const have = snapshot?.done[index] ?? 0}
         {@const pct = total ? have / total : 0}

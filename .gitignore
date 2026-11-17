@@ -6,4 +6,7 @@ test-results
 blob-report
 .lighthouse
 *.log
+artifacts/
 .DS_Store
+__pycache__/
+*.pyc

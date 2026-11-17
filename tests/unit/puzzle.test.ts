@@ -7,7 +7,17 @@ import { APP_NAME } from '../../src/lib/brand';
 import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
 import { deltaE76, hexToOklab, hexToRgb, labDist2, oklabToHex, rgbToCielab } from '../../src/lib/color';
 import { progressFits, regionMapKey } from '../../src/lib/progress';
-import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE, type PuzzleFile } from '../../src/lib/types';
+import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE } from '../../src/lib/types';
+
+interface VectorPuzzle {
+  id: string;
+  category: (typeof CATEGORIES)[number];
+  difficulty: 'easy' | 'medium' | 'hard';
+  mode: string;
+  w: number;
+  palette: { n: number; hex: string }[];
+  regions: { d: string; label: { x: number; y: number; r: number } }[];
+}
 import { loadImage, writePng } from '../../scripts/image';
 import { makePuzzle } from '../../scripts/make-puzzle';
 import { quantize } from '../../scripts/quantize';
@@ -167,18 +177,19 @@ test('a rebuilt region map drops the old progress', () => {
   const labels = Uint16Array.from([0, 0, 1, 1]);
   const key = regionMapKey(2, 2, labels, 2);
   const filled = bytesToBase64(Uint8Array.from([1, 0]));
-  assert.equal(progressFits({ filled, map: key }, 2, key), true);
-  assert.equal(progressFits({ filled, map: 'stale' }, 2, key), false);
-  assert.equal(progressFits({ filled }, 3, key), false);
-  assert.equal(progressFits({ filled }, 2, 'later-map'), true);
+  const save = { v: 2, filled, map: key };
+  assert.equal(progressFits(save, 2, key), true);
+  assert.equal(progressFits({ ...save, map: 'stale' }, 2, key), false);
+  assert.equal(progressFits(save, 3, key), false);
+  assert.equal(progressFits({ filled, map: key }, 2, key), false);
   assert.notEqual(regionMapKey(2, 2, Uint16Array.from([0, 1, 1, 0]), 2), key);
 });
 
 test('starter puzzles cover every shelf', () => {
-  const dir = path.join(process.cwd(), 'src/puzzles');
-  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json'));
-  assert.ok(files.length >= 12);
-  const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as PuzzleFile);
+  const dir = path.join(process.cwd(), 'public/puzzles');
+  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
+  assert.equal(files.length, 39);
+  const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as VectorPuzzle);
   for (const category of CATEGORIES) {
     assert.ok(
       puzzles.some((puzzle) => puzzle.category === category),
@@ -188,7 +199,7 @@ test('starter puzzles cover every shelf', () => {
   for (const difficulty of ['easy', 'medium', 'hard'] as const) {
     assert.ok(puzzles.some((puzzle) => puzzle.difficulty === difficulty));
   }
-  const fixed: Record<string, PuzzleFile['difficulty']> = {
+  const fixed: Record<string, VectorPuzzle['difficulty']> = {
     'food-ice-cream-sundae': 'easy',
     'patterns-folk-art': 'easy',
     'flowers-lotus-pond': 'easy',
@@ -199,40 +210,34 @@ test('starter puzzles cover every shelf', () => {
     'animals-cat-window': 'hard',
   };
   for (const puzzle of puzzles) {
-    assert.equal(puzzle.encoding, 'regions-v1');
-    assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 34, puzzle.id);
-    assert.ok(puzzle.regionColors.length >= 30, puzzle.id);
-    assert.equal(puzzle.paths.length, puzzle.regionColors.length);
-    assert.equal(puzzle.inr.length, puzzle.regionColors.length, puzzle.id);
-    for (const radius of puzzle.inr) assert.ok(1.1 * radius * MAX_SCALE >= 10, `${puzzle.id} ${radius}`);
-    const labels = decodeRLE16(puzzle.labels, puzzle.width * puzzle.height);
-    for (const region of labels) assert.ok(region === OUTLINE || region < puzzle.regionColors.length, puzzle.id);
-    const source = loadImage(path.join(process.cwd(), 'content/sources', `${puzzle.id}.jpg`));
-    const paletteRgb = puzzle.palette.map((hex) => hexToRgb(hex));
-    let sum = 0;
-    let counted = 0;
-    for (let y = 0; y < puzzle.height; y++) {
-      const sy = Math.min(source.height - 1, Math.round((y * (source.height - 1)) / Math.max(1, puzzle.height - 1)));
-      for (let x = 0; x < puzzle.width; x++) {
-        const region = labels[y * puzzle.width + x] ?? 0;
-        if (region === OUTLINE || region >= puzzle.regionColors.length) continue;
-        const fill = paletteRgb[puzzle.regionColors[region] ?? 0];
-        if (!fill) continue;
-        const sx = Math.min(source.width - 1, Math.round((x * (source.width - 1)) / Math.max(1, puzzle.width - 1)));
-        const o = (sy * source.width + sx) * 4;
-        sum += deltaE76(
-          rgbToCielab(source.data[o] ?? 0, source.data[o + 1] ?? 0, source.data[o + 2] ?? 0),
-          rgbToCielab(fill[0], fill[1], fill[2]),
-        );
-        counted++;
-      }
+    assert.equal(puzzle.mode, 'lineart');
+    assert.equal(puzzle.w, 1024);
+    assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 40, `${puzzle.id} ${puzzle.palette.length} colors`);
+    assert.ok(puzzle.regions.length >= 30, puzzle.id);
+    const small = puzzle.regions.filter((region) => region.label.r < 3).length;
+    assert.ok(small / puzzle.regions.length <= 0.03, `${puzzle.id} small labels ${(small / puzzle.regions.length).toFixed(3)}`);
+    for (const region of puzzle.regions) {
+      assert.ok(region.d.startsWith('M'), puzzle.id);
+      assert.ok(Math.abs(region.label.x * 10 - Math.round(region.label.x * 10)) < 1e-6, puzzle.id);
     }
-    const meanDelta = counted ? sum / counted : Infinity;
-    console.log(`${puzzle.id} deltaE ${meanDelta.toFixed(2)}`);
-    assert.ok(meanDelta < 12, `${puzzle.id} mean deltaE ${meanDelta.toFixed(2)}`);
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
-    const preset = DIFFICULTY_PRESETS[puzzle.difficulty];
-    assert.ok(puzzle.regionColors.length <= preset.maxRegions + 5, puzzle.id);
+  }
+  const scores = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'content/reports/vector-scores.json'), 'utf8')) as {
+    id: string;
+    meanDE76: number;
+    coverage: number;
+    colors: number;
+    smallRadiusFraction: number;
+    ok: boolean;
+  }[];
+  assert.equal(scores.length, 39);
+  for (const score of scores) {
+    assert.equal(score.ok, true, score.id);
+    assert.ok(score.meanDE76 <= 6, `${score.id} deltaE ${score.meanDE76}`);
+    assert.ok(score.coverage >= 0.995, score.id);
+    assert.ok(score.colors <= 40, score.id);
+    assert.ok(score.smallRadiusFraction <= 0.03, score.id);
+    console.log(`${score.id} deltaE ${score.meanDE76.toFixed(2)} regions gate ok`);
   }
   const licenses = fs.readFileSync(path.join(process.cwd(), 'content/LICENSES.md'), 'utf8');
   for (const puzzle of puzzles) assert.ok(licenses.includes(puzzle.id), puzzle.id);

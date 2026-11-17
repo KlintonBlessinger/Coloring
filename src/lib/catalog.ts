@@ -1,24 +1,33 @@
 import manifestFile from '../art/manifest.json' with { type: 'json' };
-import { decodeRLE16 } from './codec';
-import {
-  CATEGORIES,
-  OUTLINE,
-  type ArtRecord,
-  type ArtTags,
-  type Category,
-  type DecodedPuzzle,
-  type Difficulty,
-  type PuzzleFile,
-} from './types';
+import indexFile from '../art/puzzle-index.json' with { type: 'json' };
+import { asset, decodeVector, readCompressed, type VectorFile } from './vector';
+import { CATEGORIES, type ArtRecord, type ArtTags, type Category, type DecodedPuzzle, type Difficulty } from './types';
 
-const modules = import.meta.glob('../puzzles/*.json', {
-  import: 'default',
-}) as Record<string, () => Promise<PuzzleFile>>;
+export interface CatalogEntry {
+  id: string;
+  title: string;
+  category: Category;
+  difficulty: Difficulty;
+  mystery: boolean;
+  tags: ArtTags;
+  facts: string[];
+  factsEs: string[];
+  /** Puzzle file name, shared by a mystery and its source picture. */
+  file: string;
+  regionCount: number;
+  colorCount: number;
+  art: string;
+}
 
-const files = await Promise.all(Object.values(modules).map((load) => load()));
+interface IndexEntry {
+  file: string;
+  regions: number;
+  colors: number;
+}
 
-const categoryRank = new Map<Category, number>(CATEGORIES.map((category, index) => [category, index]));
-const difficultyRank: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+const index = indexFile as Record<string, IndexEntry>;
+const records = (manifestFile as { pictures: ArtRecord[] }).pictures;
+const recordById = new Map(records.map((record) => [record.id, record]));
 
 const EMPTY_TAGS: ArtTags = {
   subject: [],
@@ -30,52 +39,32 @@ const EMPTY_TAGS: ArtTags = {
   complexity: '',
 };
 
-const records = (manifestFile as { pictures: ArtRecord[] }).pictures;
+const categoryRank = new Map<Category, number>(CATEGORIES.map((category, index) => [category, index]));
+const difficultyRank: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
 
-type StoredPuzzle = Omit<DecodedPuzzle, 'mystery' | 'tags' | 'facts' | 'factsEs'>;
-
-function decode(file: PuzzleFile): StoredPuzzle {
-  if (file.encoding !== 'regions-v1') throw new Error(`Unknown puzzle encoding for ${file.id}`);
-  const labels = decodeRLE16(file.labels, file.width * file.height);
-  if (file.paths.length !== file.regionColors.length) {
-    throw new Error(`Region data does not match in ${file.id}`);
-  }
-  for (const region of labels) {
-    if (region !== OUTLINE && region >= file.regionColors.length) {
-      throw new Error(`Region index out of range in ${file.id}`);
-    }
-  }
-  return { ...file, labels };
+function sourceOf(record: ArtRecord): string {
+  return record.source ?? record.id;
 }
 
-const byId = new Map<string, StoredPuzzle>();
-for (const file of files) byId.set(file.id, decode(file));
-
-function present(base: StoredPuzzle, record: ArtRecord | undefined, mystery: boolean): DecodedPuzzle {
-  return {
-    ...base,
-    id: record?.id ?? base.id,
-    title: record?.title ?? base.title,
-    category: record?.category ?? base.category,
-    difficulty: record?.difficulty ?? base.difficulty,
-    mystery,
-    tags: record?.tags ?? EMPTY_TAGS,
-    facts: record?.facts ?? [],
-    factsEs: record?.factsEs ?? [],
-  };
-}
-
-const puzzles: DecodedPuzzle[] = [];
-const seen = new Set<string>();
+const puzzles: CatalogEntry[] = [];
 for (const record of records) {
-  const source = byId.get(record.source ?? record.id);
-  if (!source) continue;
-  puzzles.push(present(source, record, record.mystery));
-  seen.add(record.source ?? record.id);
-}
-for (const base of byId.values()) {
-  if (seen.has(base.id)) continue;
-  puzzles.push(present(base, undefined, false));
+  const file = sourceOf(record);
+  const geometry = index[file];
+  if (!geometry) continue;
+  puzzles.push({
+    id: record.id,
+    title: record.title,
+    category: record.category,
+    difficulty: record.difficulty,
+    mystery: record.mystery,
+    tags: record.tags ?? EMPTY_TAGS,
+    facts: record.facts ?? [],
+    factsEs: record.factsEs ?? [],
+    file,
+    regionCount: geometry.regions,
+    colorCount: geometry.colors,
+    art: `art/${file}.jpg`,
+  });
 }
 
 puzzles.sort((a, b) => {
@@ -91,10 +80,33 @@ export function listArt(): ArtRecord[] {
   return records;
 }
 
-export function listPuzzles(): DecodedPuzzle[] {
+export function listPuzzles(): CatalogEntry[] {
   return puzzles;
 }
 
-export function getPuzzle(id: string): DecodedPuzzle | undefined {
+export function getPuzzle(id: string): CatalogEntry | undefined {
   return puzzles.find((puzzle) => puzzle.id === id);
+}
+
+const loaded = new Map<string, Promise<DecodedPuzzle | null>>();
+
+export function loadPuzzle(id: string): Promise<DecodedPuzzle | null> {
+  const cached = loaded.get(id);
+  if (cached) return cached;
+  const job = fetchPuzzle(id);
+  loaded.set(id, job);
+  return job;
+}
+
+async function fetchPuzzle(id: string): Promise<DecodedPuzzle | null> {
+  const entry = getPuzzle(id);
+  if (!entry) return null;
+  const record = recordById.get(id);
+  const br = await readCompressed(asset(`puzzles/${entry.file}.json.br`), 'br' as CompressionFormat);
+  const gzipped = br ?? (await readCompressed(asset(`puzzles/${entry.file}.json.gz`), 'gzip'));
+  const raw =
+    gzipped ??
+    (await fetch(asset(`puzzles/${entry.file}.json`)).then((response) => (response.ok ? response.text() : Promise.reject(new Error(response.statusText)))));
+  if (!raw) throw new Error(`Missing puzzle ${entry.file}`);
+  return decodeVector(JSON.parse(raw) as VectorFile, record);
 }

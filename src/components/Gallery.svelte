@@ -1,11 +1,12 @@
 <script lang="ts">
   import { APP_NAME } from '../lib/brand';
-  import { listPuzzles } from '../lib/catalog';
+  import { listPuzzles, type CatalogEntry } from '../lib/catalog';
   import { ANIMAL_HABITATS, categoryLabel, habitatLabel, t, type AnimalHabitat } from '../lib/i18n';
   import type { Settings } from '../lib/settings';
-  import { drawThumbnail, filledFromSave, progressRatio } from '../lib/thumb';
+  import { asset } from '../lib/vector';
+  import { saveRatio } from '../lib/thumb';
   import type { ProgressSave } from '../lib/storage';
-  import { CATEGORIES, type Category, type DecodedPuzzle } from '../lib/types';
+  import { CATEGORIES, type Category } from '../lib/types';
 
   type Shelf = 'All' | 'Favorites' | 'Mystery' | Category;
 
@@ -30,7 +31,7 @@
   let habitat = $state<'all' | AnimalHabitat>('all');
 
   const visible = $derived.by(() => {
-    const items = listPuzzles().filter((puzzle) => {
+    const items = listPuzzles().filter((puzzle: CatalogEntry) => {
       if (category === 'Favorites' && !favorites.includes(puzzle.id)) return false;
       if (category === 'Mystery' && !puzzle.mystery) return false;
       if (category !== 'All' && category !== 'Favorites' && category !== 'Mystery') {
@@ -48,20 +49,11 @@
     return items;
   });
 
-  function ratioOf(puzzle: DecodedPuzzle): number {
-    return progressRatio(filledFromSave(puzzle, progress[puzzle.id]), puzzle.regionColors.length);
+  function ratioOf(puzzle: CatalogEntry): number {
+    return saveRatio(progress[puzzle.id], puzzle.regionCount);
   }
 
-  function paint(node: HTMLCanvasElement, params: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) {
-    const draw = (current: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) => {
-      const filled = filledFromSave(current.puzzle, current.save);
-      drawThumbnail(node, current.puzzle, filled);
-    };
-    draw(params);
-    return { update: draw };
-  }
-
-  function labelFor(puzzle: DecodedPuzzle, ratio: number): string {
+  function labelFor(puzzle: CatalogEntry, ratio: number): string {
     if (puzzle.mystery && ratio < 1) return t(settings.language, 'mysteryPicture');
     return puzzle.title;
   }
@@ -139,7 +131,7 @@
     </div>
   {/if}
 
-  {#snippet picture(puzzle: DecodedPuzzle)}
+  {#snippet picture(puzzle: CatalogEntry)}
     {@const ratio = ratioOf(puzzle)}
     {@const hidden = puzzle.mystery && ratio < 1}
     {@const loved = favorites.includes(puzzle.id)}
@@ -175,7 +167,7 @@
         onclick={() => onOpen(puzzle.id)}
       >
         <div class="thumb-wrap">
-          <canvas class="thumb" width="280" height="280" use:paint={{ puzzle, save: progress[puzzle.id] }}></canvas>
+          <img class="thumb" alt="" width="280" height="280" src={asset(`thumbs/${puzzle.file}.jpg`)} />
         </div>
         <span class="card-title">{hidden ? t(settings.language, 'mystery') : puzzle.title}</span>
         <span class="meta">

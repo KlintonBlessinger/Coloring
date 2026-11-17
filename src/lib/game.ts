@@ -1,10 +1,10 @@
 import { Sfx, buzz } from './audio';
 import { base64ToBytes, bytesToBase64, decodeOrder, encodeOrder } from './codec';
-import { getPuzzle } from './catalog';
+import { loadPuzzle } from './catalog';
 import { nextHintRegion } from './hint';
 import { Renderer } from './renderer';
 import type { Settings } from './settings';
-import { progressFits, regionMapKey } from './progress';
+import { progressFits, SAVE_VERSION } from './progress';
 import { clearProgress, loadProgress, saveProgress, type ProgressSave } from './storage';
 import type { DecodedPuzzle } from './types';
 
@@ -102,8 +102,8 @@ export class Game {
     bigNumbers: boolean,
     hooks: GameHooks,
   ): Promise<Game | null> {
-    const puzzle = getPuzzle(id);
-    if (!puzzle) return null;
+    const puzzle = await loadPuzzle(id);
+    if (!puzzle || !canvas.isConnected) return null;
     const game = new Game(canvas, puzzle, bigNumbers, hooks);
     const save = await loadProgress(id);
     if (game.dead) {
@@ -281,7 +281,7 @@ export class Game {
       this.selected = this.pickStart();
       return;
     }
-    const mapKey = regionMapKey(this.puzzle.width, this.puzzle.height, this.puzzle.labels, this.filled.length);
+    const mapKey = this.puzzle.map;
     if (!progressFits(save, this.filled.length, mapKey)) {
       this.filled.fill(0);
       this.order = [];
@@ -545,7 +545,8 @@ export class Game {
       order: encodeOrder(this.order),
       selected: this.selected,
       updatedAt: Date.now(),
-      map: regionMapKey(this.puzzle.width, this.puzzle.height, this.puzzle.labels, this.filled.length),
+      v: SAVE_VERSION,
+      map: this.puzzle.map,
     };
   }
 

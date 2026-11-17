@@ -94,9 +94,9 @@ test('the art manifest covers every picture and at least five mysteries', () => 
     pictures: ArtRecord[];
   };
   const puzzles = fs
-    .readdirSync(path.join(process.cwd(), 'src/puzzles'))
+    .readdirSync(path.join(process.cwd(), 'public/puzzles'))
     .filter((name) => name.endsWith('.json'))
-    .map((name) => JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles', name), 'utf8')) as PuzzleFile);
+    .map((name) => JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/puzzles', name), 'utf8')) as PuzzleFile);
   const ids = new Set(puzzles.map((puzzle) => puzzle.id));
   const normal = manifest.pictures.filter((picture) => !picture.mystery);
   assert.equal(normal.length, puzzles.length);
@@ -183,7 +183,7 @@ test('a picture mode wins, and math keeps the settings difficulty', () => {
   assert.equal(normal.numberStyle, 'plain');
   assert.equal(normal.labels, 'numbers');
   assert.equal(normal.language, 'es');
-  const empty = { filled: bytesToBase64(new Uint8Array([0, 0, 0])), order: '', selected: 0, updatedAt: 1 };
+  const empty = { v: 2, filled: bytesToBase64(new Uint8Array([0, 0, 0])), order: '', selected: 0, updatedAt: 1 };
   const started = { ...empty, filled: bytesToBase64(new Uint8Array([0, 1, 0])) };
   assert.equal(hasFills(null, 3), false);
   assert.equal(hasFills(empty, 3), false);
@@ -261,9 +261,18 @@ test('math practice skips +0 and ×1 unless nothing else works', () => {
     counts.set(mark.text, (counts.get(mark.text) ?? 0) + 1);
   }
   assert.ok(counts.size > 6);
-  const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles/flowers-lotus-pond.json'), 'utf8')) as PuzzleFile;
+  const lotusFile = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/puzzles/flowers-lotus-pond.json'), 'utf8')) as {
+    palette: { n: number; hex: string }[];
+    regions: { n: number }[];
+  };
+  const lotusPalette = lotusFile.palette.slice().sort((a, b) => a.n - b.n);
+  const lotusIndex = new Map(lotusPalette.map((item, index) => [item.n, index]));
   const lotusMarks = regionMarks(
-    { id: 'flowers-lotus-pond', palette: lotus.palette, regionColors: lotus.regionColors },
+    {
+      id: 'flowers-lotus-pond',
+      palette: lotusPalette.map((item) => item.hex),
+      regionColors: lotusFile.regions.map((region) => lotusIndex.get(region.n) ?? 0),
+    },
     { numberStyle: 'times', labels: 'numbers', language: 'en', mathRange: 'times10' },
   );
   const factCounts = new Map<string, number>();
@@ -292,9 +301,12 @@ test('color names and sight words are unique, and Spanish differs', () => {
   assert.equal(colorNames(['#72a57c'], 'es')[0], 'verde');
   assert.equal(colorNames(['#f799a5'], 'en')[0], 'pink');
   assert.equal(colorNames(['#f799a5'], 'es')[0], 'rosa');
-  const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles/flowers-lotus-pond.json'), 'utf8')) as PuzzleFile;
-  const lotusEn = colorNames(lotus.palette, 'en');
-  const lotusEs = colorNames(lotus.palette, 'es');
+  const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/puzzles/flowers-lotus-pond.json'), 'utf8')) as {
+    palette: { n: number; hex: string }[];
+  };
+  const lotusColors = lotus.palette.slice().sort((a, b) => a.n - b.n).map((item) => item.hex);
+  const lotusEn = colorNames(lotusColors, 'en');
+  const lotusEs = colorNames(lotusColors, 'es');
   assert.ok(lotusEn.some((name) => /green/.test(name)), lotusEn.join(', '));
   assert.ok(lotusEs.some((name) => /verde/.test(name)), lotusEs.join(', '));
   assert.ok(lotusEn.some((name) => /pink/.test(name)), lotusEn.join(', '));
@@ -311,9 +323,10 @@ test('color names and sight words are unique, and Spanish differs', () => {
   assert.ok(words.includes('and'));
   assert.ok(palabras.includes('el'));
   assert.notDeepEqual(words, palabras);
-  const dir = path.join(process.cwd(), 'src/puzzles');
+  const dir = path.join(process.cwd(), 'public/puzzles');
   for (const name of fs.readdirSync(dir).filter((file) => file.endsWith('.json'))) {
-    const palette = (JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as PuzzleFile).palette;
+    const file = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as { palette: { n: number; hex: string }[] };
+    const palette = file.palette.slice().sort((a, b) => a.n - b.n).map((item) => item.hex);
     for (const language of ['en', 'es'] as const) {
       const names = colorNames(palette, language);
       assert.equal(new Set(names).size, names.length, `${name} ${language}`);
