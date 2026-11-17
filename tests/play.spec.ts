@@ -616,9 +616,12 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   const timesLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-label'))));
   for (const label of timesLabels) {
     expect(label).toBeGreaterThanOrEqual(4);
-    expect(label).toBeLessThanOrEqual(100);
+    expect(label).toBeLessThanOrEqual(60);
     expect(label).not.toBe(1);
+    expect(label).not.toBe(81);
+    expect(label).not.toBe(100);
   }
+  expect(new Set(timesLabels).size).toBe(timesLabels.length);
   await page.locator(`.swatch[data-index="${biggest}"]`).click();
   await page.getByTestId('hint').click();
   await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
@@ -635,9 +638,9 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await expect(page.locator('.sub')).toContainText('Flores');
   await expect(page.getByTestId('hint')).toHaveText('Pista');
   const spanishLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-label') ?? ''));
-  expect(spanishLabels.join(' ')).toMatch(/rosa|verde|salvia|menta|crema|dorado|cian/);
-  expect(spanishLabels.join(' ')).not.toMatch(/\bgris\b/);
-  expect(spanishLabels[3] ?? '').not.toMatch(/durazno/);
+  expect(spanishLabels.join(' ')).toMatch(/rosa|verde|turquesa|dorado/);
+  expect(spanishLabels.join(' ')).not.toMatch(/salvia|rubor|musgo|salmón|cian|jade|ola|durazno|gris/);
+  expect(spanishLabels[3] ?? '').toMatch(/rosa/);
   expect(spanishLabels.some((label) => /^\d+$/.test(label))).toBe(false);
   await page.locator('.swatch[data-index="0"]').click();
   const spokenEs = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');

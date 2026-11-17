@@ -5,7 +5,7 @@ import test from 'node:test';
 import { formatFavoritesShare } from '../../src/lib/favorites-share';
 import { nextHintRegion } from '../../src/lib/hint';
 import { bytesToBase64 } from '../../src/lib/codec';
-import { answerBank, colorNames, mathProblem, paletteMarks, problemChoices, problemValue, regionMarks, sightWord } from '../../src/lib/labels';
+import { answerBank, colorNames, mathProblem, paletteMarks, practiceAnswers, problemChoices, problemValue, regionMarks, sightWord } from '../../src/lib/labels';
 import { applyPictureMode, hasFills } from '../../src/lib/picture-mode';
 import { DEFAULT_SETTINGS } from '../../src/lib/settings';
 import { parseBackup } from '../../src/lib/storage';
@@ -195,7 +195,18 @@ test('math practice skips +0 and ×1 unless nothing else works', () => {
   const times5 = answerBank('times5');
   assert.ok(times5.includes(25));
   assert.ok(!times5.includes(7) && !times5.includes(11));
-  assert.ok(Math.max(...times5) <= 25);
+  assert.ok(Math.min(...times5) >= 4 && Math.max(...times5) <= 25);
+  const times10 = answerBank('times10');
+  assert.ok(times10.every((answer) => answer >= 4 && answer <= 60));
+  assert.ok(!times10.includes(80) && !times10.includes(81) && !times10.includes(90) && !times10.includes(100));
+  for (const answer of times10) assert.ok(problemChoices('times', answer, 'times10').length >= 2, String(answer));
+  const lotusTimes = practiceAnswers(15, 'times10', 'flowers-lotus-pond');
+  assert.equal(new Set(lotusTimes).size, lotusTimes.length);
+  assert.ok(lotusTimes.every((answer) => answer >= 6 && answer <= 40));
+  const longTimes = practiceAnswers(28, 'times10', 'animals-cat-window');
+  assert.ok(longTimes.filter((answer) => answer === 81).length <= 1);
+  assert.ok(longTimes.filter((answer) => answer === 100).length <= 1);
+  assert.ok(longTimes.every((answer) => answer <= 60));
   const seen = new Set<string>();
   for (let region = 0; region < 16; region++) {
     const text = mathProblem('adding', 8, region, 'flowers-lotus-pond', 'add20');
@@ -233,6 +244,21 @@ test('math practice skips +0 and ×1 unless nothing else works', () => {
     counts.set(mark.text, (counts.get(mark.text) ?? 0) + 1);
   }
   assert.ok(counts.size > 6);
+  const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles/flowers-lotus-pond.json'), 'utf8')) as PuzzleFile;
+  const lotusMarks = regionMarks(
+    { id: 'flowers-lotus-pond', palette: lotus.palette, regionColors: lotus.regionColors },
+    { numberStyle: 'times', labels: 'numbers', language: 'en', mathRange: 'times10' },
+  );
+  const factCounts = new Map<string, number>();
+  for (const mark of lotusMarks) {
+    assert.equal(mark.kind, 'text');
+    if (mark.kind !== 'text') continue;
+    assert.notEqual(mark.text, '10×10');
+    assert.notEqual(mark.text, '9×9');
+    factCounts.set(mark.text, (factCounts.get(mark.text) ?? 0) + 1);
+  }
+  const busiest = Math.max(...factCounts.values());
+  assert.ok(busiest / lotusMarks.length < 0.2, String(busiest));
 });
 
 test('color names and sight words are unique, and Spanish differs', () => {
@@ -241,19 +267,26 @@ test('color names and sight words are unique, and Spanish differs', () => {
   assert.equal(new Set(english).size, english.length);
   assert.equal(new Set(spanish).size, spanish.length);
   assert.ok(english.includes('red'));
-  assert.ok(spanish.some((name) => name.includes('rojo')));
+  assert.ok(english.some((name) => name === 'light red' || name === 'dark red'));
+  assert.ok(spanish.some((name) => name === 'rojo' || name.startsWith('rojo ')));
+  assert.ok(spanish.some((name) => name === 'rojo claro' || name === 'rojo oscuro'));
   assert.notDeepEqual(english, spanish);
-  assert.equal(colorNames(['#72a57c'], 'en')[0], 'sage');
-  assert.notEqual(colorNames(['#72a57c'], 'es')[0], 'gris');
-  assert.match(colorNames(['#f799a5'], 'en')[0] ?? '', /pink|blush|coral/);
-  assert.notEqual(colorNames(['#f799a5'], 'en')[0], 'peach');
+  assert.equal(colorNames(['#72a57c'], 'en')[0], 'green');
+  assert.equal(colorNames(['#72a57c'], 'es')[0], 'verde');
+  assert.equal(colorNames(['#f799a5'], 'en')[0], 'pink');
+  assert.equal(colorNames(['#f799a5'], 'es')[0], 'rosa');
   const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles/flowers-lotus-pond.json'), 'utf8')) as PuzzleFile;
   const lotusEn = colorNames(lotus.palette, 'en');
   const lotusEs = colorNames(lotus.palette, 'es');
-  assert.equal(lotusEn[1], 'sage');
-  assert.equal(lotusEs[1], 'salvia');
-  assert.match(lotusEn[3] ?? '', /pink|blush|coral/);
-  assert.ok(!lotusEs.some((name) => name === 'gris' || name === 'gris oscuro'));
+  assert.match(lotusEn[1] ?? '', /green/);
+  assert.match(lotusEs[1] ?? '', /verde/);
+  assert.match(lotusEn[3] ?? '', /pink/);
+  assert.match(lotusEs[3] ?? '', /rosa/);
+  const allowedEn = /^(very )?(light |dark )?(red|orange|yellow|green|blue|purple|pink|brown|black|white|gray|gold|tan|teal)$/;
+  const allowedEs = /^(rojo|naranja|amarillo|verde|azul|morado|rosa|marrón|negro|blanco|gris|dorado|beige|turquesa)( muy)?( claro| oscuro)?$/;
+  assert.ok(lotusEn.every((name) => allowedEn.test(name)), lotusEn.join(', '));
+  assert.ok(lotusEs.every((name) => allowedEs.test(name)), lotusEs.join(', '));
+  assert.ok(!lotusEs.some((name) => /salvia|rubor|musgo|salmón|cian|jade|ola|durazno|gris/.test(name)));
   const words = Array.from({ length: 20 }, (_, index) => sightWord(index, 'en'));
   const palabras = Array.from({ length: 20 }, (_, index) => sightWord(index, 'es'));
   assert.equal(new Set(words).size, words.length);
@@ -267,6 +300,10 @@ test('color names and sight words are unique, and Spanish differs', () => {
     for (const language of ['en', 'es'] as const) {
       const names = colorNames(palette, language);
       assert.equal(new Set(names).size, names.length, `${name} ${language}`);
+      const allowed = language === 'en'
+        ? /^(very )?(light |dark )?(red|orange|yellow|green|blue|purple|pink|brown|black|white|gray|gold|tan|teal)$/
+        : /^(rojo|naranja|amarillo|verde|azul|morado|rosa|marrón|negro|blanco|gris|dorado|beige|turquesa)( muy)?( claro| oscuro)?$/;
+      assert.ok(names.every((label) => allowed.test(label)), `${name} ${language} ${names.join(', ')}`);
       const spoken = palette.map((_, index) => sightWord(index, language));
       assert.equal(new Set(spoken).size, spoken.length, `${name} words ${language}`);
     }

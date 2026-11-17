@@ -28,7 +28,7 @@ export interface Settings {
   labels: LabelMode;
   /** UI language, spoken voice, and which fact list to read. Kept separate for a future per-child profile. */
   language: Language;
-  /** Adding to 10 or 20, or times tables through 5×5 or 10×10. */
+  /** Adding to 10 or 20, or times tables through 5×5 or a friendlier 10×10 set. */
   mathRange: MathRange;
 }
 

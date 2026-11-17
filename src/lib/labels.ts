@@ -16,60 +16,52 @@ export interface LabelSettings {
   mathRange: MathRange;
 }
 
-interface SwatchName {
-  id: string;
-  en: string;
-  es: string;
-  /** Preferred OKLCH hue in degrees. Neutrals ignore hue. */
-  h: number;
-  l: number;
-  c: number;
-  neutral?: boolean;
-}
+type Family = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink' | 'brown' | 'black' | 'white' | 'gray' | 'gold' | 'tan' | 'teal';
 
-/** About 30 kid-friendly names. One word each, with a Spanish pair. */
-const NAMES: SwatchName[] = [
-  { id: 'red', en: 'red', es: 'rojo', h: 25, l: 0.55, c: 0.18 },
-  { id: 'pink', en: 'pink', es: 'rosa', h: 8, l: 0.78, c: 0.12 },
-  { id: 'fuchsia', en: 'fuchsia', es: 'fucsia', h: 350, l: 0.62, c: 0.15 },
-  { id: 'salmon', en: 'salmon', es: 'salmón', h: 28, l: 0.74, c: 0.1 },
-  { id: 'blush', en: 'blush', es: 'rubor', h: 18, l: 0.86, c: 0.06 },
-  { id: 'coral', en: 'coral', es: 'coral', h: 36, l: 0.68, c: 0.14 },
-  { id: 'maroon', en: 'maroon', es: 'vino', h: 22, l: 0.4, c: 0.12 },
-  { id: 'orange', en: 'orange', es: 'naranja', h: 58, l: 0.72, c: 0.16 },
-  { id: 'peach', en: 'peach', es: 'durazno', h: 54, l: 0.82, c: 0.09 },
-  { id: 'rust', en: 'rust', es: 'cobre', h: 45, l: 0.5, c: 0.1 },
-  { id: 'gold', en: 'gold', es: 'dorado', h: 85, l: 0.82, c: 0.12 },
-  { id: 'yellow', en: 'yellow', es: 'amarillo', h: 98, l: 0.88, c: 0.16 },
-  { id: 'lemon', en: 'lemon', es: 'limón', h: 105, l: 0.9, c: 0.13 },
-  { id: 'lime', en: 'lime', es: 'lima', h: 128, l: 0.75, c: 0.16 },
-  { id: 'green', en: 'green', es: 'verde', h: 146, l: 0.55, c: 0.14 },
-  { id: 'sage', en: 'sage', es: 'salvia', h: 150, l: 0.7, c: 0.07 },
-  { id: 'moss', en: 'moss', es: 'musgo', h: 145, l: 0.58, c: 0.09 },
-  { id: 'olive', en: 'olive', es: 'oliva', h: 125, l: 0.45, c: 0.08 },
-  { id: 'mint', en: 'mint', es: 'menta', h: 172, l: 0.82, c: 0.055 },
-  { id: 'jade', en: 'jade', es: 'jade', h: 168, l: 0.62, c: 0.09 },
-  { id: 'teal', en: 'teal', es: 'cian', h: 190, l: 0.58, c: 0.09 },
-  { id: 'sea', en: 'sea', es: 'mar', h: 188, l: 0.48, c: 0.08 },
-  { id: 'aqua', en: 'aqua', es: 'agua', h: 192, l: 0.74, c: 0.08 },
-  { id: 'wave', en: 'wave', es: 'ola', h: 198, l: 0.66, c: 0.085 },
-  { id: 'sky', en: 'sky', es: 'cielo', h: 220, l: 0.72, c: 0.09 },
-  { id: 'blue', en: 'blue', es: 'azul', h: 260, l: 0.55, c: 0.15 },
-  { id: 'navy', en: 'navy', es: 'marino', h: 262, l: 0.35, c: 0.11 },
-  { id: 'purple', en: 'purple', es: 'morado', h: 300, l: 0.5, c: 0.15 },
-  { id: 'lilac', en: 'lilac', es: 'lila', h: 312, l: 0.75, c: 0.1 },
-  { id: 'plum', en: 'plum', es: 'ciruela', h: 335, l: 0.42, c: 0.1 },
-  { id: 'brown', en: 'brown', es: 'café', h: 55, l: 0.42, c: 0.08 },
-  { id: 'tan', en: 'tan', es: 'beige', h: 70, l: 0.75, c: 0.05 },
-  { id: 'sand', en: 'sand', es: 'arena', h: 80, l: 0.82, c: 0.06 },
-  { id: 'cream', en: 'cream', es: 'crema', h: 60, l: 0.93, c: 0.025 },
-  { id: 'ice', en: 'ice', es: 'hielo', h: 230, l: 0.92, c: 0.03 },
-  { id: 'white', en: 'white', es: 'blanco', h: 0, l: 0.97, c: 0.005, neutral: true },
-  { id: 'silver', en: 'silver', es: 'plata', h: 0, l: 0.78, c: 0, neutral: true },
-  { id: 'gray', en: 'gray', es: 'gris', h: 0, l: 0.62, c: 0, neutral: true },
-  { id: 'charcoal', en: 'charcoal', es: 'carbón', h: 0, l: 0.38, c: 0, neutral: true },
-  { id: 'black', en: 'black', es: 'negro', h: 0, l: 0.2, c: 0, neutral: true },
+/** The color words a child learns first, plus gold, tan, and teal when a hue needs them. */
+const FAMILIES: Record<Family, { en: string; es: string; h: number; l: number }> = {
+  red: { en: 'red', es: 'rojo', h: 25, l: 0.55 },
+  orange: { en: 'orange', es: 'naranja', h: 58, l: 0.7 },
+  yellow: { en: 'yellow', es: 'amarillo', h: 102, l: 0.88 },
+  green: { en: 'green', es: 'verde', h: 145, l: 0.58 },
+  blue: { en: 'blue', es: 'azul', h: 250, l: 0.55 },
+  purple: { en: 'purple', es: 'morado', h: 305, l: 0.5 },
+  pink: { en: 'pink', es: 'rosa', h: 12, l: 0.78 },
+  brown: { en: 'brown', es: 'marrón', h: 55, l: 0.42 },
+  black: { en: 'black', es: 'negro', h: 0, l: 0.22 },
+  white: { en: 'white', es: 'blanco', h: 0, l: 0.96 },
+  gray: { en: 'gray', es: 'gris', h: 0, l: 0.62 },
+  gold: { en: 'gold', es: 'dorado', h: 85, l: 0.82 },
+  tan: { en: 'tan', es: 'beige', h: 75, l: 0.78 },
+  teal: { en: 'teal', es: 'turquesa', h: 190, l: 0.62 },
+};
+
+const BASIC_HUES: { family: Family; h: number }[] = [
+  { family: 'red', h: 25 },
+  { family: 'orange', h: 58 },
+  { family: 'yellow', h: 102 },
+  { family: 'green', h: 145 },
+  { family: 'teal', h: 190 },
+  { family: 'blue', h: 250 },
+  { family: 'purple', h: 305 },
 ];
+
+const NEIGHBORS: Record<Family, Family[]> = {
+  red: ['pink', 'orange', 'brown'],
+  orange: ['gold', 'red', 'yellow', 'brown'],
+  yellow: ['gold', 'orange', 'green'],
+  green: ['teal', 'yellow'],
+  blue: ['teal', 'purple'],
+  purple: ['pink', 'blue', 'red'],
+  pink: ['red', 'purple'],
+  brown: ['orange', 'tan', 'red'],
+  black: ['gray', 'brown'],
+  white: ['gray', 'tan'],
+  gray: ['white', 'black', 'tan'],
+  gold: ['yellow', 'orange', 'tan'],
+  tan: ['brown', 'yellow', 'gold', 'orange'],
+  teal: ['green', 'blue'],
+};
 
 /** Dolch pre-primer, then primer. */
 const SIGHT_EN = [
@@ -118,18 +110,44 @@ function timesProducts(maxFactor: number): number[] {
   return [...found].sort((a, b) => a - b);
 }
 
+/**
+ * 10×10 answers a child can vary. Each has at least two facts with factors
+ * from 2 to 10, and none is past 60. 81 and 100 stay out so one picture is
+ * not a row of 9×9 and 10×10.
+ */
+const TIMES10_CORE = [6, 8, 12, 16, 18, 20, 24, 30, 36, 40, 10, 14, 15, 21, 28];
+const TIMES10_EXTRA = [32, 35, 42, 45, 48, 50, 54, 56, 60];
+const TIMES10_REPEAT = [12, 16, 18, 20, 24, 30, 36, 40];
+
 export function answerBank(range: MathRange): number[] {
   if (range === 'add10') return ADD_TO_10;
   if (range === 'add20') return ADD_TO_20;
-  if (range === 'times5') return timesProducts(5);
-  return timesProducts(10);
+  if (range === 'times5') return timesProducts(5).filter((answer) => answer >= 4 && answer <= 25);
+  return [...TIMES10_CORE, ...TIMES10_EXTRA];
 }
 
 /** Palette slots show these answers, not 1..N, so practice stays inside the chosen table. */
 export function practiceAnswers(paletteLength: number, range: MathRange, puzzleId: string): number[] {
-  const bank = answerBank(range);
-  const start = hashString(`${puzzleId}:${range}`) % bank.length;
-  return Array.from({ length: paletteLength }, (_, index) => bank[(start + index) % bank.length]!);
+  if (range !== 'times10') {
+    const bank = answerBank(range);
+    const start = hashString(`${puzzleId}:${range}`) % bank.length;
+    return Array.from({ length: paletteLength }, (_, index) => bank[(start + index) % bank.length]!);
+  }
+  const start = hashString(`${puzzleId}:times10`) % TIMES10_CORE.length;
+  const picked: number[] = [];
+  for (let index = 0; index < paletteLength && index < TIMES10_CORE.length; index++) {
+    picked.push(TIMES10_CORE[(start + index) % TIMES10_CORE.length]!);
+  }
+  for (const extra of TIMES10_EXTRA) {
+    if (picked.length >= paletteLength) break;
+    picked.push(extra);
+  }
+  let repeat = hashString(`${puzzleId}:times10:more`) % TIMES10_REPEAT.length;
+  while (picked.length < paletteLength) {
+    picked.push(TIMES10_REPEAT[repeat % TIMES10_REPEAT.length]!);
+    repeat += 1;
+  }
+  return picked;
 }
 
 function addChoices(answer: number): string[] {
@@ -212,101 +230,109 @@ export function problemValue(text: string): number {
   return Number(text);
 }
 
-function nameScore(swatch: SwatchName, sample: ReturnType<typeof hexToOklch>): number {
+function nearestHue(h: number): Family {
+  let best: Family = 'red';
+  let bestDist = Infinity;
+  for (const item of BASIC_HUES) {
+    const dist = hueDistance(h, item.h);
+    if (dist < bestDist) {
+      best = item.family;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+/** One basic color word. Light and dark come later, when two swatches share it. */
+function familyOf(sample: ReturnType<typeof hexToOklch>): Family {
   const { l, c, h } = sample;
-  if (swatch.neutral) {
-    let score = Math.abs(l - swatch.l) * 4 + c * 14;
-    if (c >= 0.025) score += 2.2;
-    const greenish = hueNear(h, 150, 70);
-    const pinkish = hueNear(h, 8, 28);
-    if (c >= 0.02 && (greenish || pinkish) && swatch.id === 'gray') score += 4;
-    return score;
+  if (c < 0.03) {
+    if (l >= 0.9) return 'white';
+    if (l <= 0.28) return 'black';
+    return 'gray';
   }
-  let score = hueDistance(h, swatch.h) / 32 + Math.abs(l - swatch.l) * 2.6 + Math.abs(c - swatch.c) * 7;
-  if (swatch.id === 'peach' && hueNear(h, 10, 22)) score += 2.4;
-  if (swatch.id === 'orange' && hueNear(h, 10, 16) && l > 0.7) score += 1.6;
-  if (swatch.id === 'gold' && hueNear(h, 10, 18)) score += 1.4;
-  if (swatch.id === 'brown' && l > 0.7) score += 1.2;
-  if (swatch.id === 'gray') score += 3;
-  if (c < 0.04 && l > 0.9 && swatch.id !== 'cream' && swatch.id !== 'white' && swatch.id !== 'sand') score += 1.6;
-  return score;
+  if (l < 0.5 && c < 0.14 && hueNear(h, 55, 32)) return 'brown';
+  if (l > 0.76 && c < 0.08 && c >= 0.03 && hueNear(h, 78, 28)) return 'tan';
+  if (l >= 0.68 && hueNear(h, 10, 30)) return 'pink';
+  if (l > 0.74 && c >= 0.08 && h >= 70 && h <= 94) return 'gold';
+  return nearestHue(h);
 }
 
-function rankedNames(hex: string): number[] {
-  const sample = hexToOklch(hex);
-  return NAMES.map((_, index) => index).sort((a, b) => nameScore(NAMES[a]!, sample) - nameScore(NAMES[b]!, sample));
+function fitFamilies(samples: ReturnType<typeof hexToOklch>[]): Family[] {
+  const families = samples.map((sample) => familyOf(sample));
+  for (let guard = 0; guard < samples.length; guard++) {
+    const counts = new Map<Family, number>();
+    for (const family of families) counts.set(family, (counts.get(family) ?? 0) + 1);
+    const crowded = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (!crowded || crowded[1] <= 5) break;
+    const [family] = crowded;
+    let worst = 0;
+    let worstDist = -1;
+    families.forEach((item, index) => {
+      if (item !== family) return;
+      const center = FAMILIES[family].h;
+      const dist = family === 'gray' || family === 'white' || family === 'black' ? Math.abs(samples[index]!.l - FAMILIES[family].l) : hueDistance(samples[index]!.h, center);
+      if (dist > worstDist) {
+        worst = index;
+        worstDist = dist;
+      }
+    });
+    const open = NEIGHBORS[family].find((next) => (counts.get(next) ?? 0) < 5);
+    families[worst] = open ?? NEIGHBORS[family][0]!;
+  }
+  return families;
 }
 
-function acceptable(hex: string, nameIndex: number): boolean {
-  const swatch = NAMES[nameIndex]!;
-  const sample = hexToOklch(hex);
-  if (swatch.neutral) return sample.c < 0.02 && Math.abs(sample.l - swatch.l) < 0.14;
-  if (hueDistance(sample.h, swatch.h) > 26) return false;
-  if (Math.abs(sample.l - swatch.l) > 0.16) return false;
-  if (Math.abs(sample.c - swatch.c) > 0.065) return false;
-  return true;
+type Shade = 'base' | 'light' | 'dark' | 'very-light' | 'very-dark';
+
+function shadeLabel(family: Family, language: Language, shade: Shade): string {
+  const word = language === 'es' ? FAMILIES[family].es : FAMILIES[family].en;
+  if (shade === 'base') return word;
+  if (language === 'es') {
+    if (shade === 'light') return `${word} claro`;
+    if (shade === 'dark') return `${word} oscuro`;
+    if (shade === 'very-light') return `${word} muy claro`;
+    return `${word} muy oscuro`;
+  }
+  if (shade === 'light') return `light ${word}`;
+  if (shade === 'dark') return `dark ${word}`;
+  if (shade === 'very-light') return `very light ${word}`;
+  return `very dark ${word}`;
 }
 
-function shadeLabel(swatch: SwatchName, language: Language, shade: 'light' | 'dark'): string {
-  const word = language === 'es' ? swatch.es : swatch.en;
-  if (language === 'es') return shade === 'light' ? `${word} claro` : `${word} oscuro`;
-  return shade === 'light' ? `light ${word}` : `dark ${word}`;
-}
-
-/** Friendly color words, unique inside one picture, and one word whenever a simple name fits. */
+/** Basic color words. A second swatch of the same color becomes light or dark, then very light or very dark. */
 export function colorNames(palette: string[], language: Language): string[] {
-  const filtered = palette.map((hex) => {
-    const ranked = rankedNames(hex);
-    const ok = ranked.filter((name) => acceptable(hex, name));
-    return ok.length ? ok : ranked.slice(0, 1);
-  });
-  const order = palette.map((_, index) => index).sort((a, b) => {
-    const scoreA = nameScore(NAMES[filtered[a]![0] ?? 0]!, hexToOklch(palette[a]!));
-    const scoreB = nameScore(NAMES[filtered[b]![0] ?? 0]!, hexToOklch(palette[b]!));
-    return scoreA - scoreB;
-  });
-  const claimed = new Set<string>();
+  const samples = palette.map((hex) => hexToOklch(hex));
+  const families = fitFamilies(samples);
   const out = new Array<string>(palette.length);
-  const pending: number[] = [];
-  const labelOf = (nameIndex: number) => (language === 'es' ? NAMES[nameIndex]!.es : NAMES[nameIndex]!.en);
-  for (const index of order) {
-    const choice = filtered[index]!.find((name) => !claimed.has(labelOf(name)));
-    if (choice === undefined) {
-      pending.push(index);
-      continue;
-    }
-    const text = labelOf(choice);
-    claimed.add(text);
-    out[index] = text;
-  }
-  for (const index of pending) {
-    const sample = hexToOklch(palette[index]!);
-    let placed = '';
-    for (const nameIndex of filtered[index] ?? []) {
-      const swatch = NAMES[nameIndex]!;
-      if (swatch.neutral && swatch.id !== 'gray') continue;
-      const shades = sample.l >= swatch.l ? (['light', 'dark'] as const) : (['dark', 'light'] as const);
-      for (const shade of shades) {
-        const text = shadeLabel(swatch, language, shade);
-        if (claimed.has(text)) continue;
-        placed = text;
-        break;
+  const groups = new Map<Family, number[]>();
+  families.forEach((family, index) => {
+    const list = groups.get(family) ?? [];
+    list.push(index);
+    groups.set(family, list);
+  });
+  for (const [family, indexes] of groups) {
+    const sorted = [...indexes].sort((a, b) => samples[a]!.l - samples[b]!.l);
+    const target = FAMILIES[family].l;
+    let basePos = 0;
+    let best = Infinity;
+    sorted.forEach((index, pos) => {
+      const dist = Math.abs(samples[index]!.l - target);
+      if (dist < best) {
+        best = dist;
+        basePos = pos;
       }
-      if (placed) break;
-    }
-    if (!placed) {
-      const swatch = NAMES[filtered[index]![0] ?? 0]!;
-      const word = language === 'es' ? swatch.es : swatch.en;
-      const pale = language === 'es' ? `${word} suave` : `soft ${word}`;
-      placed = claimed.has(pale) ? '' : pale;
-      if (!placed) {
-        placed = word;
-        let n = 2;
-        while (claimed.has(placed)) placed = `${word} ${n++}`;
-      }
-    }
-    claimed.add(placed);
-    out[index] = placed;
+    });
+    const minPos = Math.max(0, sorted.length - 1 - 2);
+    const maxPos = Math.min(2, sorted.length - 1);
+    if (basePos < minPos) basePos = minPos;
+    if (basePos > maxPos) basePos = maxPos;
+    sorted.forEach((index, pos) => {
+      let shade: Shade = 'base';
+      if (pos < basePos) shade = basePos - pos === 1 ? 'dark' : 'very-dark';
+      if (pos > basePos) shade = pos - basePos === 1 ? 'light' : 'very-light';
+      out[index] = shadeLabel(family, language, shade);
+    });
   }
   return out;
 }
