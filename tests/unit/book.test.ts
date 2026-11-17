@@ -155,6 +155,12 @@ test('the art manifest covers every picture and at least five mysteries', () => 
     assert.ok(record?.tags.setting.includes(habitat), id);
     assert.ok((record?.tags.subject.length ?? 0) > 0, id);
   }
+  const realistic = normal.filter((picture) => picture.id.startsWith('realistic-'));
+  assert.equal(realistic.length, 20);
+  for (const record of realistic) {
+    assert.ok(record.tags.setting.includes('realistic'), record.id);
+    assert.ok(record.tags.style.includes('realistic'), record.id);
+  }
   const butterfly = normal.find((picture) => picture.id === 'science-butterfly-life-cycle');
   assert.match(butterfly?.facts.join(' ') ?? '', /milkweed/);
   assert.match(butterfly?.facts.join(' ') ?? '', /chrysalis/);

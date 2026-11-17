@@ -193,5 +193,105 @@
     "file": "christmas-reindeer-sleigh",
     "regions": 611,
     "colors": 40
+  },
+  "realistic-zebras": {
+    "file": "realistic-zebras",
+    "regions": 280,
+    "colors": 19
+  },
+  "realistic-lion-portrait": {
+    "file": "realistic-lion-portrait",
+    "regions": 375,
+    "colors": 26
+  },
+  "realistic-tiger-walking": {
+    "file": "realistic-tiger-walking",
+    "regions": 395,
+    "colors": 34
+  },
+  "realistic-african-elephant": {
+    "file": "realistic-african-elephant",
+    "regions": 321,
+    "colors": 30
+  },
+  "realistic-giraffe-browsing": {
+    "file": "realistic-giraffe-browsing",
+    "regions": 492,
+    "colors": 29
+  },
+  "realistic-cheetah": {
+    "file": "realistic-cheetah",
+    "regions": 503,
+    "colors": 26
+  },
+  "realistic-orangutan-mother-baby": {
+    "file": "realistic-orangutan-mother-baby",
+    "regions": 409,
+    "colors": 32
+  },
+  "realistic-red-fox-snow": {
+    "file": "realistic-red-fox-snow",
+    "regions": 390,
+    "colors": 23
+  },
+  "realistic-gray-wolf": {
+    "file": "realistic-gray-wolf",
+    "regions": 525,
+    "colors": 23
+  },
+  "realistic-bald-eagle": {
+    "file": "realistic-bald-eagle",
+    "regions": 413,
+    "colors": 31
+  },
+  "realistic-snowy-owl": {
+    "file": "realistic-snowy-owl",
+    "regions": 293,
+    "colors": 21
+  },
+  "realistic-scarlet-macaw-flight": {
+    "file": "realistic-scarlet-macaw-flight",
+    "regions": 337,
+    "colors": 40
+  },
+  "realistic-peacock": {
+    "file": "realistic-peacock",
+    "regions": 438,
+    "colors": 34
+  },
+  "realistic-flamingos": {
+    "file": "realistic-flamingos",
+    "regions": 384,
+    "colors": 40
+  },
+  "realistic-sea-turtle-reef": {
+    "file": "realistic-sea-turtle-reef",
+    "regions": 451,
+    "colors": 36
+  },
+  "realistic-humpback-breaching": {
+    "file": "realistic-humpback-breaching",
+    "regions": 285,
+    "colors": 38
+  },
+  "realistic-dolphins-sunset": {
+    "file": "realistic-dolphins-sunset",
+    "regions": 344,
+    "colors": 40
+  },
+  "realistic-koala": {
+    "file": "realistic-koala",
+    "regions": 400,
+    "colors": 21
+  },
+  "realistic-giant-panda": {
+    "file": "realistic-giant-panda",
+    "regions": 293,
+    "colors": 28
+  },
+  "realistic-horse-galloping": {
+    "file": "realistic-horse-galloping",
+    "regions": 401,
+    "colors": 30
   }
 }

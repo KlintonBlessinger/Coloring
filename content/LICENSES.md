@@ -55,3 +55,23 @@ To turn a family photo into a puzzle, run:
 npm run make-puzzle -- --input photo.jpg --title "Sunday" --category Food --difficulty medium --out src/puzzles/sunday.json --thumb content/thumbs/sunday.png
 ```
 
+| `content/sources/realistic-lion-portrait.jpg` | Lion Portrait | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-tiger-walking.jpg` | Tiger in the Grass | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-african-elephant.jpg` | African Elephant | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-giraffe-browsing.jpg` | Giraffe Snack Time | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-zebras.jpg` | Zebra Friends | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-cheetah.jpg` | Cheetah Lookout | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-orangutan-mother-baby.jpg` | Orangutan Mom and Baby | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-red-fox-snow.jpg` | Red Fox in the Snow | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-gray-wolf.jpg` | Gray Wolf | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-bald-eagle.jpg` | Bald Eagle | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-snowy-owl.jpg` | Snowy Owl | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-scarlet-macaw-flight.jpg` | Scarlet Macaw in Flight | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-peacock.jpg` | Proud Peacock | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-flamingos.jpg` | Flamingo Lagoon | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-sea-turtle-reef.jpg` | Sea Turtle Swim | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-humpback-breaching.jpg` | Humpback Whale Leap | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-dolphins-sunset.jpg` | Dolphins at Sunset | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-koala.jpg` | Koala in a Eucalyptus Tree | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-giant-panda.jpg` | Giant Panda | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-horse-galloping.jpg` | Galloping Horse | Original project art | Original, made for Color Cozy |

@@ -1670,6 +1670,786 @@
         "El líder Wampanoag era Ousamequin, también llamado Massasoit. Asistieron unos 90 hombres Wampanoag.",
         "La comida probablemente incluyó venado que trajeron los Wampanoag, y aves silvestres."
       ]
-    }
+    },
+      {
+        "id": "realistic-lion-portrait",
+        "title": "Lion Portrait",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "lion"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "warm"
+          ],
+          "palette": [
+            "gold",
+            "amber",
+            "brown"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "A lion's roar can be heard up to 5 miles (8 km) away.",
+          "Lions are the only big cats that live in family groups called prides."
+        ],
+        "factsEs": [
+          "El rugido de un león se oye hasta a 8 km (5 millas).",
+          "Los leones son los únicos grandes felinos que viven en familias llamadas manadas."
+        ]
+      },
+      {
+        "id": "realistic-tiger-walking",
+        "title": "Tiger in the Grass",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "tiger"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "lush"
+          ],
+          "palette": [
+            "orange",
+            "black",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "No two tigers have the same stripes, just like fingerprints.",
+          "Tigers are the biggest cats in the world, and they love to swim."
+        ],
+        "factsEs": [
+          "No hay dos tigres con las mismas rayas, igual que las huellas dactilares.",
+          "Los tigres son los felinos más grandes del mundo y les encanta nadar."
+        ]
+      },
+      {
+        "id": "realistic-african-elephant",
+        "title": "African Elephant",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "elephant"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "warm"
+          ],
+          "palette": [
+            "gray",
+            "dust",
+            "blue"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "African elephants are the largest land animals on Earth.",
+          "An elephant's trunk has tens of thousands of muscles and can pick up a single peanut."
+        ],
+        "factsEs": [
+          "Los elefantes africanos son los animales terrestres más grandes de la Tierra.",
+          "La trompa de un elefante tiene decenas de miles de músculos y puede recoger un solo cacahuete."
+        ]
+      },
+      {
+        "id": "realistic-giraffe-browsing",
+        "title": "Giraffe Snack Time",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "giraffe"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "warm"
+          ],
+          "palette": [
+            "gold",
+            "brown",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Giraffes are the tallest animals on Earth.",
+          "A giraffe's tongue can be about 18 to 20 inches (45 to 50 cm) long, perfect for grabbing leaves."
+        ],
+        "factsEs": [
+          "Las jirafas son los animales más altos de la Tierra.",
+          "La lengua de una jirafa puede medir unos 45 a 50 cm, perfecta para agarrar hojas."
+        ]
+      },
+      {
+        "id": "realistic-zebras",
+        "title": "Zebra Friends",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "zebra"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "warm"
+          ],
+          "palette": [
+            "black",
+            "white",
+            "tan"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Every zebra has its own unique stripe pattern.",
+          "Zebras often rest their heads on each other's backs to watch for danger in every direction."
+        ],
+        "factsEs": [
+          "Cada cebra tiene su propio patrón de rayas.",
+          "Las cebras suelen apoyar la cabeza en el lomo de otra para vigilar el peligro en todas direcciones."
+        ]
+      },
+      {
+        "id": "realistic-cheetah",
+        "title": "Cheetah Lookout",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "cheetah"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "warm"
+          ],
+          "palette": [
+            "gold",
+            "black",
+            "tan"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Cheetahs are the fastest land animals and can sprint about 60 to 70 mph (100 to 112 km/h).",
+          "The black 'tear lines' on a cheetah's face help block the sun's glare."
+        ],
+        "factsEs": [
+          "Los guepardos son los animales terrestres más rápidos y pueden correr a unos 100 a 112 km/h.",
+          "Las líneas negras de lágrimas en la cara del guepardo ayudan a bloquear el brillo del sol."
+        ]
+      },
+      {
+        "id": "realistic-orangutan-mother-baby",
+        "title": "Orangutan Mom and Baby",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "orangutan"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "lush"
+          ],
+          "palette": [
+            "rust",
+            "brown",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Baby orangutans stay with their moms for about 7 or 8 years.",
+          "Orangutans build a fresh leafy nest to sleep in high in the trees almost every night."
+        ],
+        "factsEs": [
+          "Las crías de orangután se quedan con su madre unos 7 u 8 años.",
+          "Los orangutanes construyen un nido de hojas fresco para dormir en lo alto de los árboles casi cada noche."
+        ]
+      },
+      {
+        "id": "realistic-red-fox-snow",
+        "title": "Red Fox in the Snow",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "fox"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "quiet",
+            "wild"
+          ],
+          "palette": [
+            "orange",
+            "white",
+            "gray"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Red foxes can hear a mouse squeak under the snow and pounce on it.",
+          "A fox wraps its bushy tail around itself like a blanket to stay warm."
+        ],
+        "factsEs": [
+          "Los zorros rojos pueden oír el chillido de un ratón bajo la nieve y saltar sobre él.",
+          "Un zorro se envuelve en su cola espesa como si fuera una manta para entrar en calor."
+        ]
+      },
+      {
+        "id": "realistic-gray-wolf",
+        "title": "Gray Wolf",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "wolf"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "quiet",
+            "wild"
+          ],
+          "palette": [
+            "gray",
+            "cream",
+            "brown"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Wolves live and hunt in family groups called packs.",
+          "A wolf's howl helps its pack find each other, even miles apart."
+        ],
+        "factsEs": [
+          "Los lobos viven y cazan en grupos familiares llamados manadas.",
+          "El aullido de un lobo ayuda a su manada a encontrarse, incluso a kilómetros de distancia."
+        ]
+      },
+      {
+        "id": "realistic-bald-eagle",
+        "title": "Bald Eagle",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "eagle"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "bright",
+            "wild"
+          ],
+          "palette": [
+            "white",
+            "brown",
+            "gold"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Bald eagles aren't really bald; their heads are covered in white feathers.",
+          "Bald eagles build the biggest nests of any North American bird, sometimes heavier than a car."
+        ],
+        "factsEs": [
+          "Las águilas calvas no están calvas; su cabeza está cubierta de plumas blancas.",
+          "Las águilas calvas construyen los nidos más grandes de cualquier ave de América del Norte, a veces más pesados que un coche."
+        ]
+      },
+      {
+        "id": "realistic-snowy-owl",
+        "title": "Snowy Owl",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "owl"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "bright",
+            "wild"
+          ],
+          "palette": [
+            "white",
+            "gold",
+            "gray"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Unlike most owls, snowy owls hunt during the day.",
+          "Snowy owls have feathers on their feet that work like cozy slippers."
+        ],
+        "factsEs": [
+          "A diferencia de la mayoría de los búhos, los búhos nivales cazan de día.",
+          "Los búhos nivales tienen plumas en las patas que funcionan como pantuflas calentitas."
+        ]
+      },
+      {
+        "id": "realistic-scarlet-macaw-flight",
+        "title": "Scarlet Macaw in Flight",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "macaw"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "bright",
+            "wild"
+          ],
+          "palette": [
+            "red",
+            "blue",
+            "yellow"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Scarlet macaws can live 40 to 50 years in the wild.",
+          "Macaws use their strong beaks like a third foot when they climb."
+        ],
+        "factsEs": [
+          "Los guacamayos rojos pueden vivir de 40 a 50 años en libertad.",
+          "Los guacamayos usan su pico fuerte como un tercer pie cuando trepan."
+        ]
+      },
+      {
+        "id": "realistic-peacock",
+        "title": "Proud Peacock",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "peacock"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "bright",
+            "wild"
+          ],
+          "palette": [
+            "teal",
+            "green",
+            "gold"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Only the males, called peacocks, have the giant colorful tail.",
+          "A peacock's tail has around 200 feathers, many with shiny 'eyespots'."
+        ],
+        "factsEs": [
+          "Solo los machos, llamados pavos reales, tienen la enorme cola de colores.",
+          "La cola de un pavo real tiene unas 200 plumas, muchas con ojos brillantes."
+        ]
+      },
+      {
+        "id": "realistic-flamingos",
+        "title": "Flamingo Lagoon",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "flamingo"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "bright",
+            "wild"
+          ],
+          "palette": [
+            "pink",
+            "blue",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Flamingos are pink because of the tiny shrimp and algae they eat.",
+          "Flamingos often stand on one leg, which may help them save energy."
+        ],
+        "factsEs": [
+          "Los flamencos son rosados por los camarones diminutos y las algas que comen.",
+          "Los flamencos suelen estar de pie sobre una pata, lo que puede ayudarles a ahorrar energía."
+        ]
+      },
+      {
+        "id": "realistic-sea-turtle-reef",
+        "title": "Sea Turtle Swim",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "sea turtle"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "wild"
+          ],
+          "palette": [
+            "green",
+            "teal",
+            "sand"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Green sea turtles get their name from the greenish color of their body fat, not their shells.",
+          "Sea turtles have lived in the oceans since the time of the dinosaurs."
+        ],
+        "factsEs": [
+          "Las tortugas verdes deben su nombre al color verdoso de su grasa, no al de su caparazón.",
+          "Las tortugas marinas viven en los océanos desde la época de los dinosaurios."
+        ]
+      },
+      {
+        "id": "realistic-humpback-breaching",
+        "title": "Humpback Whale Leap",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "whale"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "wild"
+          ],
+          "palette": [
+            "blue",
+            "gray",
+            "white"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Humpback whales have the longest flippers of any whale, up to about 16 feet (5 m).",
+          "Male humpbacks sing long songs that can travel for miles underwater."
+        ],
+        "factsEs": [
+          "Las ballenas jorobadas tienen las aletas más largas de cualquier ballena, de hasta unos 5 m.",
+          "Los machos de ballena jorobada cantan canciones largas que pueden viajar kilómetros bajo el agua."
+        ]
+      },
+      {
+        "id": "realistic-dolphins-sunset",
+        "title": "Dolphins at Sunset",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "dolphin"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "wild"
+          ],
+          "palette": [
+            "blue",
+            "orange",
+            "gold"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Dolphins sleep with half of their brain at a time so they can keep breathing.",
+          "Each bottlenose dolphin has its own signature whistle, like a name."
+        ],
+        "factsEs": [
+          "Los delfines duermen con la mitad del cerebro a la vez para poder seguir respirando.",
+          "Cada delfín mular tiene su propio silbido, como un nombre."
+        ]
+      },
+      {
+        "id": "realistic-koala",
+        "title": "Koala in a Eucalyptus Tree",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "koala"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "quiet",
+            "wild"
+          ],
+          "palette": [
+            "gray",
+            "green",
+            "cream"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Koalas sleep up to 18 to 22 hours a day.",
+          "Koalas eat almost only eucalyptus leaves."
+        ],
+        "factsEs": [
+          "Los koalas duermen hasta 18 o 22 horas al día.",
+          "Los koalas comen casi solo hojas de eucalipto."
+        ]
+      },
+      {
+        "id": "realistic-giant-panda",
+        "title": "Giant Panda",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "panda"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "quiet",
+            "wild"
+          ],
+          "palette": [
+            "black",
+            "white",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "A giant panda can spend 10 to 16 hours a day eating bamboo.",
+          "Pandas have a special wrist bone that works like a thumb for holding bamboo."
+        ],
+        "factsEs": [
+          "Un panda gigante puede pasar de 10 a 16 horas al día comiendo bambú.",
+          "Los pandas tienen un hueso especial en la muñeca que funciona como un pulgar para sujetar el bambú."
+        ]
+      },
+      {
+        "id": "realistic-horse-galloping",
+        "title": "Galloping Horse",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "horse"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "lively",
+            "warm"
+          ],
+          "palette": [
+            "brown",
+            "cream",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Horses can sleep standing up.",
+          "When a horse gallops, there's a moment when all four hooves are off the ground."
+        ],
+        "factsEs": [
+          "Los caballos pueden dormir de pie.",
+          "Cuando un caballo galopa, hay un momento en que las cuatro pezuñas están en el aire."
+        ]
+      }
   ]
 }

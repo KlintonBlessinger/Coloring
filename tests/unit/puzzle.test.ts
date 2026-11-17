@@ -188,7 +188,7 @@ test('a rebuilt region map drops the old progress', () => {
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
-  assert.equal(files.length, 39);
+  assert.equal(files.length, 59);
   const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as VectorPuzzle);
   for (const category of CATEGORIES) {
     assert.ok(
@@ -210,7 +210,7 @@ test('starter puzzles cover every shelf', () => {
     'animals-cat-window': 'hard',
   };
   for (const puzzle of puzzles) {
-    assert.equal(puzzle.mode, 'lineart');
+    assert.equal(puzzle.mode, puzzle.id.startsWith('realistic-') ? 'tonal' : 'lineart');
     assert.equal(puzzle.w, 1024);
     assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 40, `${puzzle.id} ${puzzle.palette.length} colors`);
     assert.ok(puzzle.regions.length >= 30, puzzle.id);
@@ -226,15 +226,17 @@ test('starter puzzles cover every shelf', () => {
     id: string;
     meanDE76: number;
     coverage: number;
+    borderOpen: number;
     colors: number;
     smallRadiusFraction: number;
     ok: boolean;
   }[];
-  assert.equal(scores.length, 39);
+  assert.equal(scores.length, 59);
   for (const score of scores) {
     assert.equal(score.ok, true, score.id);
     assert.ok(score.meanDE76 <= 6, `${score.id} deltaE ${score.meanDE76}`);
     assert.ok(score.coverage >= 0.995, score.id);
+    assert.equal(score.borderOpen, 0, score.id);
     assert.ok(score.colors <= 40, score.id);
     assert.ok(score.smallRadiusFraction <= 0.03, score.id);
     console.log(`${score.id} deltaE ${score.meanDE76.toFixed(2)} regions gate ok`);

@@ -59,6 +59,30 @@ PICTURES = [
     ('christmas-reindeer-sleigh', 'Reindeer Sleigh', 'Christmas', 'hard'),
 ]
 
+# Per-picture tonal settings from the realistic-animal source set.
+REALISTIC = [
+    ('realistic-lion-portrait', 'Lion Portrait', 'Animals', 'medium', 64, 140),
+    ('realistic-tiger-walking', 'Tiger in the Grass', 'Animals', 'medium', 64, 140),
+    ('realistic-african-elephant', 'African Elephant', 'Animals', 'medium', 160, 140),
+    ('realistic-giraffe-browsing', 'Giraffe Snack Time', 'Animals', 'medium', 36, 120),
+    ('realistic-zebras', 'Zebra Friends', 'Animals', 'medium', 128, 130),
+    ('realistic-cheetah', 'Cheetah Lookout', 'Animals', 'medium', 48, 90),
+    ('realistic-orangutan-mother-baby', 'Orangutan Mom and Baby', 'Animals', 'medium', 64, 90),
+    ('realistic-red-fox-snow', 'Red Fox in the Snow', 'Animals', 'medium', 28, 120),
+    ('realistic-gray-wolf', 'Gray Wolf', 'Animals', 'medium', 36, 120),
+    ('realistic-bald-eagle', 'Bald Eagle', 'Animals', 'medium', 64, 140),
+    ('realistic-snowy-owl', 'Snowy Owl', 'Animals', 'medium', 28, 120),
+    ('realistic-scarlet-macaw-flight', 'Scarlet Macaw in Flight', 'Animals', 'medium', 64, 140),
+    ('realistic-peacock', 'Proud Peacock', 'Animals', 'medium', 64, 250),
+    ('realistic-flamingos', 'Flamingo Lagoon', 'Animals', 'medium', 64, 140),
+    ('realistic-sea-turtle-reef', 'Sea Turtle Swim', 'Animals', 'medium', 48, 120),
+    ('realistic-humpback-breaching', 'Humpback Whale Leap', 'Animals', 'medium', 160, 140),
+    ('realistic-dolphins-sunset', 'Dolphins at Sunset', 'Animals', 'medium', 128, 130),
+    ('realistic-koala', 'Koala in a Eucalyptus Tree', 'Animals', 'medium', 28, 180),
+    ('realistic-giant-panda', 'Giant Panda', 'Animals', 'medium', 128, 130),
+    ('realistic-horse-galloping', 'Galloping Horse', 'Animals', 'medium', 64, 110),
+]
+
 
 def write_puzzle(document: dict) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
@@ -68,22 +92,28 @@ def write_puzzle(document: dict) -> None:
     (OUT / f'{puzzle_id}.json.gz').write_bytes(gzip.compress(raw, 9))
 
 
-def build_one(picture: tuple[str, str, str, str]) -> dict:
-    puzzle_id, title, category, difficulty = picture
+def build_one(picture: tuple) -> dict:
+    puzzle_id, title, category, difficulty = picture[:4]
     source = SOURCES / f'{puzzle_id}.jpg'
     if not source.exists():
         raise FileNotFoundError(source)
-    # k=28 is the line-art default. Busy pictures try a larger palette and
-    # keep the closest match that still stays at or under 40 colors.
-    result = segment(str(source), 'lineart', k=28)
-    for k in (36, 44):
-        stats = result['stats']
-        if stats['meanDE76'] <= 4.6 and stats['smallRadiusFraction'] <= 0.03 and stats['colors'] <= 40:
-            break
-        nxt = segment(str(source), 'lineart', k=k)
-        if nxt['stats']['meanDE76'] < result['stats']['meanDE76']:
-            result = nxt
-    meta = {'id': puzzle_id, 'title': title, 'category': category, 'difficulty': difficulty, 'mode': 'lineart'}
+    if len(picture) == 6:
+        _k, min_area = picture[4], picture[5]
+        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area))
+        mode = 'tonal'
+    else:
+        # k=28 is the line-art default. Busy pictures try a larger palette and
+        # keep the closest match that still stays at or under 40 colors.
+        result = segment(str(source), 'lineart', k=28)
+        for k in (36, 44):
+            stats = result['stats']
+            if stats['meanDE76'] <= 4.6 and stats['smallRadiusFraction'] <= 0.03 and stats['colors'] <= 40:
+                break
+            nxt = segment(str(source), 'lineart', k=k)
+            if nxt['stats']['meanDE76'] < result['stats']['meanDE76']:
+                result = nxt
+        mode = 'lineart'
+    meta = {'id': puzzle_id, 'title': title, 'category': category, 'difficulty': difficulty, 'mode': mode}
     document = puzzle_document(result, meta)
     write_puzzle(document)
     THUMBS.mkdir(parents=True, exist_ok=True)
@@ -105,16 +135,18 @@ def build_one(picture: tuple[str, str, str, str]) -> dict:
 
 def main() -> None:
     wanted = set(sys.argv[1:])
-    pictures = [picture for picture in PICTURES if not wanted or picture[0] in wanted]
+    pictures = [picture for picture in PICTURES + REALISTIC if not wanted or picture[0] in wanted]
     index = {}
     if INDEX.exists() and wanted:
         index = json.loads(INDEX.read_text())
     for picture in pictures:
         summary = build_one(picture)
         index[summary['id']] = {'file': summary['id'], 'regions': summary['regions'], 'colors': summary['colors']}
+        INDEX.write_text(json.dumps(index, indent=2) + '\n')
     if not wanted:
         # Drop entries for pictures no longer built.
-        index = {picture[0]: index[picture[0]] for picture in PICTURES if picture[0] in index}
+        keep = [picture[0] for picture in PICTURES + REALISTIC]
+        index = {puzzle_id: index[puzzle_id] for puzzle_id in keep if puzzle_id in index}
     INDEX.write_text(json.dumps(index, indent=2) + '\n')
 
 

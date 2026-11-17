@@ -2,8 +2,10 @@
 
 Checks, per picture: mean CIE76 deltaE of the finished fills versus the source
 (ink pixels left out) at most 6, at most 3% of regions with a label radius under
-3px, regions covering the canvas, and at most 40 colors. Writes a
-source | blank | finished contact sheet under artifacts/review.
+3px, regions covering the canvas, every border pixel inside a region, and at
+most 40 colors. Tonal pictures also stay between 250 and 700 regions. Elephant
+and panda are allowed under that floor. Writes a source | blank | finished
+contact sheet under artifacts/review.
 """
 
 from __future__ import annotations
@@ -23,8 +25,8 @@ REPORT = ROOT / 'content' / 'reports' / 'vector-scores.json'
 
 def main() -> None:
     files = sorted(PUZZLES.glob('*.json'))
-    if len(files) < 39:
-        print(f'expected 39 puzzles, found {len(files)}', file=sys.stderr)
+    if len(files) < 59:
+        print(f'expected 59 puzzles, found {len(files)}', file=sys.stderr)
         sys.exit(1)
     scores = []
     failed = []
@@ -42,6 +44,7 @@ def main() -> None:
         print(
             f"{score['id']}: dE {score['meanDE76']:.2f}  regions {score['regions']}  "
             f"colors {score['colors']}  cover {score['coverage']:.1%}  "
+            f"border {score['borderOpen']}  "
             f"r<3 {score['smallRadiusFraction']:.1%}  {status}",
             flush=True,
         )

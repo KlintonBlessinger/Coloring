@@ -171,9 +171,9 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(44);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(64);
   await page.locator('[data-category="Animals"]').click();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(13);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(33);
   await page.getByTestId('habitat-sea-life').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(4);
   await expect(page.locator('[data-id="animals-clownfish-reef"]')).toBeVisible();
@@ -187,7 +187,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await expect(page.locator('[data-id="animals-jungle-tiger"]')).toBeVisible();
   await page.getByTestId('habitat-all').click();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(13);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(33);
   const clownfish = puzzle('animals-clownfish-reef');
   await page.locator('[data-id="animals-clownfish-reef"]').click();
   await beginPicture(page);
@@ -1103,5 +1103,82 @@ test('vector gallery, turkey, clownfish, harvest, and math', async ({ page }) =>
   await page.locator('#vector-compare img').evaluate((img: HTMLImageElement) => (img.complete ? true : new Promise((resolve) => img.addEventListener('load', () => resolve(true), { once: true }))));
   await page.waitForTimeout(200);
   await jpg('vector-turkey-compare.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('realistic animals shelf, finished zebras and lion, tiger zoom', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  const finish = async (id: string) => {
+    const book = puzzle(id);
+    await openPuzzle(page, id);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface');
+      if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    });
+    await paintRegions(page, book, book.regionColors.map((_, index) => index));
+    await expect(page.getByTestId('complete')).toBeVisible();
+    await page.waitForTimeout(1800);
+    await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="complete"]');
+      if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+    });
+    await page.waitForTimeout(200);
+  };
+
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  const shelf = page.locator('[data-shelf="realistic"]');
+  await shelf.scrollIntoViewIfNeeded();
+  await expect(shelf.getByRole('heading', { name: 'Realistic Animals' })).toBeVisible();
+  await expect(shelf.getByTestId('puzzle-card')).toHaveCount(20);
+  await expect(shelf.locator('[data-id="realistic-zebras"]')).toBeVisible();
+  await page.waitForTimeout(400);
+  await jpg('vector-realistic-shelf.jpg');
+
+  await finish('realistic-zebras');
+  await jpg('vector-zebras-finished.jpg');
+  await page.getByTestId('back').click();
+
+  await finish('realistic-lion-portrait');
+  await jpg('vector-lion-finished.jpg');
+  await page.getByTestId('back').click();
+
+  await openPuzzle(page, 'realistic-tiger-walking');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  const fitted = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1,
+        clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+      }));
+    };
+    const start = 24;
+    const end = 100;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale'))).toBeGreaterThan(fitted * 3.5);
+  await page.waitForTimeout(300);
+  await jpg('vector-tiger-zoom.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });

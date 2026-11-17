@@ -219,12 +219,12 @@ export function categoryLabel(language: Language, category: Category): string {
   return CATEGORY_NAMES[language][category];
 }
 
-export const ANIMAL_HABITATS = ['sea-life', 'safari', 'jungle'] as const;
+export const ANIMAL_HABITATS = ['sea-life', 'safari', 'jungle', 'realistic'] as const;
 export type AnimalHabitat = (typeof ANIMAL_HABITATS)[number];
 
 const HABITAT_NAMES: Record<Language, Record<AnimalHabitat, string>> = {
-  en: { 'sea-life': 'Sea Life', safari: 'Safari', jungle: 'Jungle' },
-  es: { 'sea-life': 'Vida marina', safari: 'Safari', jungle: 'Selva' },
+  en: { 'sea-life': 'Sea Life', safari: 'Safari', jungle: 'Jungle', realistic: 'Realistic Animals' },
+  es: { 'sea-life': 'Vida marina', safari: 'Safari', jungle: 'Selva', realistic: 'Animales realistas' },
 };
 
 export function habitatLabel(language: Language, habitat: AnimalHabitat): string {

@@ -38,19 +38,45 @@ def lab_to_hex(v: np.ndarray) -> str:
     return '#%02x%02x%02x' % (int(bgr[2]), int(bgr[1]), int(bgr[0]))
 
 
+def pin_border(x: float, y: float, width: int, height: int) -> tuple[float, float, bool]:
+    """Keep a vertex that lies on the paper edge outside the canvas so curves cannot round it off."""
+    pinned = False
+    # Only vertices on the outer edge pin. A point one pixel in is the inner
+    # side of a border region; pinning that too collapses a thin rim to a line.
+    if x <= 0.5:
+        x = -2.0
+        pinned = True
+    elif x >= width - 1.5:
+        x = width + 2.0
+        pinned = True
+    if y <= 0.5:
+        y = -2.0
+        pinned = True
+    elif y >= height - 1.5:
+        y = height + 2.0
+        pinned = True
+    return x, y, pinned
+
+
 def quad_path(points: np.ndarray, origin: np.ndarray, width: int, height: int) -> str:
-    """Smooth a closed polyline. Corners on the paper edge stay sharp so the fill reaches the canvas."""
-    pts = points.astype(np.float64) + origin
-    if len(pts) < 3:
+    """Smooth a closed polyline. Vertices on the paper edge stay pinned so the fill reaches the canvas."""
+    raw = points.astype(np.float64) + origin
+    if len(raw) < 3:
         return ''
+    pinned = []
+    on_edge = []
+    for x, y in raw:
+        px, py, flag = pin_border(float(x), float(y), width, height)
+        pinned.append((px, py))
+        on_edge.append(flag)
+    pts = np.array(pinned, np.float64)
     mids = (pts + np.roll(pts, -1, 0)) / 2
     parts = [f'M{mids[-1, 0]:.1f} {mids[-1, 1]:.1f}']
-    for control, end in zip(pts, mids):
-        on_edge = control[0] <= 1.5 or control[1] <= 1.5 or control[0] >= width - 2.5 or control[1] >= height - 2.5
-        if on_edge:
-            x = -2.0 if control[0] <= 1.5 else (width + 2.0 if control[0] >= width - 2.5 else control[0])
-            y = -2.0 if control[1] <= 1.5 else (height + 2.0 if control[1] >= height - 2.5 else control[1])
-            parts.append(f'L{x:.1f} {y:.1f}L{end[0]:.1f} {end[1]:.1f}')
+    count = len(pts)
+    for index, (control, end) in enumerate(zip(pts, mids)):
+        # A curve between a border vertex and its neighbor bows inside the page.
+        if on_edge[index] or on_edge[(index + 1) % count]:
+            parts.append(f'L{control[0]:.1f} {control[1]:.1f}L{end[0]:.1f} {end[1]:.1f}')
         else:
             parts.append(f'Q{control[0]:.1f} {control[1]:.1f} {end[0]:.1f} {end[1]:.1f}')
     parts.append('Z')
@@ -72,24 +98,44 @@ def contours_to_path(mask: np.ndarray, scale: int, origin: np.ndarray, width: in
     return ''.join(chunks)
 
 
+def extend_past_border(mask: np.ndarray, extra: int = 8) -> np.ndarray:
+    """Copy each border pixel outward so a region that touches the page continues past it."""
+    height, width = mask.shape
+    canvas = np.zeros((height + 2 * extra, width + 2 * extra), np.uint8)
+    canvas[extra:extra + height, extra:extra + width] = mask
+    canvas[:extra, extra:extra + width] = mask[0]
+    canvas[extra + height:, extra:extra + width] = mask[-1]
+    canvas[:, :extra] = canvas[:, extra:extra + 1]
+    canvas[:, extra + width:] = canvas[:, extra + width - 1:extra + width]
+    return canvas
+
+
 def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int) -> str:
     ys, xs = np.where(reg == region_id)
     if len(ys) == 0:
         return ''
+    touches = int(ys.min()) == 0 or int(xs.min()) == 0 or int(ys.max()) == height - 1 or int(xs.max()) == width - 1
+    scale = 4
+    if touches:
+        extra = 8
+        extended = extend_past_border((reg == region_id).astype(np.uint8), extra)
+        soft = cv2.GaussianBlur(extended.astype(np.float32), (0, 0), 1.2)
+        up = cv2.resize(soft, (extended.shape[1] * scale, extended.shape[0] * scale), interpolation=cv2.INTER_CUBIC)
+        bw = (up > 0.5).astype(np.uint8)
+        bw = cv2.dilate(bw, np.ones((3, 3), np.uint8))
+        return contours_to_path(bw, scale, np.array([-extra, -extra], np.float64), width, height)
     pad = 8
     y0 = max(int(ys.min()) - 3, 0)
     y1 = min(int(ys.max()) + 4, height)
     x0 = max(int(xs.min()) - 3, 0)
     x1 = min(int(xs.max()) + 4, width)
     padded = np.pad(reg, pad, mode='edge')
-    y0p = y0 + pad - (pad if y0 == 0 else 0)
-    y1p = y1 + pad + (pad if y1 == height else 0)
-    x0p = x0 + pad - (pad if x0 == 0 else 0)
-    x1p = x1 + pad + (pad if x1 == width else 0)
+    y0p = y0 + pad
+    y1p = y1 + pad
+    x0p = x0 + pad
+    x1p = x1 + pad
     crop = (padded[y0p:y1p, x0p:x1p] == region_id).astype(np.float32)
     crop = cv2.GaussianBlur(crop, (0, 0), 1.2)
-    y0, x0 = y0p - pad, x0p - pad
-    scale = 4
     up = cv2.resize(crop, ((x1p - x0p) * scale, (y1p - y0p) * scale), interpolation=cv2.INTER_CUBIC)
     bw = (up > 0.5).astype(np.uint8)
     # A one-pixel grow at 4x (~0.25 picture px) lets neighbors overlap so paper does not show through.
@@ -267,16 +313,89 @@ def place_label(reg: np.ndarray, ink: np.ndarray, region_id: int) -> tuple[float
 
 
 def path_mask(path: str, width: int, height: int) -> np.ndarray:
-    mask = np.zeros((height, width), np.uint8)
+    """Pixels whose centers lie inside the path.
+
+    Filling at 2x and sampling the center matches the canvas better than rounding
+    the outline onto whole pixels, which both misses a border pixel and punches
+    the neighbor when a one-pixel cap is added.
+    """
+    scale = 2
+    mask = np.zeros((height * scale, width * scale), np.uint8)
     if not path:
-        return mask.astype(bool)
+        return mask[:height, :width].astype(bool)
     for contour in parse_path(path):
-        layer = np.zeros((height, width), np.uint8)
-        pts = np.round(contour).astype(np.int32)
+        layer = np.zeros_like(mask)
+        pts = np.round(contour * scale).astype(np.int32)
         if len(pts) >= 3:
             cv2.fillPoly(layer, [pts], 1)
         mask = np.bitwise_xor(mask, layer)
-    return mask.astype(bool)
+    centers = mask[scale // 2::scale, scale // 2::scale]
+    return centers.astype(bool)
+
+
+def seal_border(regions: list[dict], width: int, height: int) -> int:
+    """Give every white gap that touches the page edge to the nearest region.
+
+    Smoothing can bow a border vertex inward. The cap is a straight outline of
+    just those pixels, extended past the canvas, so it does not punch a hole
+    in the region it joins.
+    """
+    ids = np.zeros((height, width), np.int32)
+    for region in regions:
+        ids[path_mask(region['d'], width, height)] = int(region['id']) + 1
+    covered = ids > 0
+    if covered.all():
+        return 0
+    labels, count = ndi.label(~covered)
+    if count == 0:
+        return 0
+    border = np.zeros((height, width), bool)
+    border[0, :] = border[-1, :] = border[:, 0] = border[:, -1] = True
+    touching = np.unique(labels[border])
+    touching = touching[touching > 0]
+    if touching.size == 0:
+        return 0
+    rim = np.isin(labels, touching)
+    _dist, nearest = ndi.distance_transform_edt(~covered, return_indices=True)
+    assign = np.where(rim, ids[nearest[0], nearest[1]], 0)
+    sealed = 0
+    for region in regions:
+        extra = assign == int(region['id']) + 1
+        if not extra.any():
+            continue
+        ys, xs = np.where(extra)
+        spans: list[tuple[int, int, int, int]] = []
+        sub = extra[int(ys.min()):int(ys.max()) + 1, int(xs.min()):int(xs.max()) + 1]
+        if sub.all():
+            spans.append((int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())))
+        else:
+            order = np.lexsort((xs, ys))
+            xs, ys = xs[order], ys[order]
+            start = 0
+            for index in range(1, len(xs) + 1):
+                broken = index == len(xs) or ys[index] != ys[start] or xs[index] != xs[index - 1] + 1
+                if broken:
+                    spans.append((int(xs[start]), int(ys[start]), int(xs[index - 1]), int(ys[start])))
+                    start = index
+        parts: list[str] = []
+        for x0, y0, x1, y1 in spans:
+            left, right = float(x0), float(x1 + 1)
+            top, bottom = float(y0), float(y1 + 1)
+            if x0 == 0:
+                left = -2.0
+            if x1 == width - 1:
+                right = float(width + 2)
+            if y0 == 0:
+                top = -2.0
+            if y1 == height - 1:
+                bottom = float(height + 2)
+            parts.append(
+                f'M{left:.1f} {top:.1f}L{right:.1f} {top:.1f}L{right:.1f} {bottom:.1f}L{left:.1f} {bottom:.1f}Z'
+            )
+        if parts:
+            region['d'] += ''.join(parts)
+            sealed += int(extra.sum())
+    return sealed
 
 
 def seat_labels(regions: list[dict], ink_path: str, width: int, height: int) -> None:
@@ -453,6 +572,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     for index, region in enumerate(paths):
         region['id'] = index
     ink_path = vectorize_ink(ink) if mode == 'lineart' else ''
+    seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height)
     flat = np.zeros((height, width, 3), np.float32)
     for region_id in range(region_count):
@@ -593,8 +713,8 @@ def parse_path(path: str) -> list[np.ndarray]:
     return contours
 
 
-def rasterize(document: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Return a BGR fill image and a boolean ink mask, both at the puzzle size."""
+def rasterize(document: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return a BGR fill image, a boolean ink mask, and the covered pixels."""
     height, width = int(document['h']), int(document['w'])
     fills = np.zeros((height, width, 3), np.uint8)
     fills[:] = 255
@@ -602,28 +722,26 @@ def rasterize(document: dict) -> tuple[np.ndarray, np.ndarray]:
     palette = {int(item['n']): _hex_to_bgr(item['hex']) for item in document['palette']}
     for region in document['regions']:
         color = palette.get(int(region['n']), (255, 255, 255))
-        mask = np.zeros((height, width), np.uint8)
-        for contour in parse_path(region['d']):
-            layer = np.zeros((height, width), np.uint8)
-            pts = np.round(contour).astype(np.int32)
-            if len(pts) >= 3:
-                cv2.fillPoly(layer, [pts], 1)
-            mask = np.bitwise_xor(mask, layer)
-        fills[mask > 0] = color
-        covered |= mask > 0
-    ink = np.zeros((height, width), np.uint8)
-    if document.get('ink'):
-        for contour in parse_path(document['ink']):
-            layer = np.zeros((height, width), np.uint8)
-            pts = np.round(contour).astype(np.int32)
-            if len(pts) >= 3:
-                cv2.fillPoly(layer, [pts], 1)
-            ink = np.bitwise_xor(ink, layer)
-    return fills, ink.astype(bool), float(covered.mean())
+        mask = path_mask(region['d'], width, height)
+        fills[mask] = color
+        covered |= mask
+    ink = path_mask(document.get('ink') or '', width, height)
+    return fills, ink, covered
+
+
+# Tonal pictures aim for this many regions. Elephant and panda come in under the
+# floor in the source settings, and that count is accepted.
+TONAL_REGION_MIN = 250
+TONAL_REGION_MAX = 700
+TONAL_REGION_FLOOR_OK = {'realistic-african-elephant', 'realistic-giant-panda'}
 
 
 def score_document(document: dict, source_path: str) -> dict:
-    fills, ink, covered = rasterize(document)
+    fills, ink, covered_mask = rasterize(document)
+    covered = float(covered_mask.mean())
+    border = np.zeros(covered_mask.shape, bool)
+    border[0, :] = border[-1, :] = border[:, 0] = border[:, -1] = True
+    border_open = int((border & ~covered_mask).sum())
     source = cv2.imread(source_path)
     if source is None:
         raise FileNotFoundError(source_path)
@@ -648,6 +766,8 @@ def score_document(document: dict, source_path: str) -> dict:
         'meanDE76Raw': float(delta[raw].mean()) if raw.any() else 999.0,
         'p90DE76': float(np.percentile(delta[usable], 90)) if usable.any() else 999.0,
         'coverage': covered,
+        'borderOpen': border_open,
+        'mode': document.get('mode', ''),
         'regionsRadiusLt3': small,
         'smallRadiusFraction': (small / total) if total else 1.0,
     }
@@ -682,6 +802,14 @@ def gate_reasons(score: dict) -> list[str]:
         reasons.append(f"small-label fraction {score['smallRadiusFraction']:.1%} > 3%")
     if score['coverage'] < 0.99:
         reasons.append(f"coverage {score['coverage']:.1%} leaves the canvas open")
+    if score.get('borderOpen', 0) > 0:
+        reasons.append(f"{score['borderOpen']} border pixels belong to no region")
     if score['colors'] > 40:
         reasons.append(f"{score['colors']} colors > 40")
+    if score.get('mode') == 'tonal':
+        regions = int(score['regions'])
+        if regions > TONAL_REGION_MAX:
+            reasons.append(f"{regions} regions > {TONAL_REGION_MAX}")
+        if regions < TONAL_REGION_MIN and score.get('id') not in TONAL_REGION_FLOOR_OK:
+            reasons.append(f"{regions} regions < {TONAL_REGION_MIN}")
     return reasons
