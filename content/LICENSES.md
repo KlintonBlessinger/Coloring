@@ -75,3 +75,23 @@ npm run make-puzzle -- --input photo.jpg --title "Sunday" --category Food --diff
 | `content/sources/realistic-koala.jpg` | Koala in a Eucalyptus Tree | Original project art | Original, made for Color Cozy |
 | `content/sources/realistic-giant-panda.jpg` | Giant Panda | Original project art | Original, made for Color Cozy |
 | `content/sources/realistic-horse-galloping.jpg` | Galloping Horse | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-tiger-river.jpg` | Tiger at the River | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-white-tiger-cubs.jpg` | White Tiger Cubs at Play | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-cheetah-sprint.jpg` | Cheetah Sprint | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-cheetah-family.jpg` | Cheetah Family | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-great-white-shark.jpg` | Great White Shark | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-hammerhead-school.jpg` | Hammerhead School | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-whale-shark.jpg` | Whale Shark Over the Reef | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-leopard-shark.jpg` | Zebra Shark on the Reef | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-chameleon.jpg` | Panther Chameleon | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-green-iguana.jpg` | Green Iguana | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-komodo-dragon.jpg` | Komodo Dragon | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-alligator-swamp.jpg` | Alligator in the Swamp | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-nile-crocodile.jpg` | Nile Crocodile Sunbathing | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-galapagos-tortoise.jpg` | Galápagos Tortoise | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-green-tree-python.jpg` | Green Tree Python | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-poison-dart-frogs.jpg` | Poison Dart Frogs | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-leopard-gecko.jpg` | Leopard Gecko | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-leopard-tree.jpg` | Leopard in a Tree | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-snow-leopard.jpg` | Snow Leopard | Original project art | Original, made for Color Cozy |
+| `content/sources/realistic-jaguar.jpg` | Jaguar by the River | Original project art | Original, made for Color Cozy |

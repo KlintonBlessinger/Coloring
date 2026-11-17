@@ -537,12 +537,35 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         else:
             reps.append(cluster)
             number_of[cluster] = len(reps)
+    # Past 40 colors, fold the pair whose join moves the fewest pixels the least.
+    # Distance alone merges a large area into its neighbor and spends the error
+    # budget there; weighting by area keeps the big regions distinct.
+    counts = np.bincount(regions.ravel(), minlength=region_count)
+    cluster_area: dict[int, int] = {}
+    for region_id, count in enumerate(counts.tolist()):
+        if count <= 0 or region_id >= len(region_cluster):
+            continue
+        cluster = int(region_cluster[region_id])
+        cluster_area[cluster] = cluster_area.get(cluster, 0) + int(count)
     while len(reps) > 40:
-        pair = min(
-            ((lab_dist(palette_lab[a], palette_lab[b]), a, b) for i, a in enumerate(reps) for b in reps[:i]),
-            key=lambda item: item[0],
-        )
-        _distance, drop, keep = pair
+        best = None
+        for index, left in enumerate(reps):
+            for right in reps[:index]:
+                distance = lab_dist(palette_lab[left], palette_lab[right])
+                area_left = cluster_area.get(left, 1)
+                area_right = cluster_area.get(right, 1)
+                cost = (area_left * area_right) / (area_left + area_right) * distance * distance
+                if best is None or cost < best[0]:
+                    best = (cost, left, right)
+        _cost, left, right = best
+        if cluster_area.get(left, 1) < cluster_area.get(right, 1):
+            drop, keep = left, right
+        else:
+            drop, keep = right, left
+        area_drop = cluster_area.get(drop, 1)
+        area_keep = cluster_area.get(keep, 1)
+        palette_lab[keep] = (palette_lab[keep] * area_keep + palette_lab[drop] * area_drop) / (area_keep + area_drop)
+        cluster_area[keep] = area_keep + area_drop
         fallen = number_of[drop]
         kept = number_of[keep]
         for cluster, number in list(number_of.items()):

@@ -320,6 +320,12 @@ h1 {
   font-weight: 800;
 }
 
+.shelf-sub {
+  margin: 2px 16px 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .shelf-row {
   display: flex;
   gap: 10px;

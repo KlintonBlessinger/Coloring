@@ -2450,6 +2450,802 @@
           "Los caballos pueden dormir de pie.",
           "Cuando un caballo galopa, hay un momento en que las cuatro pezuñas están en el aire."
         ]
+      },
+      {
+        "id": "realistic-tiger-river",
+        "title": "Tiger at the River",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "tiger",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "orange",
+            "green",
+            "blue"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Tigers love water and are strong swimmers.",
+          "No two tigers have the same stripe pattern."
+        ],
+        "factsEs": [
+          "A los tigres les encanta el agua y son excelentes nadadores.",
+          "No hay dos tigres con el mismo patrón de rayas."
+        ]
+      },
+      {
+        "id": "realistic-white-tiger-cubs",
+        "title": "White Tiger Cubs at Play",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "tiger",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "playful"
+          ],
+          "palette": [
+            "white",
+            "gray",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "White tigers are Bengal tigers with a rare color gene.",
+          "Tiger cubs practice hunting skills by playing with each other."
+        ],
+        "factsEs": [
+          "Los tigres blancos son tigres de Bengala con un gen de color poco común.",
+          "Los cachorros de tigre practican la caza jugando entre ellos."
+        ]
+      },
+      {
+        "id": "realistic-cheetah-sprint",
+        "title": "Cheetah Sprint",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "cheetah",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "gold",
+            "tan",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Cheetahs are the fastest land animals, reaching about 70 mph (112 km/h).",
+          "A cheetah's long tail helps it steer and balance while running."
+        ],
+        "factsEs": [
+          "Los guepardos son los animales terrestres más rápidos y alcanzan unos 112 km/h.",
+          "La larga cola del guepardo le ayuda a girar y a mantener el equilibrio mientras corre."
+        ]
+      },
+      {
+        "id": "realistic-cheetah-family",
+        "title": "Cheetah Family",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "cheetah",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild",
+            "playful"
+          ],
+          "palette": [
+            "gold",
+            "gray",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Cheetah cubs have fluffy gray fur on their backs called a mantle.",
+          "The black 'tear lines' on a cheetah's face help block the sun's glare."
+        ],
+        "factsEs": [
+          "Las crías de guepardo tienen un pelaje gris y esponjoso en la espalda llamado manto.",
+          "Las líneas negras de lágrimas en la cara del guepardo ayudan a bloquear el brillo del sol."
+        ]
+      },
+      {
+        "id": "realistic-great-white-shark",
+        "title": "Great White Shark",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "shark",
+            "sharks"
+          ],
+          "setting": [
+            "realistic",
+            "ocean"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "gray",
+            "blue",
+            "white"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Great white sharks can sense tiny electric signals from other animals.",
+          "A great white can grow and replace thousands of teeth in its lifetime."
+        ],
+        "factsEs": [
+          "El gran tiburón blanco puede sentir señales eléctricas diminutas de otros animales.",
+          "Un gran tiburón blanco puede formar y reemplazar miles de dientes a lo largo de su vida."
+        ]
+      },
+      {
+        "id": "realistic-hammerhead-school",
+        "title": "Hammerhead School",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "shark",
+            "sharks"
+          ],
+          "setting": [
+            "realistic",
+            "ocean"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "gray",
+            "blue",
+            "teal"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Hammerheads' wide heads help them see almost all the way around.",
+          "Scalloped hammerheads often swim together in big groups called schools."
+        ],
+        "factsEs": [
+          "La cabeza ancha del tiburón martillo le ayuda a ver casi todo a su alrededor.",
+          "Los tiburones martillo festoneados suelen nadar juntos en grupos grandes llamados cardúmenes."
+        ]
+      },
+      {
+        "id": "realistic-whale-shark",
+        "title": "Whale Shark Over the Reef",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "shark",
+            "sharks"
+          ],
+          "setting": [
+            "realistic",
+            "ocean"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "blue",
+            "gray",
+            "teal"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "The whale shark is the biggest fish in the world.",
+          "Whale sharks eat tiny plankton, not big animals."
+        ],
+        "factsEs": [
+          "El tiburón ballena es el pez más grande del mundo.",
+          "Los tiburones ballena comen plancton diminuto, no animales grandes."
+        ]
+      },
+      {
+        "id": "realistic-leopard-shark",
+        "title": "Zebra Shark on the Reef",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "shark",
+            "sharks"
+          ],
+          "setting": [
+            "realistic",
+            "ocean"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "tan",
+            "blue",
+            "cream"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Baby zebra sharks have stripes that turn into spots as they grow up.",
+          "Zebra sharks are gentle and spend lots of time resting on the sea floor."
+        ],
+        "factsEs": [
+          "Las crías de tiburón cebra tienen rayas que se convierten en manchas al crecer.",
+          "Los tiburones cebra son tranquilos y pasan mucho tiempo descansando en el fondo del mar."
+        ]
+      },
+      {
+        "id": "realistic-chameleon",
+        "title": "Panther Chameleon",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "chameleon",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "rainforest"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "green",
+            "red",
+            "orange"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Chameleons can move each eye in a different direction at the same time.",
+          "Panther chameleons come from Madagascar and change color with their mood."
+        ],
+        "factsEs": [
+          "Los camaleones pueden mover cada ojo en una dirección distinta al mismo tiempo.",
+          "Los camaleones pantera son de Madagascar y cambian de color según su estado de ánimo."
+        ]
+      },
+      {
+        "id": "realistic-green-iguana",
+        "title": "Green Iguana",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "iguana",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "rainforest"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "green",
+            "teal",
+            "brown"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Green iguanas are great swimmers and can dive into rivers to stay safe.",
+          "Iguanas have a light-sensing 'third eye' on top of their heads."
+        ],
+        "factsEs": [
+          "Las iguanas verdes nadan muy bien y pueden zambullirse en los ríos para ponerse a salvo.",
+          "Las iguanas tienen un tercer ojo sensible a la luz en lo alto de la cabeza."
+        ]
+      },
+      {
+        "id": "realistic-komodo-dragon",
+        "title": "Komodo Dragon",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "lizard",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "islands"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "brown",
+            "olive",
+            "sand"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Komodo dragons are the largest lizards on Earth.",
+          "They smell with their long forked tongues."
+        ],
+        "factsEs": [
+          "Los dragones de Komodo son los lagartos más grandes de la Tierra.",
+          "Huelen con su larga lengua bifurcada."
+        ]
+      },
+      {
+        "id": "realistic-alligator-swamp",
+        "title": "Alligator in the Swamp",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "alligator",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "wetlands"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "green",
+            "brown",
+            "gray"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Alligators have lived on Earth since the time of the dinosaurs.",
+          "An alligator can hold its breath underwater for a very long time."
+        ],
+        "factsEs": [
+          "Los caimanes viven en la Tierra desde la época de los dinosaurios.",
+          "Un caimán puede aguantar la respiración bajo el agua mucho tiempo."
+        ]
+      },
+      {
+        "id": "realistic-nile-crocodile",
+        "title": "Nile Crocodile Sunbathing",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "crocodile",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "olive",
+            "sand",
+            "blue"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Crocodiles lie in the sun to warm up because they are cold-blooded.",
+          "Crocodile moms gently carry their babies in their mouths to the water."
+        ],
+        "factsEs": [
+          "Los cocodrilos se tumban al sol para entrar en calor porque son de sangre fría.",
+          "Las mamás cocodrilo llevan a sus crías con cuidado en la boca hasta el agua."
+        ]
+      },
+      {
+        "id": "realistic-galapagos-tortoise",
+        "title": "Galápagos Tortoise",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "tortoise",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "islands"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "brown",
+            "green",
+            "gray"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Galápagos tortoises can live for more than 100 years.",
+          "They can go a whole year without eating or drinking."
+        ],
+        "factsEs": [
+          "Las tortugas de las Galápagos pueden vivir más de 100 años.",
+          "Pueden pasar un año entero sin comer ni beber."
+        ]
+      },
+      {
+        "id": "realistic-green-tree-python",
+        "title": "Green Tree Python",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "snake",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "rainforest"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "green",
+            "yellow",
+            "brown"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Baby green tree pythons are yellow or red and turn green as they grow.",
+          "They rest coiled over branches in a neat saddle shape."
+        ],
+        "factsEs": [
+          "Las crías de pitón arborícola verde son amarillas o rojas y se vuelven verdes al crecer.",
+          "Descansan enroscadas sobre las ramas en forma de silla."
+        ]
+      },
+      {
+        "id": "realistic-poison-dart-frogs",
+        "title": "Poison Dart Frogs",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "frog",
+            "amphibians"
+          ],
+          "setting": [
+            "realistic",
+            "rainforest"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "blue",
+            "yellow",
+            "green"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "A poison dart frog's bright colors warn other animals to stay away.",
+          "Some poison dart frog dads carry tadpoles on their backs."
+        ],
+        "factsEs": [
+          "Los colores vivos de una rana dardo advierten a otros animales que se alejen.",
+          "Algunos papás de rana dardo llevan a los renacuajos en la espalda."
+        ]
+      },
+      {
+        "id": "realistic-leopard-gecko",
+        "title": "Leopard Gecko",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "gecko",
+            "reptiles"
+          ],
+          "setting": [
+            "realistic",
+            "desert"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "yellow",
+            "brown",
+            "cream"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Unlike most geckos, leopard geckos have eyelids and can blink.",
+          "They store fat in their thick tails for later."
+        ],
+        "factsEs": [
+          "A diferencia de la mayoría de los gecos, el geco leopardo tiene párpados y puede parpadear.",
+          "Guarda grasa en su cola gruesa para usarla más tarde."
+        ]
+      },
+      {
+        "id": "realistic-leopard-tree",
+        "title": "Leopard in a Tree",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "leopard",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "gold",
+            "green",
+            "brown"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Leopards are amazing climbers and often nap in trees.",
+          "A leopard's spots are called rosettes because they look like roses."
+        ],
+        "factsEs": [
+          "Los leopardos trepan de maravilla y a menudo duermen la siesta en los árboles.",
+          "Las manchas del leopardo se llaman rosetas porque parecen rosas."
+        ]
+      },
+      {
+        "id": "realistic-snow-leopard",
+        "title": "Snow Leopard",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "leopard",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic",
+            "mountains"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "gray",
+            "white",
+            "blue"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Snow leopards wrap their long fluffy tails around themselves to stay warm.",
+          "Their wide furry paws work like snowshoes."
+        ],
+        "factsEs": [
+          "Los leopardos de las nieves se envuelven en su larga cola esponjosa para entrar en calor.",
+          "Sus patas anchas y peludas funcionan como raquetas de nieve."
+        ]
+      },
+      {
+        "id": "realistic-jaguar",
+        "title": "Jaguar by the River",
+        "category": "Animals",
+        "difficulty": "medium",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "jaguar",
+            "big-cats"
+          ],
+          "setting": [
+            "realistic",
+            "rainforest"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "wild"
+          ],
+          "palette": [
+            "gold",
+            "green",
+            "blue"
+          ],
+          "style": [
+            "realistic"
+          ],
+          "complexity": "medium"
+        },
+        "facts": [
+          "Jaguars love water and are excellent swimmers.",
+          "The jaguar is the biggest wild cat in the Americas."
+        ],
+        "factsEs": [
+          "A los jaguares les encanta el agua y son excelentes nadadores.",
+          "El jaguar es el felino salvaje más grande de América."
+        ]
       }
   ]
 }

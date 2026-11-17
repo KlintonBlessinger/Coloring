@@ -293,5 +293,105 @@
     "file": "realistic-horse-galloping",
     "regions": 401,
     "colors": 30
+  },
+  "realistic-tiger-river": {
+    "file": "realistic-tiger-river",
+    "regions": 460,
+    "colors": 40
+  },
+  "realistic-white-tiger-cubs": {
+    "file": "realistic-white-tiger-cubs",
+    "regions": 517,
+    "colors": 35
+  },
+  "realistic-cheetah-sprint": {
+    "file": "realistic-cheetah-sprint",
+    "regions": 412,
+    "colors": 25
+  },
+  "realistic-cheetah-family": {
+    "file": "realistic-cheetah-family",
+    "regions": 403,
+    "colors": 32
+  },
+  "realistic-great-white-shark": {
+    "file": "realistic-great-white-shark",
+    "regions": 444,
+    "colors": 33
+  },
+  "realistic-hammerhead-school": {
+    "file": "realistic-hammerhead-school",
+    "regions": 413,
+    "colors": 40
+  },
+  "realistic-whale-shark": {
+    "file": "realistic-whale-shark",
+    "regions": 374,
+    "colors": 40
+  },
+  "realistic-leopard-shark": {
+    "file": "realistic-leopard-shark",
+    "regions": 422,
+    "colors": 36
+  },
+  "realistic-chameleon": {
+    "file": "realistic-chameleon",
+    "regions": 379,
+    "colors": 28
+  },
+  "realistic-green-iguana": {
+    "file": "realistic-green-iguana",
+    "regions": 342,
+    "colors": 26
+  },
+  "realistic-komodo-dragon": {
+    "file": "realistic-komodo-dragon",
+    "regions": 601,
+    "colors": 40
+  },
+  "realistic-alligator-swamp": {
+    "file": "realistic-alligator-swamp",
+    "regions": 459,
+    "colors": 38
+  },
+  "realistic-nile-crocodile": {
+    "file": "realistic-nile-crocodile",
+    "regions": 399,
+    "colors": 27
+  },
+  "realistic-galapagos-tortoise": {
+    "file": "realistic-galapagos-tortoise",
+    "regions": 388,
+    "colors": 31
+  },
+  "realistic-green-tree-python": {
+    "file": "realistic-green-tree-python",
+    "regions": 389,
+    "colors": 40
+  },
+  "realistic-poison-dart-frogs": {
+    "file": "realistic-poison-dart-frogs",
+    "regions": 391,
+    "colors": 39
+  },
+  "realistic-leopard-gecko": {
+    "file": "realistic-leopard-gecko",
+    "regions": 310,
+    "colors": 32
+  },
+  "realistic-leopard-tree": {
+    "file": "realistic-leopard-tree",
+    "regions": 422,
+    "colors": 30
+  },
+  "realistic-snow-leopard": {
+    "file": "realistic-snow-leopard",
+    "regions": 596,
+    "colors": 17
+  },
+  "realistic-jaguar": {
+    "file": "realistic-jaguar",
+    "regions": 538,
+    "colors": 35
   }
 }

@@ -188,7 +188,7 @@ test('a rebuilt region map drops the old progress', () => {
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
-  assert.equal(files.length, 59);
+  assert.equal(files.length, 79);
   const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as VectorPuzzle);
   for (const category of CATEGORIES) {
     assert.ok(
@@ -231,7 +231,7 @@ test('starter puzzles cover every shelf', () => {
     smallRadiusFraction: number;
     ok: boolean;
   }[];
-  assert.equal(scores.length, 59);
+  assert.equal(scores.length, 79);
   for (const score of scores) {
     assert.equal(score.ok, true, score.id);
     assert.ok(score.meanDE76 <= 6, `${score.id} deltaE ${score.meanDE76}`);

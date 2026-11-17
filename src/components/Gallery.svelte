@@ -1,7 +1,7 @@
 <script lang="ts">
   import { APP_NAME } from '../lib/brand';
   import { listPuzzles, type CatalogEntry } from '../lib/catalog';
-  import { ANIMAL_HABITATS, categoryLabel, habitatLabel, t, type AnimalHabitat } from '../lib/i18n';
+  import { ANIMAL_HABITATS, REALISTIC_GROUPS, categoryLabel, habitatLabel, realisticGroupLabel, t, type AnimalHabitat } from '../lib/i18n';
   import type { Settings } from '../lib/settings';
   import { asset } from '../lib/vector';
   import { saveRatio } from '../lib/thumb';
@@ -186,16 +186,45 @@
       {#each CATEGORIES as name (name)}
         {#if name === 'Animals'}
           {#each ANIMAL_HABITATS as habitatName (habitatName)}
-            {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes(habitatName))}
-            {#if items.length}
-              <section class="shelf" data-shelf={habitatName}>
-                <h2 class="shelf-title">{habitatLabel(settings.language, habitatName)}</h2>
-                <div class="shelf-row">
-                  {#each items as puzzle (puzzle.id)}
-                    {@render picture(puzzle)}
+            {#if habitatName === 'realistic'}
+              {@const realisticItems = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes('realistic'))}
+              {#if realisticItems.length}
+                {@const rest = realisticItems.filter((puzzle) => !REALISTIC_GROUPS.some((group) => puzzle.tags.subject.includes(group)))}
+                <section class="shelf" data-shelf="realistic">
+                  <h2 class="shelf-title">{habitatLabel(settings.language, 'realistic')}</h2>
+                  {#each REALISTIC_GROUPS as group (group)}
+                    {@const items = realisticItems.filter((puzzle) => puzzle.tags.subject.includes(group))}
+                    {#if items.length}
+                      <h3 class="shelf-sub" data-group={group}>{realisticGroupLabel(settings.language, group)}</h3>
+                      <div class="shelf-row" data-shelf={group}>
+                        {#each items as puzzle (puzzle.id)}
+                          {@render picture(puzzle)}
+                        {/each}
+                      </div>
+                    {/if}
                   {/each}
-                </div>
-              </section>
+                  {#if rest.length}
+                    <h3 class="shelf-sub">{t(settings.language, 'moreAnimals')}</h3>
+                    <div class="shelf-row" data-shelf="realistic-more">
+                      {#each rest as puzzle (puzzle.id)}
+                        {@render picture(puzzle)}
+                      {/each}
+                    </div>
+                  {/if}
+                </section>
+              {/if}
+            {:else}
+              {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes(habitatName))}
+              {#if items.length}
+                <section class="shelf" data-shelf={habitatName}>
+                  <h2 class="shelf-title">{habitatLabel(settings.language, habitatName)}</h2>
+                  <div class="shelf-row">
+                    {#each items as puzzle (puzzle.id)}
+                      {@render picture(puzzle)}
+                    {/each}
+                  </div>
+                </section>
+              {/if}
             {/if}
           {/each}
           {@const rest = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && !ANIMAL_HABITATS.some((habitatName) => puzzle.tags.setting.includes(habitatName)))}

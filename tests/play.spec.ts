@@ -171,9 +171,9 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(64);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(84);
   await page.locator('[data-category="Animals"]').click();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(33);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(53);
   await page.getByTestId('habitat-sea-life').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(4);
   await expect(page.locator('[data-id="animals-clownfish-reef"]')).toBeVisible();
@@ -187,7 +187,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await expect(page.locator('[data-id="animals-jungle-tiger"]')).toBeVisible();
   await page.getByTestId('habitat-all').click();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(33);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(53);
   const clownfish = puzzle('animals-clownfish-reef');
   await page.locator('[data-id="animals-clownfish-reef"]').click();
   await beginPicture(page);
@@ -1138,7 +1138,7 @@ test('realistic animals shelf, finished zebras and lion, tiger zoom', async ({ p
   const shelf = page.locator('[data-shelf="realistic"]');
   await shelf.scrollIntoViewIfNeeded();
   await expect(shelf.getByRole('heading', { name: 'Realistic Animals' })).toBeVisible();
-  await expect(shelf.getByTestId('puzzle-card')).toHaveCount(20);
+  await expect(shelf.getByTestId('puzzle-card')).toHaveCount(40);
   await expect(shelf.locator('[data-id="realistic-zebras"]')).toBeVisible();
   await page.waitForTimeout(400);
   await jpg('vector-realistic-shelf.jpg');
@@ -1180,5 +1180,29 @@ test('realistic animals shelf, finished zebras and lion, tiger zoom', async ({ p
   await expect.poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale'))).toBeGreaterThan(fitted * 3.5);
   await page.waitForTimeout(300);
   await jpg('vector-tiger-zoom.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('realistic v3 groups on the shelf', async ({ page }) => {
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  const bigCats = page.locator('[data-shelf="big-cats"]');
+  await page.locator('[data-group="big-cats"]').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await expect(page.getByRole('heading', { name: 'Big Cats' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sharks' })).toBeVisible();
+  await expect(bigCats.locator('[data-id="realistic-tiger-river"]')).toBeVisible();
+  await expect(page.locator('[data-shelf="sharks"] [data-id="realistic-leopard-shark"]')).toContainText('Zebra Shark on the Reef');
+  await expect(page.locator('[data-shelf="reptiles"] [data-id="realistic-komodo-dragon"]')).toBeAttached();
+  await expect(page.locator('[data-shelf="amphibians"] [data-id="realistic-poison-dart-frogs"]')).toBeAttached();
+  await page.waitForTimeout(400);
+  await jpg('vector-realistic-v3-shelf.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });

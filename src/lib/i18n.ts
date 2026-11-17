@@ -15,6 +15,7 @@ const STRINGS = {
     emptyProgress: 'Nothing in progress. Open a picture and tap a color.',
     emptyDone: 'Finished pictures will wait here.',
     emptyShelf: 'No pictures on this shelf.',
+    moreAnimals: 'More animals',
     easy: 'easy',
     medium: 'medium',
     hard: 'hard',
@@ -104,6 +105,7 @@ const STRINGS = {
     emptyProgress: 'Nada en curso. Abre un dibujo y toca un color.',
     emptyDone: 'Los dibujos terminados esperarán aquí.',
     emptyShelf: 'No hay dibujos en esta estantería.',
+    moreAnimals: 'Más animales',
     easy: 'fácil',
     medium: 'medio',
     hard: 'difícil',
@@ -229,4 +231,16 @@ const HABITAT_NAMES: Record<Language, Record<AnimalHabitat, string>> = {
 
 export function habitatLabel(language: Language, habitat: AnimalHabitat): string {
   return HABITAT_NAMES[language][habitat];
+}
+
+export const REALISTIC_GROUPS = ['big-cats', 'sharks', 'reptiles', 'amphibians'] as const;
+export type RealisticGroup = (typeof REALISTIC_GROUPS)[number];
+
+const REALISTIC_GROUP_NAMES: Record<Language, Record<RealisticGroup, string>> = {
+  en: { 'big-cats': 'Big Cats', sharks: 'Sharks', reptiles: 'Reptiles', amphibians: 'Amphibians' },
+  es: { 'big-cats': 'Grandes felinos', sharks: 'Tiburones', reptiles: 'Reptiles', amphibians: 'Anfibios' },
+};
+
+export function realisticGroupLabel(language: Language, group: RealisticGroup): string {
+  return REALISTIC_GROUP_NAMES[language][group];
 }

@@ -156,11 +156,16 @@ test('the art manifest covers every picture and at least five mysteries', () => 
     assert.ok((record?.tags.subject.length ?? 0) > 0, id);
   }
   const realistic = normal.filter((picture) => picture.id.startsWith('realistic-'));
-  assert.equal(realistic.length, 20);
+  assert.equal(realistic.length, 40);
   for (const record of realistic) {
     assert.ok(record.tags.setting.includes('realistic'), record.id);
     assert.ok(record.tags.style.includes('realistic'), record.id);
   }
+  const groups: Record<string, number> = { 'big-cats': 7, sharks: 4, reptiles: 8, amphibians: 1 };
+  for (const [group, count] of Object.entries(groups)) {
+    assert.equal(realistic.filter((picture) => picture.tags.subject.includes(group)).length, count, group);
+  }
+  assert.equal(realistic.find((picture) => picture.id === 'realistic-leopard-shark')?.title, 'Zebra Shark on the Reef');
   const butterfly = normal.find((picture) => picture.id === 'science-butterfly-life-cycle');
   assert.match(butterfly?.facts.join(' ') ?? '', /milkweed/);
   assert.match(butterfly?.facts.join(' ') ?? '', /chrysalis/);
