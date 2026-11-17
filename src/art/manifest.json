@@ -33,14 +33,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "House cats sleep about 12 to 16 hours a day.",
-        "A cat’s whiskers help it judge whether a gap is wide enough to walk through.",
-        "A cat’s eyes reflect light, which helps it see in dim places."
+        "House cats sleep about 12 to 16 hours a day. Napping is their main hobby.",
+        "Whiskers are measuring sticks. If they do not fit through a gap, the cat usually will not try.",
+        "Cat eyes shine in the dark because a mirror-like layer bounces the light back through them."
       ],
       "factsEs": [
-        "Los gatos de casa duermen unas 12 a 16 horas al día.",
-        "Los bigotes ayudan al gato a saber si un hueco es lo bastante ancho para pasar.",
-        "Los ojos del gato reflejan la luz, y eso le ayuda a ver cuando hay poca luz."
+        "Los gatos de casa duermen unas 12 a 16 horas al día. La siesta es su pasatiempo favorito.",
+        "Los bigotes son como una regla. Si no caben por un hueco, el gato casi nunca intenta pasar.",
+        "Los ojos del gato brillan en la oscuridad porque una capa como un espejo devuelve la luz."
       ]
     },
     {
@@ -75,14 +75,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Red fox kits are usually born in the spring, and both parents help care for them.",
-        "A fox can hear small animals moving under the snow.",
-        "A red fox is a wild member of the dog family."
+        "Red fox kits are born in the spring, and both parents help raise them.",
+        "A fox can hear a mouse moving under the snow, then leap and dive right in.",
+        "A red fox is a wild cousin of the dog."
       ],
       "factsEs": [
-        "Las crías del zorro rojo suelen nacer en primavera, y el padre y la madre las cuidan.",
-        "Un zorro puede oír a un animal pequeño que se mueve bajo la nieve.",
-        "El zorro rojo es un pariente salvaje de los perros."
+        "Las crías del zorro rojo nacen en primavera, y el padre y la madre las cuidan.",
+        "Un zorro puede oír un ratón bajo la nieve, saltar y meterse de cabeza.",
+        "El zorro rojo es un primo salvaje del perro."
       ]
     },
     {
@@ -120,14 +120,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Sea turtles have lived in the oceans since the time of the dinosaurs.",
-        "Mothers come ashore on sandy beaches to lay their eggs.",
-        "A sea turtle cannot pull its head and flippers all the way into its shell the way a land turtle can."
+        "Sea turtles were already swimming when dinosaurs walked on land.",
+        "A mother crawls onto a sandy beach, buries her eggs, and heads back to the sea.",
+        "A sea turtle cannot tuck its head and flippers all the way into its shell the way a land turtle can."
       ],
       "factsEs": [
-        "Las tortugas marinas viven en el océano desde la época de los dinosaurios.",
-        "Las madres salen a playas de arena para poner sus huevos.",
-        "Una tortuga marina no puede esconder del todo la cabeza y las aletas en el caparazón, como sí puede una tortuga de tierra."
+        "Las tortugas marinas ya nadaban cuando los dinosaurios caminaban en la tierra.",
+        "La mamá sube a una playa de arena, entierra sus huevos y vuelve al mar.",
+        "Una tortuga marina no puede esconder del todo la cabeza y las aletas, como sí puede una tortuga de tierra."
       ]
     },
     {
@@ -162,14 +162,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "A lotus flower often opens in the morning and closes in the afternoon.",
-        "Lotus leaves shed water, so droplets bead up and roll off.",
-        "Lotus seeds can stay alive for hundreds of years."
+        "A lotus flower opens for the morning and closes again in the afternoon.",
+        "Water beads up on a lotus leaf and rolls off, taking dust with it.",
+        "Some lotus seeds have sprouted after waiting hundreds of years."
       ],
       "factsEs": [
-        "La flor de loto suele abrirse por la mañana y cerrarse por la tarde.",
-        "Las hojas de loto sueltan el agua, así que las gotas se hacen bolitas y ruedan.",
-        "Las semillas de loto pueden seguir vivas durante cientos de años."
+        "La flor de loto se abre por la mañana y se cierra otra vez por la tarde.",
+        "El agua se hace bolitas sobre la hoja de loto y rueda, llevándose el polvo.",
+        "Algunas semillas de loto han brotado después de esperar cientos de años."
       ]
     },
     {
@@ -204,14 +204,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Bees collect nectar and pollen, and they help flowers make seeds.",
-        "Many garden flowers are grown because they smell sweet.",
-        "Butterflies taste with their feet."
+        "Bees visit flowers for nectar and pollen, and the flowers get help making seeds.",
+        "Many garden flowers are planted just because they smell wonderful.",
+        "A butterfly tastes with its feet. Landing is how it decides to stay for a sip."
       ],
       "factsEs": [
-        "Las abejas recogen néctar y polen, y ayudan a las flores a hacer semillas.",
-        "Muchas flores del jardín se cultivan porque huelen dulce.",
-        "Las mariposas prueban con los pies."
+        "Las abejas visitan las flores por el néctar y el polen, y así las flores hacen semillas.",
+        "Muchas flores del jardín se plantan solo porque huelen de maravilla.",
+        "La mariposa prueba con los pies. Al posarse decide si se queda a beber."
       ]
     },
     {
@@ -245,14 +245,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Peonies bloom with big flowers in late spring.",
-        "Ants drink nectar on the buds and do not hurt the flower.",
-        "A cut peony stem can last about a week in fresh water."
+        "Peonies open huge flowers at the end of spring.",
+        "Ants crawl on the buds to drink nectar. They do not hurt the flower.",
+        "A cut peony can keep looking fresh in a vase for about a week."
       ],
       "factsEs": [
-        "Las peonías abren flores grandes al final de la primavera.",
-        "Las hormigas beben el néctar de los capullos y no dañan la flor.",
-        "Un tallo de peonía cortado puede durar cerca de una semana en agua fresca."
+        "Las peonías abren flores enormes al final de la primavera.",
+        "Las hormigas caminan por los capullos para beber néctar. No dañan la flor.",
+        "Una peonía cortada puede verse fresca en un florero cerca de una semana."
       ]
     },
     {
@@ -288,14 +288,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Yeast is a tiny fungus that makes dough rise by producing gas.",
-        "A cupcake is a small cake baked in a cup.",
-        "A macaron is made with almond flour, sugar, and egg whites."
+        "Yeast is a tiny fungus. It eats sugar and lets out gas, and that gas makes dough rise.",
+        "A cupcake is one little cake baked in its own cup.",
+        "A macaron is made from almond flour, sugar, and egg whites, with a soft filling in the middle."
       ],
       "factsEs": [
-        "La levadura es un hongo diminuto que hace subir la masa al producir gas.",
-        "Un cupcake es un pastelito horneado en un molde.",
-        "Un macaron se hace con harina de almendra, azúcar y claras de huevo."
+        "La levadura es un hongo diminuto. Come azúcar, suelta gas, y ese gas hace subir la masa.",
+        "Un cupcake es un pastelito horneado en su propio molde.",
+        "Un macaron se hace con harina de almendra, azúcar y claras, con un relleno suave en el medio."
       ]
     },
     {
@@ -329,14 +329,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "Ice cream is a frozen dessert made from cream or milk and sugar.",
-        "Stirring the mix while it freezes keeps the ice crystals small.",
-        "A sundae is ice cream served with a topping."
+        "Ice cream makers stir the mix the whole time it freezes. That keeps the ice crystals tiny, so each scoop stays creamy.",
+        "A sundae is ice cream dressed up with a topping. The cherry on top is the party hat.",
+        "The treat starts as milk or cream and sugar. Stir it while it freezes, and it becomes ice cream."
       ],
       "factsEs": [
-        "El helado es un postre congelado hecho con crema o leche y azúcar.",
-        "Revolver la mezcla mientras se congela mantiene pequeños los cristales de hielo.",
-        "Un sundae es helado servido con un aderezo."
+        "Para hacer helado se revuelve la mezcla todo el tiempo que se congela. Así los cristales de hielo se quedan diminutos y la bola queda cremosa.",
+        "Un sundae es helado vestido con un aderezo. La cereza de encima es el gorro de fiesta.",
+        "El postre empieza como leche o crema y azúcar. Si se revuelve mientras se congela, se vuelve helado."
       ]
     },
     {
@@ -371,14 +371,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "A picnic is a meal eaten outdoors.",
-        "Ants follow scent trails to find food.",
-        "Covering food helps keep insects off a picnic."
+        "A picnic is a meal you carry outside.",
+        "Ants follow a scent trail. One ant finds the crumbs, and the others march straight there.",
+        "A cover over the basket keeps curious insects off the food."
       ],
       "factsEs": [
-        "Un picnic es una comida al aire libre.",
-        "Las hormigas siguen rastros de olor para encontrar comida.",
-        "Tapar la comida ayuda a que los insectos no se suban al picnic."
+        "Un picnic es una comida que te llevas afuera.",
+        "Las hormigas siguen un rastro de olor. Una encuentra las migas y las demás marchan derecho hacia allá.",
+        "Una tapa sobre la canasta mantiene lejos a los insectos curiosos."
       ]
     },
     {
@@ -412,14 +412,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "A unicorn is an imaginary horse with one horn.",
-        "Unicorn stories are centuries old in Europe, the Middle East, and Asia.",
-        "No living animal is a unicorn. Narwhal tusks were once sold as unicorn horns."
+        "A unicorn is an imaginary horse with one horn on its forehead.",
+        "People have told unicorn stories for centuries, in Europe, the Middle East, and Asia.",
+        "No living animal is a unicorn. Long ago, narwhal tusks were sold as if they were unicorn horns."
       ],
       "factsEs": [
-        "El unicornio es un caballo imaginario con un solo cuerno.",
-        "Los cuentos de unicornios tienen siglos en Europa, el Medio Oriente y Asia.",
-        "Ningún animal vivo es un unicornio. Los colmillos de narval se vendieron alguna vez como cuernos de unicornio."
+        "El unicornio es un caballo imaginario con un cuerno en la frente.",
+        "La gente cuenta historias de unicornios desde hace siglos, en Europa, el Medio Oriente y Asia.",
+        "Ningún animal vivo es un unicornio. Hace mucho, los colmillos de narval se vendían como si fueran cuernos de unicornio."
       ]
     },
     {
@@ -455,12 +455,12 @@
       "facts": [
         "A mermaid is an imaginary person with a fish tail.",
         "Mermaid stories are told in many countries, including old tales from Europe, Africa, and Asia.",
-        "Dolphins are mammals, so they must come up to breathe air."
+        "Dolphins are mammals, so they have to swim up for a breath of air."
       ],
       "factsEs": [
         "Una sirena es una persona imaginaria con cola de pez.",
         "Los cuentos de sirenas se cuentan en muchos países, incluso relatos antiguos de Europa, África y Asia.",
-        "Los delfines son mamíferos, así que tienen que salir a respirar aire."
+        "Los delfines son mamíferos, así que tienen que subir a tomar aire."
       ]
     },
     {
@@ -494,14 +494,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Many stone castles were built in the Middle Ages as homes and as defenses.",
-        "A moat is a ditch around a castle, and some moats were filled with water.",
-        "Building on a hill helped people see visitors coming."
+        "Many stone castles were both a home and a fort in the Middle Ages.",
+        "A moat is a ditch around a castle. Some moats were filled with water to slow people down.",
+        "A castle on a hill let people see visitors long before they reached the gate."
       ],
       "factsEs": [
-        "Muchos castillos de piedra se construyeron en la Edad Media como casas y como defensa.",
-        "Un foso es una zanja alrededor del castillo, y algunos fosos se llenaban de agua.",
-        "Construir en una colina ayudaba a ver quién se acercaba."
+        "Muchos castillos de piedra eran a la vez una casa y un fuerte en la Edad Media.",
+        "Un foso es una zanja alrededor del castillo. Algunos se llenaban de agua para frenar a la gente.",
+        "Un castillo en una colina dejaba ver a las visitas mucho antes de que llegaran a la puerta."
       ]
     },
     {
@@ -536,13 +536,13 @@
       },
       "facts": [
         "Folk art is made by ordinary people for homes, clothes, or festivals.",
-        "Patterns are often passed down in a family or a town.",
-        "Bright colors and repeated shapes are common in folk art."
+        "The patterns are often taught by a parent or a neighbor, then drawn again and again.",
+        "Bright colors and shapes that repeat are a favorite trick."
       ],
       "factsEs": [
         "El arte popular lo hacen personas comunes para la casa, la ropa o las fiestas.",
-        "Los diseños suelen pasar de una familia o un pueblo a la siguiente generación.",
-        "Los colores vivos y las formas que se repiten son frecuentes en el arte popular."
+        "Los diseños suelen enseñarlos un padre o un vecino, y luego se dibujan una y otra vez.",
+        "Los colores vivos y las formas que se repiten son un truco favorito."
       ]
     },
     {
@@ -575,13 +575,13 @@
       },
       "facts": [
         "Stained glass is colored glass held together by lead or another metal.",
-        "Light shining through the glass makes the colors glow.",
-        "Many old churches use stained glass to tell stories."
+        "When the sun shines through, the colors glow across the room.",
+        "Many old churches use the pictures in the glass to tell a story."
       ],
       "factsEs": [
         "El vitral es vidrio de color unido con plomo u otro metal.",
-        "La luz que pasa por el vidrio hace brillar los colores.",
-        "Muchas iglesias antiguas usan vitrales para contar historias."
+        "Cuando el sol pasa, los colores brillan por toda la sala.",
+        "Muchas iglesias antiguas usan los dibujos del vidrio para contar una historia."
       ]
     },
     {
@@ -613,14 +613,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "A mandala is a round design, often with matching sides.",
-        "In some traditions, people make mandalas as a calm practice.",
-        "The word mandala comes from Sanskrit and means circle."
+        "A mandala is a round design, often with sides that match like a mirror.",
+        "In some traditions, people make a mandala slowly, as a quiet practice.",
+        "The word comes from Sanskrit, and it means circle."
       ],
       "factsEs": [
-        "Un mandala es un diseño redondo, a menudo con lados iguales.",
-        "En algunas tradiciones, la gente hace mandalas como una práctica tranquila.",
-        "La palabra mandala viene del sánscrito y significa círculo."
+        "Un mandala es un diseño redondo, a menudo con lados que coinciden como un espejo.",
+        "En algunas tradiciones, la gente hace un mandala despacio, como una práctica tranquila.",
+        "La palabra viene del sánscrito y significa círculo."
       ]
     },
     {
@@ -655,14 +655,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "Wild turkeys can fly short distances, even though they look heavy.",
-        "A male turkey is a tom, and a female is a hen.",
-        "Turkeys see in color and can spot movement over a wide view."
+        "Wild turkeys can fly, but only in short bursts. They would rather run.",
+        "A male turkey is a tom. A female is a hen.",
+        "Turkeys see in color, and their eyes catch movement from far across a field."
       ],
       "factsEs": [
-        "Los pavos salvajes pueden volar distancias cortas, aunque se vean pesados.",
-        "Al macho se le llama pavo y a la hembra pava.",
-        "Los pavos ven en color y pueden notar el movimiento en un campo de visión amplio."
+        "Los pavos salvajes pueden volar, pero solo un trecho corto. Prefieren correr.",
+        "En inglés, al macho se le llama tom y a la hembra hen.",
+        "Los pavos ven en color, y sus ojos notan el movimiento desde muy lejos."
       ]
     },
     {
@@ -698,14 +698,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "In the United States, Thanksgiving is the fourth Thursday of November.",
-        "Many families today eat turkey, cranberries, and pumpkin pie.",
-        "Cranberries grow in bogs."
+        "In the United States, Thanksgiving falls on the fourth Thursday of November.",
+        "Many families today share turkey, cranberries, and pumpkin pie.",
+        "Cranberries grow in bogs, which are wet, spongy fields."
       ],
       "factsEs": [
-        "En Estados Unidos, el Día de Acción de Gracias es el cuarto jueves de noviembre.",
-        "Hoy muchas familias comen pavo, arándanos y pastel de calabaza.",
-        "Los arándanos crecen en pantanos."
+        "En Estados Unidos, el Día de Acción de Gracias cae el cuarto jueves de noviembre.",
+        "Hoy muchas familias comparten pavo, arándanos y pastel de calabaza.",
+        "Los arándanos crecen en pantanos, que son campos húmedos y esponjosos."
       ]
     },
     {
@@ -739,14 +739,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "A pumpkin is a kind of squash, and it grows on a vine.",
-        "A porch is a covered place at the door of a house.",
-        "Pumpkins can be orange, white, green, or blue-gray."
+        "A pumpkin is a kind of squash, and it grows on a vine along the ground.",
+        "A porch is the covered spot just outside a door.",
+        "Pumpkins are not only orange. Some are white, green, or blue-gray."
       ],
       "factsEs": [
-        "La calabaza es pariente del zapallo y crece en una enredadera.",
-        "Un porche es un lugar cubierto junto a la puerta de la casa.",
-        "Las calabazas pueden ser anaranjadas, blancas, verdes o gris azuladas."
+        "La calabaza es pariente del zapallo y crece en una enredadera por el suelo.",
+        "Un porche es el lugar cubierto justo afuera de una puerta.",
+        "Las calabazas no son solo anaranjadas. Algunas son blancas, verdes o gris azuladas."
       ]
     },
     {
@@ -781,14 +781,14 @@
         "complexity": "medium"
       },
       "facts": [
-        "A cornucopia is a horn-shaped symbol of a good harvest.",
-        "The name comes from Latin and means horn of plenty.",
-        "Corn, squash, and beans, called the Three Sisters, were important foods grown by many Indigenous peoples of the Americas."
+        "A cornucopia is a horn-shaped picture of a good harvest.",
+        "The name is Latin for horn of plenty.",
+        "Corn, squash, and beans are called the Three Sisters. Many Indigenous peoples of the Americas grew them together."
       ],
       "factsEs": [
-        "Una cornucopia es un símbolo con forma de cuerno de una buena cosecha.",
-        "El nombre viene del latín y significa cuerno de la abundancia.",
-        "El maíz, la calabaza y los frijoles, llamados las Tres Hermanas, fueron alimentos importantes que cultivaron muchos pueblos indígenas de las Américas."
+        "Una cornucopia es un dibujo con forma de cuerno de una buena cosecha.",
+        "El nombre es latín y significa cuerno de la abundancia.",
+        "El maíz, la calabaza y los frijoles se llaman las Tres Hermanas. Muchos pueblos indígenas de las Américas los cultivaban juntos."
       ]
     },
     {
@@ -823,14 +823,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Pumpkin plants are planted in spring and picked in autumn.",
-        "A pumpkin is a fruit because it grows from a flower and holds seeds.",
-        "The heaviest pumpkins can weigh more than 1,000 pounds."
+        "Pumpkin seeds go into the ground in spring, and the ripe pumpkins are picked in autumn.",
+        "A pumpkin is a fruit. It grows from a flower and holds seeds inside.",
+        "The biggest pumpkins can weigh more than 1,000 pounds. That is heavier than many horses."
       ],
       "factsEs": [
-        "Las plantas de calabaza se siembran en primavera y se cosechan en otoño.",
-        "La calabaza es una fruta porque nace de una flor y guarda semillas.",
-        "Las calabazas más pesadas pueden pesar más de 1,000 libras."
+        "Las semillas de calabaza van a la tierra en primavera, y las calabazas maduras se cosechan en otoño.",
+        "La calabaza es una fruta. Nace de una flor y guarda semillas adentro.",
+        "Las calabazas más grandes pueden pesar más de 1,000 libras. Eso es más que muchos caballos."
       ]
     },
     {
@@ -865,14 +865,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "Snow is made of ice crystals that form in clouds.",
+        "Snow is a pile of tiny ice crystals that grew inside a cloud.",
         "Snow melts when the air is warmer than 32 degrees Fahrenheit, which is 0 degrees Celsius.",
-        "Most snowflakes have six sides because of the way ice crystals grow."
+        "Most snowflakes have six sides. That is how ice crystals like to grow."
       ],
       "factsEs": [
-        "La nieve está hecha de cristales de hielo que se forman en las nubes.",
+        "La nieve es un montón de cristalitos de hielo que crecieron dentro de una nube.",
         "La nieve se derrite cuando el aire pasa de 32 grados Fahrenheit, que son 0 grados Celsius.",
-        "La mayoría de los copos de nieve tienen seis lados por la forma en que crecen los cristales de hielo."
+        "La mayoría de los copos tienen seis lados. Así les gusta crecer a los cristales de hielo."
       ]
     },
     {
@@ -907,13 +907,13 @@
         "complexity": "easy"
       },
       "facts": [
-        "Cocoa powder comes from cacao beans.",
-        "Cacao trees grow in warm, rainy places near the equator.",
-        "An evergreen wreath stays green because the plant does not drop all of its leaves at once."
+        "Cocoa powder is ground from cacao beans.",
+        "Cacao trees like warm rain and grow near the equator.",
+        "An evergreen wreath stays green because the plant does not drop all its leaves at once."
       ],
       "factsEs": [
-        "El cacao en polvo sale de las semillas del cacao.",
-        "Los árboles de cacao crecen en lugares cálidos y lluviosos cerca del ecuador.",
+        "El cacao en polvo se muele de las semillas del cacao.",
+        "Al árbol de cacao le gusta la lluvia cálida y crece cerca del ecuador.",
         "Una corona de hoja perenne sigue verde porque la planta no suelta todas sus hojas a la vez."
       ]
     },
@@ -951,13 +951,13 @@
         "complexity": "hard"
       },
       "facts": [
-        "Many Christmas trees are evergreens that keep their needles through the winter.",
-        "A wood fire in a fireplace warms the room.",
-        "Hanging stockings by the fire is a Christmas custom in many homes."
+        "Many Christmas trees are evergreens. They keep their needles all winter.",
+        "A wood fire in a fireplace warms the room from one bright spot.",
+        "Hanging stockings by the fire is a Christmas custom in lots of homes."
       ],
       "factsEs": [
-        "Muchos árboles de Navidad son de hoja perenne y conservan sus agujas en invierno.",
-        "Un fuego de leña en la chimenea calienta la habitación.",
+        "Muchos árboles de Navidad son de hoja perenne. Conservan sus agujas todo el invierno.",
+        "Un fuego de leña en la chimenea calienta la habitación desde un punto brillante.",
         "Colgar calcetines junto al fuego es una costumbre navideña en muchas casas."
       ]
     },
@@ -994,13 +994,13 @@
         "complexity": "hard"
       },
       "facts": [
-        "Gingerbread is a cookie or cake flavored with ginger and other spices.",
-        "Ginger is a root that people use in cooking.",
+        "Gingerbread is a cookie or cake that tastes like ginger and other spices.",
+        "Ginger is a root. It grows underground.",
         "Decorated gingerbread houses became a popular European holiday craft in the 1800s."
       ],
       "factsEs": [
         "El pan de jengibre es una galleta o un pastel con sabor a jengibre y otras especias.",
-        "El jengibre es una raíz que se usa para cocinar.",
+        "El jengibre es una raíz. Crece bajo la tierra.",
         "Las casitas de jengibre decoradas se volvieron una manualidad navideña popular en Europa en el siglo XIX."
       ]
     },
@@ -1036,13 +1036,13 @@
       },
       "facts": [
         "Arctic reindeer eyes shift from gold in summer to blue in winter.",
-        "Reindeer are called caribou in North America, and they live in cold northern places.",
-        "Both male and female reindeer grow antlers."
+        "In North America, reindeer are called caribou. Their wide hooves help them walk on snow.",
+        "Both male and female reindeer grow antlers. Most other deer do not share that way."
       ],
       "factsEs": [
         "Los ojos del reno ártico cambian de dorados en verano a azules en invierno.",
-        "Al reno se le llama caribú en América del Norte, y vive en lugares fríos del norte.",
-        "Tanto los renos machos como las hembras tienen astas."
+        "En América del Norte al reno se le llama caribú. Sus pezuñas anchas le ayudan a caminar sobre la nieve.",
+        "Tanto los renos machos como las hembras tienen astas. La mayoría de los otros ciervos no hacen eso."
       ]
     },
     {
@@ -1081,14 +1081,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "Sea turtles have lived in the oceans since the time of the dinosaurs.",
-        "Mothers come ashore on sandy beaches to lay their eggs.",
-        "A sea turtle cannot pull its head and flippers all the way into its shell the way a land turtle can."
+        "Sea turtles were already swimming when dinosaurs walked on land.",
+        "A mother crawls onto a sandy beach, buries her eggs, and heads back to the sea.",
+        "A sea turtle cannot tuck its head and flippers all the way into its shell the way a land turtle can."
       ],
       "factsEs": [
-        "Las tortugas marinas viven en el océano desde la época de los dinosaurios.",
-        "Las madres salen a playas de arena para poner sus huevos.",
-        "Una tortuga marina no puede esconder del todo la cabeza y las aletas en el caparazón, como sí puede una tortuga de tierra."
+        "Las tortugas marinas ya nadaban cuando los dinosaurios caminaban en la tierra.",
+        "La mamá sube a una playa de arena, entierra sus huevos y vuelve al mar.",
+        "Una tortuga marina no puede esconder del todo la cabeza y las aletas, como sí puede una tortuga de tierra."
       ]
     },
     {
@@ -1124,14 +1124,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "Snow is made of ice crystals that form in clouds.",
+        "Snow is a pile of tiny ice crystals that grew inside a cloud.",
         "Snow melts when the air is warmer than 32 degrees Fahrenheit, which is 0 degrees Celsius.",
-        "Most snowflakes have six sides because of the way ice crystals grow."
+        "Most snowflakes have six sides. That is how ice crystals like to grow."
       ],
       "factsEs": [
-        "La nieve está hecha de cristales de hielo que se forman en las nubes.",
+        "La nieve es un montón de cristalitos de hielo que crecieron dentro de una nube.",
         "La nieve se derrite cuando el aire pasa de 32 grados Fahrenheit, que son 0 grados Celsius.",
-        "La mayoría de los copos de nieve tienen seis lados por la forma en que crecen los cristales de hielo."
+        "La mayoría de los copos tienen seis lados. Así les gusta crecer a los cristales de hielo."
       ]
     },
     {
@@ -1167,14 +1167,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "A lotus flower often opens in the morning and closes in the afternoon.",
-        "Lotus leaves shed water, so droplets bead up and roll off.",
-        "Lotus seeds can stay alive for hundreds of years."
+        "A lotus flower opens for the morning and closes again in the afternoon.",
+        "Water beads up on a lotus leaf and rolls off, taking dust with it.",
+        "Some lotus seeds have sprouted after waiting hundreds of years."
       ],
       "factsEs": [
-        "La flor de loto suele abrirse por la mañana y cerrarse por la tarde.",
-        "Las hojas de loto sueltan el agua, así que las gotas se hacen bolitas y ruedan.",
-        "Las semillas de loto pueden seguir vivas durante cientos de años."
+        "La flor de loto se abre por la mañana y se cierra otra vez por la tarde.",
+        "El agua se hace bolitas sobre la hoja de loto y rueda, llevándose el polvo.",
+        "Algunas semillas de loto han brotado después de esperar cientos de años."
       ]
     },
     {
@@ -1209,14 +1209,14 @@
         "complexity": "hard"
       },
       "facts": [
-        "A unicorn is an imaginary horse with one horn.",
-        "Unicorn stories are centuries old in Europe, the Middle East, and Asia.",
-        "No living animal is a unicorn. Narwhal tusks were once sold as unicorn horns."
+        "A unicorn is an imaginary horse with one horn on its forehead.",
+        "People have told unicorn stories for centuries, in Europe, the Middle East, and Asia.",
+        "No living animal is a unicorn. Long ago, narwhal tusks were sold as if they were unicorn horns."
       ],
       "factsEs": [
-        "El unicornio es un caballo imaginario con un solo cuerno.",
-        "Los cuentos de unicornios tienen siglos en Europa, el Medio Oriente y Asia.",
-        "Ningún animal vivo es un unicornio. Los colmillos de narval se vendieron alguna vez como cuernos de unicornio."
+        "El unicornio es un caballo imaginario con un cuerno en la frente.",
+        "La gente cuenta historias de unicornios desde hace siglos, en Europa, el Medio Oriente y Asia.",
+        "Ningún animal vivo es un unicornio. Hace mucho, los colmillos de narval se vendían como si fueran cuernos de unicornio."
       ]
     },
     {
@@ -1251,14 +1251,14 @@
         "complexity": "easy"
       },
       "facts": [
-        "Ice cream is a frozen dessert made from cream or milk and sugar.",
-        "Stirring the mix while it freezes keeps the ice crystals small.",
-        "A sundae is ice cream served with a topping."
+        "Ice cream makers stir the mix the whole time it freezes. That keeps the ice crystals tiny, so each scoop stays creamy.",
+        "A sundae is ice cream dressed up with a topping. The cherry on top is the party hat.",
+        "The treat starts as milk or cream and sugar. Stir it while it freezes, and it becomes ice cream."
       ],
       "factsEs": [
-        "El helado es un postre congelado hecho con crema o leche y azúcar.",
-        "Revolver la mezcla mientras se congela mantiene pequeños los cristales de hielo.",
-        "Un sundae es helado servido con un aderezo."
+        "Para hacer helado se revuelve la mezcla todo el tiempo que se congela. Así los cristales de hielo se quedan diminutos y la bola queda cremosa.",
+        "Un sundae es helado vestido con un aderezo. La cereza de encima es el gorro de fiesta.",
+        "El postre empieza como leche o crema y azúcar. Si se revuelve mientras se congela, se vuelve helado."
       ]
     },
     {
@@ -1293,14 +1293,14 @@
         "complexity": "medium"
       },
       "facts": [
-        "The planets in order from the Sun are Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune.",
-        "Jupiter is the biggest planet.",
-        "Earth is the third planet from the Sun, and it is the one we live on."
+        "Start at the Sun and count outward: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune.",
+        "Jupiter is the biggest planet. More than 1,000 Earths could fit inside it.",
+        "Earth is the third planet from the Sun, and it is the one with oceans you can swim in."
       ],
       "factsEs": [
-        "Los planetas, en orden desde el Sol, son Mercurio, Venus, Tierra, Marte, Júpiter, Saturno, Urano y Neptuno.",
-        "Júpiter es el planeta más grande.",
-        "La Tierra es el tercer planeta desde el Sol, y es el planeta en el que vivimos."
+        "Empieza en el Sol y cuenta hacia afuera: Mercurio, Venus, Tierra, Marte, Júpiter, Saturno, Urano y Neptuno.",
+        "Júpiter es el planeta más grande. Dentro de él cabrían más de 1,000 Tierras.",
+        "La Tierra es el tercer planeta desde el Sol, y es el que tiene océanos para nadar."
       ]
     },
     {
@@ -1336,14 +1336,14 @@
         "complexity": "medium"
       },
       "facts": [
-        "Evaporation is when the Sun turns water into vapor that rises into the air.",
-        "Condensation is when that vapor cools and forms clouds.",
-        "Precipitation is water falling back down as rain, snow, sleet, or hail."
+        "Evaporation is the Sun warming water until some of it floats away as invisible vapor.",
+        "Condensation is that vapor cooling into tiny drops and turning into a cloud.",
+        "Precipitation is when those drops get heavy and fall as rain, snow, sleet, or hail."
       ],
       "factsEs": [
-        "La evaporación es cuando el Sol convierte el agua en vapor que sube al aire.",
-        "La condensación es cuando ese vapor se enfría y forma nubes.",
-        "La precipitación es el agua que vuelve a caer como lluvia, nieve, aguanieve o granizo."
+        "El Sol calienta el agua hasta que una parte se va flotando como vapor invisible. Eso es la evaporación.",
+        "Allá arriba, el vapor se enfría en gotitas y se vuelve una nube. Eso es la condensación.",
+        "Cuando esas gotas se ponen pesadas, caen como lluvia, nieve, aguanieve o granizo. Eso es la precipitación."
       ]
     },
     {
@@ -1378,14 +1378,14 @@
         "complexity": "medium"
       },
       "facts": [
-        "A butterfly has four stages: egg, caterpillar, chrysalis, and butterfly.",
-        "Monarch caterpillars eat milkweed.",
-        "Inside the chrysalis, the caterpillar changes into a butterfly."
+        "A butterfly lives four stages in one life: egg, caterpillar, chrysalis, and butterfly.",
+        "Monarch caterpillars eat milkweed. For them, that plant is the whole menu.",
+        "Inside the chrysalis, the caterpillar changes into a butterfly with wings."
       ],
       "factsEs": [
-        "La mariposa tiene cuatro etapas: huevo, oruga, crisálida y mariposa.",
-        "Las orugas de la mariposa monarca comen algodoncillo.",
-        "Dentro de la crisálida, la oruga se transforma en mariposa."
+        "La mariposa vive cuatro etapas en una vida: huevo, oruga, crisálida y mariposa.",
+        "Las orugas de la mariposa monarca comen algodoncillo. Para ellas, esa planta es todo el menú.",
+        "Dentro de la crisálida, la oruga se transforma en una mariposa con alas."
       ]
     },
     {
@@ -1421,13 +1421,13 @@
         "complexity": "hard"
       },
       "facts": [
-        "In 1621, the Wampanoag and the English Pilgrims shared a harvest feast that lasted about three days.",
-        "The Wampanoag leader was Ousamequin, also called Massasoit, and about 90 Wampanoag men attended.",
+        "In 1621, the Wampanoag and the English Pilgrims shared a harvest feast. It lasted about three days.",
+        "The Wampanoag leader was Ousamequin, also called Massasoit. About 90 Wampanoag men attended.",
         "The meal likely included deer brought by the Wampanoag, and wild fowl."
       ],
       "factsEs": [
-        "En 1621, los Wampanoag y los peregrinos ingleses compartieron una fiesta de cosecha que duró unos tres días.",
-        "El líder Wampanoag era Ousamequin, también llamado Massasoit, y asistieron unos 90 hombres Wampanoag.",
+        "En 1621, los Wampanoag y los peregrinos ingleses compartieron una fiesta de cosecha. Duró unos tres días.",
+        "El líder Wampanoag era Ousamequin, también llamado Massasoit. Asistieron unos 90 hombres Wampanoag.",
         "La comida probablemente incluyó venado que trajeron los Wampanoag, y aves silvestres."
       ]
     }

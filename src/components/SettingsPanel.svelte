@@ -3,7 +3,7 @@
   import { formatFavoritesShare, sharePlainText } from '../lib/favorites-share';
   import { downloadBlob } from '../lib/download';
   import { t } from '../lib/i18n';
-  import { LABEL_MODES, LANGUAGES, NUMBER_STYLES, type Settings } from '../lib/settings';
+  import { LABEL_MODES, LANGUAGES, NUMBER_STYLES, type MathRange, type NumberStyle, type Settings } from '../lib/settings';
   import {
     exportBackup,
     importBackup,
@@ -36,13 +36,23 @@
 
   let confirmReset = $state(false);
   let status = $state('');
+  const practiceRanges = $derived(
+    settings.numberStyle === 'adding' ? (['add10', 'add20'] as const) : (['times5', 'times10'] as const),
+  );
 
   function toggle(key: 'sound' | 'haptics' | 'bigNumbers') {
     onChange({ ...settings, [key]: !settings[key] });
   }
 
-  function pick<K extends 'numberStyle' | 'labels' | 'language'>(key: K, value: Settings[K]) {
+  function pick<K extends 'numberStyle' | 'labels' | 'language' | 'mathRange'>(key: K, value: Settings[K]) {
     onChange({ ...settings, [key]: value });
+  }
+
+  function pickStyle(style: NumberStyle) {
+    let mathRange: MathRange = settings.mathRange;
+    if (style === 'adding' && !mathRange.startsWith('add')) mathRange = 'add10';
+    if (style === 'times' && !mathRange.startsWith('times')) mathRange = 'times5';
+    onChange({ ...settings, numberStyle: style, mathRange });
   }
 
   async function shareFavorites() {
@@ -101,10 +111,20 @@
       <p class="choice-label">{t(settings.language, 'numberStyle')}</p>
       <div class="choices" role="group" aria-label={t(settings.language, 'numberStyle')}>
         {#each NUMBER_STYLES as style (style)}
-          <button type="button" data-testid="number-{style}" aria-pressed={settings.numberStyle === style} onclick={() => pick('numberStyle', style)}>{t(settings.language, style)}</button>
+          <button type="button" data-testid="number-{style}" aria-pressed={settings.numberStyle === style} onclick={() => pickStyle(style)}>{t(settings.language, style)}</button>
         {/each}
       </div>
     </div>
+    {#if settings.numberStyle === 'adding' || settings.numberStyle === 'times'}
+      <div class="choice-block">
+        <p class="choice-label">{t(settings.language, 'practice')}</p>
+        <div class="choices" role="group" aria-label={t(settings.language, 'practice')}>
+          {#each practiceRanges as range (range)}
+            <button type="button" data-testid="math-{range}" aria-pressed={settings.mathRange === range} onclick={() => pick('mathRange', range)}>{t(settings.language, range)}</button>
+          {/each}
+        </div>
+      </div>
+    {/if}
     <div class="choice-block">
       <p class="choice-label">{t(settings.language, 'labels')}</p>
       <div class="choices" role="group" aria-label={t(settings.language, 'labels')}>

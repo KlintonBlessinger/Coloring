@@ -86,3 +86,23 @@ export function labDist2(a: Lab, b: Lab): number {
   const db = a[2] - b[2];
   return dL * dL + da * da + db * db;
 }
+
+export interface Oklch {
+  l: number;
+  c: number;
+  h: number;
+}
+
+/** OKLCH from a hex color. Hue is degrees, 0–360. */
+export function hexToOklch(hex: string): Oklch {
+  const [L, a, b] = hexToOklab(hex);
+  const c = Math.hypot(a, b);
+  let h = (Math.atan2(b, a) * 180) / Math.PI;
+  if (h < 0) h += 360;
+  return { l: L, c, h };
+}
+
+export function hueDistance(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return Math.min(d, 360 - d);
+}

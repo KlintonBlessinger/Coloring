@@ -66,7 +66,7 @@ export class Renderer {
     this.filled = filled;
     this.big = bigNumbers;
     this.marks = regionMarks(puzzle, DEFAULT_SETTINGS);
-    this.learningKey = `plain|numbers|en|${bigNumbers ? 1 : 0}`;
+    this.learningKey = `plain|numbers|en|add10|${bigNumbers ? 1 : 0}`;
     view.classList.add('surface');
     const viewCtx = view.getContext('2d');
     if (!viewCtx) throw new Error('Canvas is not available.');
@@ -96,7 +96,7 @@ export class Renderer {
   }
 
   setLearning(next: Settings): void {
-    const key = `${next.numberStyle}|${next.labels}|${next.language}|${next.bigNumbers ? 1 : 0}`;
+    const key = `${next.numberStyle}|${next.labels}|${next.language}|${next.mathRange}|${next.bigNumbers ? 1 : 0}`;
     if (key === this.learningKey) return;
     this.learningKey = key;
     this.big = next.bigNumbers;
@@ -427,7 +427,13 @@ export class Renderer {
           if (drawTally(ctx, mark.count, x, y, radius)) numbers = true;
           continue;
         }
-        if (drawFittedText(ctx, mark.text, x, y, radius, this.big)) numbers = true;
+        const fitted = drawFittedText(ctx, mark.text, x, y, radius, this.big, {
+          left: this.panX + 2,
+          right: this.panX + this.puzzle.width * this.scale - 2,
+          top: this.panY + 2,
+          bottom: this.panY + this.puzzle.height * this.scale - 2,
+        });
+        if (fitted) numbers = true;
       }
     }
 
@@ -499,26 +505,45 @@ function drawTally(ctx: CanvasRenderingContext2D, count: number, x: number, y: n
   return true;
 }
 
-function drawFittedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, radius: number, big: boolean): boolean {
-  const short = text.length <= 2;
+function drawFittedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  radius: number,
+  big: boolean,
+  bounds?: { left: number; right: number; top: number; bottom: number },
+): boolean {
+  const lines = text.includes(' ') && text.length > 8 ? text.split(' ') : [text];
+  const short = text.length <= 2 && lines.length === 1;
   const numeric = /^\d+$/.test(text);
   if (short) {
     const need = (numeric && text.length >= 2 ? 15 : 11) * (big ? 0.78 : 1);
     if (radius < need) return false;
   }
   let font = Math.min(big ? 30 : 20, radius * (big ? 0.95 : 0.72));
-  if (!short) font = Math.min(font, big ? 26 : 18);
+  if (!short) font = Math.min(font, big ? 22 : 16);
+  const room = bounds ? Math.max(12, Math.min(x - bounds.left, bounds.right - x) * 2) : Infinity;
+  const heightRoom = bounds ? Math.max(12, Math.min(y - bounds.top, bounds.bottom - y) * 2) : Infinity;
   ctx.fillStyle = NUMBER;
-  ctx.font = `800 ${font}px Nunito, sans-serif`;
-  let width = ctx.measureText(text).width;
-  const maxWidth = radius * 1.65;
-  if (width > maxWidth) {
-    font *= maxWidth / width;
-    if (font < 9) return false;
+  const fit = () => {
     ctx.font = `800 ${font}px Nunito, sans-serif`;
-    width = ctx.measureText(text).width;
+    return Math.max(...lines.map((line) => ctx.measureText(line).width));
+  };
+  let width = fit();
+  const maxWidth = Math.min(radius * 1.65, room);
+  const lineHeight = font * 1.05;
+  const block = lineHeight * lines.length;
+  if (width > maxWidth || block > Math.min(radius * 1.7, heightRoom)) {
+    const widthScale = width > maxWidth ? maxWidth / width : 1;
+    const heightScale = block > heightRoom ? heightRoom / block : 1;
+    font *= Math.min(widthScale, heightScale);
+    if (font < 8) return false;
+    width = fit();
     if (width > maxWidth * 1.05) return false;
   }
-  ctx.fillText(text, x, y);
+  const step = font * 1.05;
+  const start = y - ((lines.length - 1) * step) / 2;
+  lines.forEach((line, index) => ctx.fillText(line, x, start + index * step));
   return true;
 }

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { formatFavoritesShare } from '../../src/lib/favorites-share';
 import { nextHintRegion } from '../../src/lib/hint';
-import { colorNames, mathProblem, paletteMarks, problemValue, regionMarks, sightWord } from '../../src/lib/labels';
+import { answerBank, colorNames, mathProblem, paletteMarks, problemChoices, problemValue, regionMarks, sightWord } from '../../src/lib/labels';
 import { parseBackup } from '../../src/lib/storage';
 import type { ArtRecord } from '../../src/lib/types';
 import type { PuzzleFile } from '../../src/lib/types';
@@ -69,6 +69,7 @@ test('a backup without favorites still imports', () => {
   assert.equal(parsed.settings.numberStyle, 'plain');
   assert.equal(parsed.settings.labels, 'numbers');
   assert.equal(parsed.settings.language, 'en');
+  assert.equal(parsed.settings.mathRange, 'add10');
   const hearts = parseBackup(
     JSON.stringify({ version: 1, progress: {}, favorites: ['thanksgiving-turkey', 4, 'christmas-snowman'] }),
   );
@@ -133,30 +134,65 @@ test('the art manifest covers every picture and at least five mysteries', () => 
   assert.match(doc, /factsEs/);
 });
 
-test('math problems stay stable, vary, and equal the color number', () => {
-  for (const style of ['adding', 'subtracting', 'times'] as const) {
-    const seen = new Set<string>();
-    for (let region = 0; region < 16; region++) {
-      const text = mathProblem(style, 8, region, 'flowers-lotus-pond');
-      assert.equal(problemValue(text), 8, text);
-      assert.equal(mathProblem(style, 8, region, 'flowers-lotus-pond'), text);
-      seen.add(text);
+test('math practice skips +0 and ×1 unless nothing else works', () => {
+  for (const answer of [4, 5, 6, 7, 8, 9, 10, 12, 15, 20]) {
+    for (const text of problemChoices('adding', answer, 'add20')) {
+      assert.equal(problemValue(text), answer, text);
+      const [left, right] = text.split('+').map(Number);
+      assert.ok(left >= 2 && right >= 2, text);
     }
-    assert.ok(seen.size > 1, style);
   }
-  assert.equal(problemValue(mathProblem('adding', 1, 0, 'sample')), 1);
-  assert.equal(problemValue(mathProblem('times', 1, 2, 'sample')), 1);
+  assert.deepEqual(problemChoices('adding', 1, 'add10').sort(), ['0+1', '1+0']);
   assert.equal(problemValue(mathProblem('subtracting', 28, 4, 'sample')), 28);
+  assert.ok(!mathProblem('subtracting', 28, 4, 'sample').endsWith('−1'));
+  for (const answer of answerBank('times10')) {
+    for (const text of problemChoices('times', answer, 'times10')) {
+      assert.equal(problemValue(text), answer, text);
+      const [left, right] = text.split('×').map(Number);
+      assert.ok(left >= 2 && left <= 10 && right >= 2 && right <= 10, text);
+    }
+  }
+  const times5 = answerBank('times5');
+  assert.ok(times5.includes(25));
+  assert.ok(!times5.includes(7) && !times5.includes(11));
+  assert.ok(Math.max(...times5) <= 25);
+  const seen = new Set<string>();
+  for (let region = 0; region < 16; region++) {
+    const text = mathProblem('adding', 8, region, 'flowers-lotus-pond', 'add20');
+    assert.equal(problemValue(text), 8);
+    assert.equal(mathProblem('adding', 8, region, 'flowers-lotus-pond', 'add20'), text);
+    seen.add(text);
+  }
+  assert.ok(seen.size > 1);
   const marks = regionMarks(
     { id: 'sample', palette: Array.from({ length: 12 }, () => '#fff'), regionColors: [0, 4, 7, 11] },
-    { numberStyle: 'counting', labels: 'numbers', language: 'en' },
+    { numberStyle: 'counting', labels: 'numbers', language: 'en', mathRange: 'add10' },
   );
   assert.deepEqual(marks[0], { kind: 'dots', count: 1 });
   assert.deepEqual(marks[1], { kind: 'dots', count: 5 });
   assert.deepEqual(marks[2], { kind: 'tally', count: 8 });
   assert.deepEqual(marks[3], { kind: 'text', text: '12' });
-  const answers = paletteMarks(Array.from({ length: 6 }, () => '#fff'), { numberStyle: 'times', labels: 'numbers', language: 'en' });
-  assert.deepEqual(answers.map((mark) => (mark.kind === 'text' ? mark.text : '')), ['1', '2', '3', '4', '5', '6']);
+  const answers = paletteMarks(
+    Array.from({ length: 8 }, () => '#fff'),
+    { numberStyle: 'times', labels: 'numbers', language: 'en', mathRange: 'times10' },
+    'sample',
+  );
+  for (const mark of answers) {
+    assert.equal(mark.kind, 'text');
+    if (mark.kind === 'text') assert.ok(Number(mark.text) >= 4, mark.text);
+  }
+  const adding = regionMarks(
+    { id: 'sample', palette: Array.from({ length: 6 }, () => '#fff'), regionColors: Array.from({ length: 36 }, (_, index) => index % 6) },
+    { numberStyle: 'adding', labels: 'numbers', language: 'en', mathRange: 'add20' },
+  );
+  const counts = new Map<string, number>();
+  for (const mark of adding) {
+    assert.equal(mark.kind, 'text');
+    if (mark.kind !== 'text') continue;
+    assert.ok(!mark.text.includes('+0') && !mark.text.startsWith('0+'), mark.text);
+    counts.set(mark.text, (counts.get(mark.text) ?? 0) + 1);
+  }
+  assert.ok(counts.size > 6);
 });
 
 test('color names and sight words are unique, and Spanish differs', () => {
@@ -164,9 +200,20 @@ test('color names and sight words are unique, and Spanish differs', () => {
   const spanish = colorNames(['#e23d3d', '#e45050', '#2244cc', '#22aa44'], 'es');
   assert.equal(new Set(english).size, english.length);
   assert.equal(new Set(spanish).size, spanish.length);
-  assert.ok(english.some((name) => name === 'light red' || name === 'dark red'));
+  assert.ok(english.includes('red'));
   assert.ok(spanish.some((name) => name.includes('rojo')));
   assert.notDeepEqual(english, spanish);
+  assert.equal(colorNames(['#72a57c'], 'en')[0], 'sage');
+  assert.notEqual(colorNames(['#72a57c'], 'es')[0], 'gris');
+  assert.match(colorNames(['#f799a5'], 'en')[0] ?? '', /pink|blush|coral/);
+  assert.notEqual(colorNames(['#f799a5'], 'en')[0], 'peach');
+  const lotus = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/puzzles/flowers-lotus-pond.json'), 'utf8')) as PuzzleFile;
+  const lotusEn = colorNames(lotus.palette, 'en');
+  const lotusEs = colorNames(lotus.palette, 'es');
+  assert.equal(lotusEn[1], 'sage');
+  assert.equal(lotusEs[1], 'salvia');
+  assert.match(lotusEn[3] ?? '', /pink|blush|coral/);
+  assert.ok(!lotusEs.some((name) => name === 'gris' || name === 'gris oscuro'));
   const words = Array.from({ length: 20 }, (_, index) => sightWord(index, 'en'));
   const palabras = Array.from({ length: 20 }, (_, index) => sightWord(index, 'es'));
   assert.equal(new Set(words).size, words.length);

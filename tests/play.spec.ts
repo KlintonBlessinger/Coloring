@@ -513,16 +513,20 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
     Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: synth });
   });
 
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 60 });
+  };
+
   await page.goto(`/?shot=science&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-category="Science"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(mediaDir, 'science-shelf.png') });
+  await jpg('science-shelf.jpg');
 
   await openPuzzle(page, 'thanksgiving-first-harvest');
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(mediaDir, 'first-harvest.png') });
+  await jpg('first-harvest.jpg');
 
   async function openFromGallery(id: string) {
     await page.locator('[data-category="All"]').click();
@@ -533,6 +537,7 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
   await page.getByTestId('number-adding').click();
+  await page.getByTestId('math-add20').click();
   await page.getByTestId('back').click();
   const lotus = puzzle('flowers-lotus-pond');
   let biggest = 0;
@@ -547,18 +552,29 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.locator(`.swatch[data-index="${biggest}"]`).click();
   await page.getByTestId('hint').click();
   await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
+  const addingLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-label'))));
+  for (const label of addingLabels) expect(label).toBeGreaterThanOrEqual(4);
+  for (const label of addingLabels) expect(label).toBeLessThanOrEqual(20);
   await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(mediaDir, 'adding-zoom.png') });
+  await jpg('adding-20.jpg');
 
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
   await page.getByTestId('number-times').click();
+  await page.getByTestId('math-times10').click();
   await page.getByTestId('back').click();
   await openFromGallery('flowers-lotus-pond');
-  await expect(page.locator('.swatch[data-index="0"]')).toHaveAttribute('data-label', '1');
-  await expect(page.locator('.swatch[data-index="1"]')).toHaveAttribute('data-label', '2');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(mediaDir, 'times-palette.png') });
+  const timesLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-label'))));
+  for (const label of timesLabels) {
+    expect(label).toBeGreaterThanOrEqual(4);
+    expect(label).toBeLessThanOrEqual(100);
+    expect(label).not.toBe(1);
+  }
+  await page.locator(`.swatch[data-index="${biggest}"]`).click();
+  await page.getByTestId('hint').click();
+  await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
+  await page.waitForTimeout(400);
+  await jpg('times-10.jpg');
 
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
@@ -573,8 +589,12 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   const spokenColor = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
   expect(spokenColor).toContain(englishLabel ?? '');
   expect(spokenColor).toContain('en-US');
+  const clipped = await page.locator('.palette .face').evaluateAll((nodes) =>
+    nodes.filter((node) => node.scrollWidth > node.clientWidth + 2).map((node) => node.textContent ?? ''),
+  );
+  expect(clipped).toEqual([]);
   await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(mediaDir, 'color-names-en.png') });
+  await jpg('color-names-en.jpg');
 
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
@@ -584,13 +604,19 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await expect(page.getByTestId('hint')).toHaveText('Pista');
   await expect(page.locator('.sub')).toContainText('Flores');
   const spanishLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-label') ?? ''));
-  expect(spanishLabels.join(' ')).toMatch(/rojo|azul|verde|amarillo|naranja|turquesa|morado|rosa|marrón|dorado|crema|gris|añil|menta|durazno|granate|lavanda|claro|oscuro/);
+  expect(spanishLabels.join(' ')).toMatch(/rosa|verde|salvia|menta|crema|dorado|cian/);
+  expect(spanishLabels.join(' ')).not.toMatch(/\bgris\b/);
+  expect(spanishLabels[3] ?? '').not.toMatch(/durazno/);
   expect(spanishLabels.join(' ')).not.toBe(englishLabel);
   await page.locator('.swatch[data-index="0"]').click();
   const spokenEs = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
   expect(spokenEs).toContain('es-MX');
+  const clippedEs = await page.locator('.palette .face').evaluateAll((nodes) =>
+    nodes.filter((node) => node.scrollWidth > node.clientWidth + 2).map((node) => node.textContent ?? ''),
+  );
+  expect(clippedEs).toEqual([]);
   await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(mediaDir, 'color-names-es.png') });
+  await jpg('color-names-es.jpg');
 
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
@@ -608,5 +634,14 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   expect(spokenFacts).toContain('en-US');
   expect(spokenFacts).toContain('0.85');
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(mediaDir, 'facts-card.png') });
+  await jpg('facts-one.jpg');
+
+  await page.getByTestId('back').click();
+  const solar = puzzle('science-solar-system');
+  await openFromGallery('science-solar-system');
+  await paintRegions(page, solar, solar.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await expect(page.locator('.facts')).toContainText(/Jupiter is the biggest/i);
+  await page.waitForTimeout(400);
+  await jpg('facts-two.jpg');
 });

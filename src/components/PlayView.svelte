@@ -123,7 +123,7 @@
   const ring = 2 * Math.PI * 19;
   const copy = $derived(settings.language);
   const factList = $derived(copy === 'es' ? (puzzle?.factsEs ?? []) : (puzzle?.facts ?? []));
-  const swatchMarks = $derived(puzzle ? paletteMarks(puzzle.palette, settings) : []);
+  const swatchMarks = $derived(puzzle ? paletteMarks(puzzle.palette, settings, puzzle.id) : []);
 
   async function saveImage() {
     if (!gameRef || saving) return;

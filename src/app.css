@@ -590,17 +590,22 @@ h1 {
 .card-pop { position: relative; z-index: 1; max-height: min(72vh, 540px); overflow: auto; }
 
 .palette.words { align-items: center; }
-.palette.words .swatch { width: auto; height: 48px; }
+.palette.words .swatch { width: auto; max-width: 104px; height: auto; min-height: 48px; }
 .palette.words .ring { display: none; }
 .palette.words .face {
   position: relative;
   inset: auto;
-  height: 40px;
+  height: auto;
+  min-height: 40px;
+  max-width: 96px;
   min-width: 44px;
-  padding: 0 12px;
+  padding: 6px 8px;
   border-radius: 20px;
-  font-size: 15px;
-  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .palette.words .swatch.selected { transform: translateY(-4px); }
 .dots, .tally { display: flex; align-items: center; justify-content: center; gap: 2px; }

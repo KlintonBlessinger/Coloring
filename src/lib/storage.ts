@@ -1,6 +1,6 @@
 import { createStore, del, get, keys, set } from 'idb-keyval';
 import { APP_NAME } from './brand';
-import { DEFAULT_SETTINGS, LABEL_MODES, LANGUAGES, NUMBER_STYLES, pickSetting, type Settings } from './settings';
+import { DEFAULT_SETTINGS, LABEL_MODES, LANGUAGES, MATH_RANGES, NUMBER_STYLES, pickSetting, type Settings } from './settings';
 
 const store = createStore('color-cozy', 'book');
 
@@ -28,6 +28,7 @@ function normalizeSettings(value: Partial<Settings> | undefined): Settings {
     numberStyle: pickSetting(value?.numberStyle, NUMBER_STYLES, DEFAULT_SETTINGS.numberStyle),
     labels: pickSetting(value?.labels, LABEL_MODES, DEFAULT_SETTINGS.labels),
     language: pickSetting(value?.language, LANGUAGES, DEFAULT_SETTINGS.language),
+    mathRange: pickSetting(value?.mathRange, MATH_RANGES, DEFAULT_SETTINGS.mathRange),
   };
 }
 
