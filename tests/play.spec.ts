@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { decodeRLE16 } from '../src/lib/codec';
 import type { PuzzleFile } from '../src/lib/types';
 
 const mediaDir = '/cursor/stores/bc-c04895d7-9d46-4e3a-be6d-526b6b12be78/media';
@@ -53,6 +54,76 @@ async function regionPoint(page: Page, book: PuzzleFile, index: number): Promise
   );
 }
 
+function interiorPoints(book: PuzzleFile): { x: number; y: number }[] {
+  const labels = decodeRLE16(book.labels, book.width * book.height);
+  const points: ({ x: number; y: number } | undefined)[] = new Array(book.regionColors.length);
+  for (let index = 0; index < points.length; index++) {
+    const x = Math.round(book.cx[index] ?? 0);
+    const y = Math.round(book.cy[index] ?? 0);
+    if (x >= 0 && y >= 0 && x < book.width && y < book.height && labels[y * book.width + x] === index) {
+      points[index] = { x, y };
+    }
+  }
+  for (let pixel = 0; pixel < labels.length; pixel++) {
+    const id = labels[pixel] ?? 65535;
+    if (id === 65535 || points[id]) continue;
+    points[id] = { x: pixel % book.width, y: Math.floor(pixel / book.width) };
+  }
+  return points.map((point, index) => point ?? { x: Math.round(book.cx[index] ?? 0), y: Math.round(book.cy[index] ?? 0) });
+}
+
+async function paintRegions(page: Page, book: PuzzleFile, indices: number[]): Promise<void> {
+  const spots = interiorPoints(book);
+  await page.evaluate(
+    ({ colors, spots, indices }) => {
+      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+      const fire = (type: string, x: number, y: number) => {
+        canvas.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            pointerId: 1,
+            pointerType: 'touch',
+            isPrimary: true,
+            clientX: x,
+            clientY: y,
+            button: 0,
+            buttons: type === 'pointerup' ? 0 : 1,
+          }),
+        );
+      };
+      const point = (index: number) => {
+        const scale = Number(canvas.dataset.scale);
+        const panX = Number(canvas.dataset.panX);
+        const panY = Number(canvas.dataset.panY);
+        const rect = canvas.getBoundingClientRect();
+        const spot = spots[index] ?? { x: 0, y: 0 };
+        return {
+          x: rect.left + panX + spot.x * scale,
+          y: rect.top + panY + spot.y * scale,
+        };
+      };
+      const swatches = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="swatch"]')];
+      const groups = new Map<number, number[]>();
+      for (const index of indices) {
+        const color = colors[index] ?? 0;
+        const list = groups.get(color) ?? [];
+        list.push(index);
+        groups.set(color, list);
+      }
+      for (const [color, group] of groups) {
+        swatches[color]?.click();
+        for (const index of group) {
+          const spot = point(index);
+          fire('pointerdown', spot.x, spot.y);
+          fire('pointerup', spot.x, spot.y);
+        }
+      }
+    },
+    { colors: book.regionColors, spots, indices },
+  );
+}
+
 async function sample(page: Page, book: PuzzleFile, index: number): Promise<number[]> {
   return page.evaluate(
     ({ cx, cy }) => {
@@ -98,6 +169,10 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   await page.touchscreen.tap(wrongPoint.x, wrongPoint.y);
   expect(await sample(page, book, wrong)).toEqual(beforeWrong);
 
+  await expect.poll(async () => {
+    const pixel = await sample(page, book, match);
+    return (pixel[0] ?? 0) + (pixel[1] ?? 0) + (pixel[2] ?? 0);
+  }).toBeGreaterThan(30);
   const before = await sample(page, book, match);
   const point = await regionPoint(page, book, match);
   await page.touchscreen.tap(point.x, point.y);
@@ -251,162 +326,52 @@ test('service worker, manifest, and offline reload', async ({ page, context }) =
   expect(noisy, noisy.join('\n')).toEqual([]);
 });
 
-async function pinch(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
-    const rect = canvas.getBoundingClientRect();
-    const midX = rect.left + rect.width / 2;
-    const midY = rect.top + rect.height / 2;
-    const fire = (type: string, id: number, x: number, y: number) => {
-      canvas.dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          pointerId: id,
-          pointerType: 'touch',
-          isPrimary: id === 1,
-          clientX: x,
-          clientY: y,
-          button: 0,
-          buttons: type === 'pointerup' ? 0 : 1,
-        }),
-      );
-    };
-    fire('pointerdown', 1, midX - 30, midY);
-    fire('pointerdown', 2, midX + 30, midY);
-    fire('pointermove', 1, midX - 90, midY - 20);
-    fire('pointermove', 2, midX + 90, midY + 20);
-    fire('pointerup', 1, midX - 90, midY - 20);
-    fire('pointerup', 2, midX + 90, midY + 20);
-  });
-}
-
-function paintPayload(book: PuzzleFile, fraction: number) {
-  return {
-    colors: book.regionColors,
-    cx: book.cx,
-    cy: book.cy,
-    fraction,
-  };
-}
-
-test('screenshots of gallery, zoom, partial color, and completion', async ({ page }) => {
+test('screenshots of gallery, fit, half colored, and a finished hard picture', async ({ page }) => {
   fs.mkdirSync(mediaDir, { recursive: true });
-  await openPuzzle(page, 'animals-sea-turtle');
-  await pinch(page);
-  await pinch(page);
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: path.join(mediaDir, 'hard-uncolored-zoom.png') });
-
-  const sundae = puzzle('food-ice-cream-sundae');
-  await page.goto('/?shot=partial');
+  await page.goto(`/?shot=gallery&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
-  await page.locator('[data-id="food-ice-cream-sundae"]').click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
-  await page.evaluate(
-    ({ colors, cx, cy, fraction }) => {
-      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
-      const fire = (type: string, x: number, y: number) => {
-        canvas.dispatchEvent(
-          new PointerEvent(type, {
-            bubbles: true,
-            cancelable: true,
-            pointerId: 1,
-            pointerType: 'touch',
-            isPrimary: true,
-            clientX: x,
-            clientY: y,
-            button: 0,
-            buttons: type === 'pointerup' ? 0 : 1,
-          }),
-        );
-      };
-      const point = (index: number) => {
-        const scale = Number(canvas.dataset.scale);
-        const panX = Number(canvas.dataset.panX);
-        const panY = Number(canvas.dataset.panY);
-        const rect = canvas.getBoundingClientRect();
-        return {
-          x: rect.left + panX + (cx[index] ?? 0) * scale,
-          y: rect.top + panY + (cy[index] ?? 0) * scale,
-        };
-      };
-      const swatches = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="swatch"]')];
-      const groups = new Map<number, number[]>();
-      colors.forEach((color, index) => {
-        const list = groups.get(color) ?? [];
-        list.push(index);
-        groups.set(color, list);
-      });
-      for (const [color, indices] of groups) {
-        if (color === 0 || color > 4) continue;
-        swatches[color]?.click();
-        const slice = indices.slice(0, Math.max(1, Math.ceil(indices.length * fraction)));
-        for (const index of slice) {
-          const spot = point(index);
-          fire('pointerdown', spot.x, spot.y);
-          fire('pointerup', spot.x, spot.y);
-        }
-      }
-    },
-    paintPayload(sundae, 0.55),
-  );
-  await expect.poll(async () => page.locator('.sub').innerText()).toMatch(/[1-9]/);
-  await page.screenshot({ path: path.join(mediaDir, 'partial.png') });
-  await page.getByTestId('back').click();
-  await expect(page.getByTestId('gallery')).toBeVisible();
+  await expect(page.locator('[data-category="Thanksgiving"]')).toBeVisible();
+  await expect(page.locator('[data-category="Christmas"]')).toBeVisible();
+  await page.waitForTimeout(900);
+  const view = page.viewportSize();
+  const turkey = await page.locator('[data-id="thanksgiving-turkey"]').boundingBox();
+  const snowman = await page.locator('[data-id="christmas-snowman"]').boundingBox();
+  expect(turkey).not.toBeNull();
+  expect(snowman).not.toBeNull();
+  expect(turkey!.y).toBeGreaterThan(40);
+  expect(snowman!.y).toBeGreaterThan(turkey!.y);
+  expect(snowman!.y + 100).toBeLessThan((view?.height ?? 664) + 1);
   await page.screenshot({ path: path.join(mediaDir, 'gallery.png') });
 
-  const easy = puzzle('patterns-folk-art');
-  await page.locator('[data-id="patterns-folk-art"]').click();
+  await openPuzzle(page, 'animals-sea-turtle');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(mediaDir, 'turtle-fit.png') });
+
+  const tree = puzzle('christmas-tree-fireplace');
+  await page.goto(`/?shot=tree&t=${Date.now()}`);
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await page.locator('[data-id="christmas-tree-fireplace"]').click();
   await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
-  await page.evaluate(
-    ({ colors, cx, cy }) => {
-      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
-      const fire = (type: string, x: number, y: number) => {
-        canvas.dispatchEvent(
-          new PointerEvent(type, {
-            bubbles: true,
-            cancelable: true,
-            pointerId: 1,
-            pointerType: 'touch',
-            isPrimary: true,
-            clientX: x,
-            clientY: y,
-            button: 0,
-            buttons: type === 'pointerup' ? 0 : 1,
-          }),
-        );
-      };
-      const point = (index: number) => {
-        const scale = Number(canvas.dataset.scale);
-        const panX = Number(canvas.dataset.panX);
-        const panY = Number(canvas.dataset.panY);
-        const rect = canvas.getBoundingClientRect();
-        return {
-          x: rect.left + panX + (cx[index] ?? 0) * scale,
-          y: rect.top + panY + (cy[index] ?? 0) * scale,
-        };
-      };
-      const swatches = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="swatch"]')];
-      const groups = new Map<number, number[]>();
-      colors.forEach((color, index) => {
-        const list = groups.get(color) ?? [];
-        list.push(index);
-        groups.set(color, list);
-      });
-      for (const [color, indices] of groups) {
-        swatches[color]?.click();
-        for (const index of indices) {
-          const spot = point(index);
-          fire('pointerdown', spot.x, spot.y);
-          fire('pointerup', spot.x, spot.y);
-        }
-      }
-    },
-    { colors: easy.regionColors, cx: easy.cx, cy: easy.cy },
-  );
+  const treeArea = tree.area.reduce((sum, value) => sum + value, 0);
+  const treeOrder = tree.area.map((value, index) => [value, index] as const).sort((a, b) => b[0] - a[0]);
+  const treePicked: number[] = [];
+  let treeCovered = 0;
+  for (const [value, index] of treeOrder) {
+    if (treeCovered >= treeArea * 0.5 && treePicked.length) break;
+    treePicked.push(index);
+    treeCovered += value;
+  }
+  await paintRegions(page, tree, treePicked);
+  await expect.poll(async () => page.locator('.sub').innerText()).toMatch(/[1-9]\d?%/);
+  await page.screenshot({ path: path.join(mediaDir, 'tree-half.png') });
+
+  const hard = puzzle('food-bakery-sweets');
+  await page.goto(`/?shot=done&t=${Date.now()}`);
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await page.locator('[data-id="food-bakery-sweets"]').click();
+  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await paintRegions(page, hard, hard.regionColors.map((_, index) => index));
   await expect(page.getByTestId('complete')).toBeVisible();
-  await page.waitForTimeout(2200);
-  await page.screenshot({ path: path.join(mediaDir, 'completion.png') });
+  await page.waitForTimeout(2800);
+  await page.screenshot({ path: path.join(mediaDir, 'finished-hard.png') });
 });

@@ -31,6 +31,7 @@ export function makePuzzle(opts: MakeOptions): PuzzleFile {
     minColors: Math.min(preset.minColors, colors),
     maxColors: Math.max(preset.maxColors, colors),
     minArea: Math.max(8, Math.round(preset.minArea * scale)),
+    sameColorArea: Math.max(12, Math.round(preset.sameColorArea * scale)),
     maxRegions: preset.maxRegions,
     seed: hash(opts.id),
   });

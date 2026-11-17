@@ -7,6 +7,8 @@ export interface SegmentOptions {
   minColors: number;
   maxColors: number;
   minArea: number;
+  /** Merge a region into a same-color neighbor when it is smaller than this. */
+  sameColorArea?: number;
   maxRegions: number;
   seed?: number;
 }
@@ -34,7 +36,15 @@ export function segmentImage(raster: Raster, opts: SegmentOptions): Segment {
   const quant = quantizeMasked(denoised, outline, width, height, opts);
   const components = mergeRegions(quant.cells, width, height);
   const flat = absorbLines(components.labels, components.colorOf, width, height);
-  const merged = mergeFlat(flat.labels, flat.colors, width, height, opts.minArea, opts.maxRegions);
+  const merged = mergeFlat(
+    flat.labels,
+    flat.colors,
+    width,
+    height,
+    opts.minArea,
+    Math.max(opts.minArea, opts.sameColorArea ?? opts.minArea),
+    opts.maxRegions,
+  );
   return describe(merged.labels, merged.colors, quant.palette, width, height);
 }
 
@@ -355,6 +365,7 @@ function mergeFlat(
   width: number,
   height: number,
   minArea: number,
+  sameColorArea: number,
   maxRegions: number,
 ): { labels: Uint16Array; colors: Int32Array } {
   const regions = colors.length;
@@ -426,13 +437,15 @@ function mergeFlat(
     for (let i = 0; i < regions; i++) {
       if (!alive[i] || skipped.has(i)) continue;
       const size = area[i] ?? 0;
-      if (size < srcArea && (overcrowded || size < minArea)) {
+      const noisy = size < sameColorArea;
+      if (!overcrowded && size >= minArea && !noisy) continue;
+      if (size < srcArea) {
         srcArea = size;
         src = i;
       }
     }
-    if (src < 0 || (!overcrowded && srcArea >= minArea)) break;
-    const dst = neighbor(src, true);
+    if (src < 0) break;
+    const dst = neighbor(src, overcrowded || srcArea < minArea);
     if (dst < 0) {
       skipped.add(src);
       continue;

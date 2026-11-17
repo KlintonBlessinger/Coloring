@@ -41,7 +41,7 @@
   function paint(node: HTMLCanvasElement, params: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) {
     const draw = (current: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) => {
       const filled = filledFromSave(current.puzzle, current.save);
-      drawThumbnail(node, current.puzzle, progressRatio(filled, current.puzzle.regionColors.length));
+      drawThumbnail(node, current.puzzle, filled);
     };
     draw(params);
     return { update: draw };
@@ -99,36 +99,58 @@
     {/each}
   </div>
 
-  <div class="grid">
-    {#each visible as puzzle (puzzle.id)}
-      {@const ratio = ratioOf(puzzle)}
-      <button
-        type="button"
-        class="card"
-        data-testid="puzzle-card"
-        data-id={puzzle.id}
-        aria-label="{puzzle.title}, {puzzle.difficulty}, {Math.round(ratio * 100)}% colored"
-        onclick={() => onOpen(puzzle.id)}
-      >
-        <div class="thumb-wrap">
-          <canvas
-            class="thumb"
-            width="280"
-            height="280"
-            use:paint={{ puzzle, save: progress[puzzle.id] }}
-          ></canvas>
-        </div>
-        <span class="card-title">{puzzle.title}</span>
-        <span class="meta">
-          <span>{puzzle.category}</span>
-          <span class="badge {puzzle.difficulty}">{puzzle.difficulty}</span>
-        </span>
-        {#if ratio > 0}
-          <span class="meter" class:done={ratio >= 1}><span style="width: {Math.round(ratio * 100)}%"></span></span>
+  {#snippet picture(puzzle: DecodedPuzzle)}
+    {@const ratio = ratioOf(puzzle)}
+    <button
+      type="button"
+      class="card"
+      data-testid="puzzle-card"
+      data-id={puzzle.id}
+      aria-label="{puzzle.title}, {puzzle.difficulty}, {Math.round(ratio * 100)}% colored"
+      onclick={() => onOpen(puzzle.id)}
+    >
+      <div class="thumb-wrap">
+        <canvas
+          class="thumb"
+          width="280"
+          height="280"
+          use:paint={{ puzzle, save: progress[puzzle.id] }}
+        ></canvas>
+      </div>
+      <span class="card-title">{puzzle.title}</span>
+      <span class="meta">
+        <span>{puzzle.category}</span>
+        <span class="badge {puzzle.difficulty}">{puzzle.difficulty}</span>
+      </span>
+      {#if ratio > 0}
+        <span class="meter" class:done={ratio >= 1}><span style="width: {Math.round(ratio * 100)}%"></span></span>
+      {/if}
+    </button>
+  {/snippet}
+
+  {#if tab === 'all' && category === 'All'}
+    <div class="shelves">
+      {#each CATEGORIES as name (name)}
+        {@const items = visible.filter((puzzle) => puzzle.category === name)}
+        {#if items.length}
+          <section class="shelf" data-shelf={name}>
+            <h2 class="shelf-title">{name}</h2>
+            <div class="shelf-row">
+              {#each items as puzzle (puzzle.id)}
+                {@render picture(puzzle)}
+              {/each}
+            </div>
+          </section>
         {/if}
-      </button>
-    {:else}
-      <p class="empty">{empty}</p>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {:else}
+    <div class="grid">
+      {#each visible as puzzle (puzzle.id)}
+        {@render picture(puzzle)}
+      {:else}
+        <p class="empty">{empty}</p>
+      {/each}
+    </div>
+  {/if}
 </div>

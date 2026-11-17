@@ -7,11 +7,20 @@ export type Difficulty = (typeof DIFFICULTIES)[number];
 /** Working resolution, palette size, and how finely regions are kept. */
 export const DIFFICULTY_PRESETS: Record<
   Difficulty,
-  { size: number; colors: number; minColors: number; maxColors: number; minArea: number; maxRegions: number }
+  {
+    size: number;
+    colors: number;
+    minColors: number;
+    maxColors: number;
+    minArea: number;
+    /** Same-color neighbors smaller than this are noise and get merged. */
+    sameColorArea: number;
+    maxRegions: number;
+  }
 > = {
-  easy: { size: 512, colors: 16, minColors: 10, maxColors: 20, minArea: 32, maxRegions: 260 },
-  medium: { size: 512, colors: 22, minColors: 14, maxColors: 26, minArea: 22, maxRegions: 1000 },
-  hard: { size: 512, colors: 28, minColors: 16, maxColors: 32, minArea: 16, maxRegions: 2000 },
+  easy: { size: 512, colors: 16, minColors: 10, maxColors: 20, minArea: 36, sameColorArea: 96, maxRegions: 260 },
+  medium: { size: 512, colors: 22, minColors: 14, maxColors: 26, minArea: 32, sameColorArea: 88, maxRegions: 900 },
+  hard: { size: 512, colors: 28, minColors: 16, maxColors: 32, minArea: 48, sameColorArea: 160, maxRegions: 1200 },
 };
 
 export const OUTLINE = 65535;

@@ -2,9 +2,10 @@ import { mixHex } from './color';
 import type { DecodedPuzzle } from './types';
 
 const PAPER = '#f4f1eb';
-const OPEN = '#e3dfd8';
-const INK = '#2c2623';
+const OPEN = '#e7e2da';
+const INK = '#7d756c';
 const NUMBER = '#4a3f3a';
+const GHOST = 0.12;
 
 interface Camera {
   panX: number;
@@ -314,17 +315,42 @@ export class Renderer {
     ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
     const pulse = now < this.pulseUntil ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80)) : 1;
     for (let i = 0; i < this.paths.length; i++) {
+      if (this.isFilled(i)) continue;
       const path = this.paths[i]!;
       if (!path) continue;
       const color = this.puzzle.regionColors[i] ?? 0;
-      if (this.isFilled(i)) ctx.fillStyle = this.puzzle.palette[color] ?? OPEN;
-      else if (color === this.selected) ctx.fillStyle = this.tint[color] ?? OPEN;
-      else ctx.fillStyle = OPEN;
-      ctx.globalAlpha = !this.isFilled(i) && color === this.selected ? pulse : 1;
+      const selected = color === this.selected;
+      ctx.fillStyle = selected ? (this.tint[color] ?? OPEN) : OPEN;
+      ctx.globalAlpha = selected ? pulse : 1;
       ctx.fill(path, 'evenodd');
     }
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 1.35 / this.scale;
+    const showGhost = this.artAlpha < 0.05 && this.artImage.complete && this.artImage.naturalWidth > 0;
+    if (showGhost) {
+      ctx.globalAlpha = GHOST;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.artImage, 0, 0, this.puzzle.width, this.puzzle.height);
+      ctx.globalAlpha = 1;
+      for (let i = 0; i < this.paths.length; i++) {
+        if (this.isFilled(i)) continue;
+        const path = this.paths[i]!;
+        if (!path) continue;
+        if ((this.puzzle.regionColors[i] ?? 0) !== this.selected) continue;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = this.tint[this.selected] ?? OPEN;
+        ctx.fill(path, 'evenodd');
+      }
+      ctx.globalAlpha = 1;
+    }
+    for (let i = 0; i < this.paths.length; i++) {
+      if (!this.isFilled(i)) continue;
+      const path = this.paths[i]!;
+      if (!path) continue;
+      const color = this.puzzle.regionColors[i] ?? 0;
+      ctx.fillStyle = this.puzzle.palette[color] ?? OPEN;
+      ctx.fill(path, 'evenodd');
+    }
+    ctx.lineWidth = 1 / this.scale;
     ctx.strokeStyle = INK;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';

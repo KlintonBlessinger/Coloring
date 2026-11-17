@@ -11,9 +11,9 @@ interface Point {
   y: number;
 }
 
-const CORNER = 0.78;
-const EPS = 1.25;
-const MAX_GAP = 18;
+const CORNER = 1.05;
+const EPS = 2.15;
+const MAX_GAP = 26;
 
 export function traceRegions(labels: Uint16Array, width: number, height: number, count: number): string[] {
   const stride = width + 1;
@@ -68,7 +68,7 @@ export function traceRegions(labels: Uint16Array, width: number, height: number,
     }
   }
 
-  taubin(pos, neighbors, 4);
+  taubin(pos, neighbors, 7);
   simplify(pos, neighbors, loops);
   const sharp = markCorners(pos, neighbors, loops);
   return loops.map((group) => toCurves(group, pos, sharp));
@@ -280,10 +280,10 @@ function appendChain(chain: number[], pos: Point[], write: (cmd: string) => void
 }
 
 function cubic(p0: Point, p1: Point, p2: Point, p3: Point): string {
-  const c1x = p1.x + (p2.x - p0.x) / 7;
-  const c1y = p1.y + (p2.y - p0.y) / 7;
-  const c2x = p2.x - (p3.x - p1.x) / 7;
-  const c2y = p2.y - (p3.y - p1.y) / 7;
+  const c1x = p1.x + (p2.x - p0.x) / 6;
+  const c1y = p1.y + (p2.y - p0.y) / 6;
+  const c2x = p2.x - (p3.x - p1.x) / 6;
+  const c2y = p2.y - (p3.y - p1.y) / 6;
   return `C${num(c1x)} ${num(c1y)} ${num(c2x)} ${num(c2y)} ${num(p2.x)} ${num(p2.y)}`;
 }
 

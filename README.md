@@ -18,7 +18,7 @@ npm run preview
 
 ## Make a puzzle from a picture
 
-The script denoises the picture, quantizes it to about 16–30 colors in OKLab, splits the shapes into tappable regions, and traces smooth outlines. Easy pictures keep fewer regions. Hard pictures keep hundreds, and the busiest keep up to about two thousand.
+The script denoises the picture, quantizes it to about 16–30 colors in OKLab, splits the shapes into tappable regions, and traces smooth outlines. Easy pictures keep fewer regions. Hard pictures keep roughly 600 to 1,200.
 
 ```bash
 npm run make-puzzle -- \

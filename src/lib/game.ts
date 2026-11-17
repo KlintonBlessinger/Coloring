@@ -187,6 +187,11 @@ export class Game {
       this.renderer.paintIndex(index);
     }
     this.order = this.order.filter((index) => !drop.has(index));
+    const color = this.puzzle.regionColors[stroke[stroke.length - 1] ?? 0] ?? 0;
+    if ((this.done[color] ?? 0) < (this.totals[color] ?? 0)) {
+      this.selected = color;
+      this.renderer.setSelected(color);
+    }
     if (this.filledCount < this.filled.length) {
       this.celebrated = false;
       this.hooks.onUncomplete();
