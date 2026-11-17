@@ -259,26 +259,21 @@ function familyOf(sample: ReturnType<typeof hexToOklch>): Family {
 }
 
 function fitFamilies(samples: ReturnType<typeof hexToOklch>[]): Family[] {
-  const families = samples.map((sample) => familyOf(sample));
-  for (let guard = 0; guard < samples.length; guard++) {
-    const counts = new Map<Family, number>();
-    for (const family of families) counts.set(family, (counts.get(family) ?? 0) + 1);
-    const crowded = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (!crowded || crowded[1] <= 5) break;
-    const [family] = crowded;
-    let worst = 0;
-    let worstDist = -1;
-    families.forEach((item, index) => {
-      if (item !== family) return;
-      const center = FAMILIES[family].h;
-      const dist = family === 'gray' || family === 'white' || family === 'black' ? Math.abs(samples[index]!.l - FAMILIES[family].l) : hueDistance(samples[index]!.h, center);
-      if (dist > worstDist) {
-        worst = index;
-        worstDist = dist;
-      }
-    });
-    const open = NEIGHBORS[family].find((next) => (counts.get(next) ?? 0) < 5);
-    families[worst] = open ?? NEIGHBORS[family][0]!;
+  const families = new Array<Family>(samples.length);
+  const counts = new Map<Family, number>();
+  const order = samples.map((_, index) => index).sort((a, b) => (samples[b]?.c ?? 0) - (samples[a]?.c ?? 0));
+  const openFamily = (preferred: Family[]): Family => {
+    for (const family of preferred) {
+      if ((counts.get(family) ?? 0) < 5) return family;
+    }
+    const anywhere = (Object.keys(FAMILIES) as Family[]).find((family) => (counts.get(family) ?? 0) < 5);
+    return anywhere ?? preferred[0] ?? 'gray';
+  };
+  for (const index of order) {
+    const primary = familyOf(samples[index]!);
+    const family = openFamily([primary, ...NEIGHBORS[primary]]);
+    families[index] = family;
+    counts.set(family, (counts.get(family) ?? 0) + 1);
   }
   return families;
 }

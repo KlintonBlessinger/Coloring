@@ -41,6 +41,11 @@ export class Renderer {
   private readonly paths: Path2D[];
   private readonly outer: (Path2D | undefined)[];
   private readonly ink: HTMLCanvasElement | null;
+  private readonly fillCanvas: HTMLCanvasElement | null;
+  private readonly fillImage: ImageData | null;
+  private readonly runs: Uint32Array[];
+  private readonly underRuns: Uint32Array[];
+  private fillDirty = false;
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
   private selected = 0;
@@ -77,6 +82,12 @@ export class Renderer {
     this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
     this.outer = new Array(puzzle.paths.length);
     this.ink = inkLayer(puzzle);
+    const raster = this.ink ? rasterFill(puzzle) : null;
+    this.fillCanvas = raster?.canvas ?? null;
+    this.fillImage = raster?.image ?? null;
+    this.runs = raster?.runs ?? [];
+    this.underRuns = raster?.underRuns ?? [];
+    if (this.fillImage) this.fillDirty = true;
     this.artImage = new Image();
     this.artImage.onload = () => this.requestDraw();
     const base = import.meta.env.BASE_URL || '/';
@@ -120,6 +131,7 @@ export class Renderer {
 
   setVisual(visual: Uint8Array | null): void {
     this.visual = visual;
+    this.repaintAll();
     this.requestDraw();
   }
 
@@ -139,7 +151,8 @@ export class Renderer {
     this.requestDraw();
   }
 
-  paintIndex(_index: number): void {
+  paintIndex(index: number): void {
+    this.stamp(index);
     this.requestDraw();
   }
 
@@ -262,8 +275,9 @@ export class Renderer {
       ctx.strokeStyle = INK;
       ctx.lineJoin = 'round';
       if (this.ink) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(this.ink, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(this.ink, 0, 0, this.puzzle.width, this.puzzle.height);
       } else {
         for (const path of this.paths) ctx.stroke(path);
       }
@@ -367,6 +381,15 @@ export class Renderer {
     ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
     ctx.fillStyle = PAPER;
     ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
+    if (this.fillCanvas && this.fillImage && this.fillDirty) {
+      const flat = this.fillCanvas.getContext('2d');
+      flat?.putImageData(this.fillImage, 0, 0);
+      this.fillDirty = false;
+    }
+    if (this.fillCanvas) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.fillCanvas, 0, 0);
+    }
     const pulsing = now < this.pulseUntil;
     const pulse = pulsing ? 0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80) : 0;
     const checker = screenChecker(ctx, dpr, this.scale, CHECKER_DARK, CHECKER_LIGHT);
@@ -375,6 +398,7 @@ export class Renderer {
     const hintChecker = pulsing ? screenChecker(ctx, dpr, this.scale, hintDark, hintLight) : checker;
     for (let i = 0; i < this.paths.length; i++) {
       if (this.isFilled(i)) continue;
+      if (this.fillCanvas && (this.puzzle.regionColors[i] ?? 0) !== this.selected) continue;
       const path = this.paths[i]!;
       if (!path) continue;
       const selected = (this.puzzle.regionColors[i] ?? 0) === this.selected;
@@ -387,18 +411,21 @@ export class Renderer {
       ctx.fillStyle = (hinted ? hintChecker : checker) ?? PAPER;
       ctx.fill(path, 'evenodd');
     }
-    for (let i = 0; i < this.paths.length; i++) {
-      if (!this.isFilled(i)) continue;
-      const path = this.paths[i]!;
-      if (!path) continue;
-      const color = this.puzzle.regionColors[i] ?? 0;
-      ctx.fillStyle = this.puzzle.palette[color] ?? PAPER;
-      ctx.fill(path, 'evenodd');
+    if (!this.fillCanvas) {
+      for (let i = 0; i < this.paths.length; i++) {
+        if (!this.isFilled(i)) continue;
+        const path = this.paths[i]!;
+        if (!path) continue;
+        const color = this.puzzle.regionColors[i] ?? 0;
+        ctx.fillStyle = this.puzzle.palette[color] ?? PAPER;
+        ctx.fill(path, 'evenodd');
+      }
     }
     const fit = this.fitScale();
     if (this.ink) {
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(this.ink, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(this.ink, 0, 0, this.puzzle.width, this.puzzle.height);
     } else {
       const outlineCss = Math.min(1.75, Math.max(1.25, 1.25 * Math.sqrt(this.scale / fit)));
       ctx.lineWidth = outlineCss / this.scale;
@@ -427,7 +454,7 @@ export class Renderer {
         if (this.isFilled(i)) continue;
         const inr = this.puzzle.inr[i] ?? 0;
         const px = labelPx(inr, this.scale, fit);
-        if (px < 10) continue;
+        if (px < 8) continue;
         const room = 1.6 * inr * this.scale;
         const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
         const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
@@ -444,7 +471,7 @@ export class Renderer {
       }
     }
 
-    if (this.artAlpha > 0.01 && this.artImage.complete && this.artImage.naturalWidth) {
+    if (this.view.dataset.hideArt !== '1' && this.artAlpha > 0.01 && this.artImage.complete && this.artImage.naturalWidth) {
       ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
       ctx.globalAlpha = this.artAlpha;
       ctx.imageSmoothingEnabled = true;
@@ -457,6 +484,56 @@ export class Renderer {
     this.view.dataset.panY = String(this.panY);
     this.view.dataset.numbers = numbers ? '1' : '0';
     this.view.dataset.ghost = '0';
+  }
+
+  private repaintAll(): void {
+    if (!this.fillImage) return;
+    const data = this.fillImage.data;
+    data.fill(255);
+    for (let index = 0; index < this.puzzle.regionColors.length; index++) {
+      if (!this.isFilled(index)) continue;
+      this.writeRegion(index, this.colorBytes(index));
+    }
+    this.fillDirty = true;
+  }
+
+  private stamp(index: number): void {
+    if (!this.fillImage || index < 0 || index >= this.runs.length) return;
+    this.writeRegion(index, this.isFilled(index) ? this.colorBytes(index) : [255, 255, 255]);
+    this.fillDirty = true;
+  }
+
+  private colorBytes(index: number): [number, number, number] {
+    const hex = this.puzzle.palette[this.puzzle.regionColors[index] ?? 0] ?? PAPER;
+    const h = hex.replace('#', '');
+    const n = Number.parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  private writeRegion(index: number, rgb: [number, number, number]): void {
+    const data = this.fillImage?.data;
+    const runs = this.runs[index];
+    if (!data || !runs) return;
+    for (let i = 0; i < runs.length; i += 2) {
+      const start = runs[i] ?? 0;
+      const count = runs[i + 1] ?? 0;
+      for (let pixel = start; pixel < start + count; pixel++) {
+        const o = pixel * 4;
+        data[o] = rgb[0];
+        data[o + 1] = rgb[1];
+        data[o + 2] = rgb[2];
+        data[o + 3] = 255;
+      }
+    }
+    const tucked = this.underRuns[index];
+    if (!tucked) return;
+    for (let i = 0; i < tucked.length; i++) {
+      const o = (tucked[i] ?? 0) * 4;
+      data[o] = rgb[0];
+      data[o + 1] = rgb[1];
+      data[o + 2] = rgb[2];
+      data[o + 3] = 255;
+    }
   }
 
   private outerContour(index: number): Path2D {
@@ -477,23 +554,144 @@ function inkLayer(puzzle: DecodedPuzzle): HTMLCanvasElement | null {
     }
   }
   if (!found) return null;
+  const { width, height } = puzzle;
+  const distInk = chamfer(
+    puzzle.labels,
+    width,
+    height,
+    (id) => id === OUTLINE,
+  );
+  const distFill = chamfer(
+    puzzle.labels,
+    width,
+    height,
+    (id) => id !== OUTLINE,
+  );
+  const canvas = document.createElement('canvas');
+  canvas.width = width * 2;
+  canvas.height = height * 2;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const image = ctx.createImageData(canvas.width, canvas.height);
+  const data = image.data;
+  for (let y = 0; y < canvas.height; y++) {
+    const fy = (y + 0.5) / 2 - 0.5;
+    for (let x = 0; x < canvas.width; x++) {
+      const fx = (x + 0.5) / 2 - 0.5;
+      const sdf = bilinear(distFill, width, height, fx, fy) - bilinear(distInk, width, height, fx, fy);
+      const alpha = Math.max(0, Math.min(1, sdf * 1.45 + 0.2));
+      if (alpha <= 0) continue;
+      const o = (y * canvas.width + x) * 4;
+      data[o] = 0x26;
+      data[o + 1] = 0x26;
+      data[o + 2] = 0x26;
+      data[o + 3] = Math.round(alpha * 255);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
+function rasterFill(puzzle: DecodedPuzzle): {
+  canvas: HTMLCanvasElement;
+  image: ImageData;
+  runs: Uint32Array[];
+  underRuns: Uint32Array[];
+} | null {
   const canvas = document.createElement('canvas');
   canvas.width = puzzle.width;
   canvas.height = puzzle.height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   const image = ctx.createImageData(puzzle.width, puzzle.height);
-  const data = image.data;
-  for (let i = 0; i < puzzle.labels.length; i++) {
-    if (puzzle.labels[i] !== OUTLINE) continue;
-    const o = i * 4;
-    data[o] = 0x26;
-    data[o + 1] = 0x26;
-    data[o + 2] = 0x26;
-    data[o + 3] = 255;
+  image.data.fill(255);
+  const runs = Array.from({ length: puzzle.regionColors.length }, () => [] as number[]);
+  const tucked = Array.from({ length: puzzle.regionColors.length }, () => [] as number[]);
+  let start = -1;
+  let current = -1;
+  const close = (end: number) => {
+    if (start < 0 || current < 0 || current >= runs.length) return;
+    runs[current]!.push(start, end - start);
+  };
+  for (let i = 0; i <= puzzle.labels.length; i++) {
+    const id = i === puzzle.labels.length ? -1 : (puzzle.labels[i] ?? 0);
+    const region = id === OUTLINE || id >= puzzle.regionColors.length ? -1 : id;
+    if (region !== current) {
+      close(i);
+      start = region >= 0 ? i : -1;
+      current = region;
+    }
+    if (id !== OUTLINE) continue;
+    const near = nearestRegion(puzzle, i);
+    if (near >= 0) tucked[near]!.push(i);
   }
-  ctx.putImageData(image, 0, 0);
-  return canvas;
+  return {
+    canvas,
+    image,
+    runs: runs.map((pairs) => Uint32Array.from(pairs)),
+    underRuns: tucked.map((pixels) => Uint32Array.from(pixels)),
+  };
+}
+
+function nearestRegion(puzzle: DecodedPuzzle, index: number): number {
+  const { width, height } = puzzle;
+  const x = index % width;
+  const y = (index / width) | 0;
+  for (let radius = 1; radius <= 4; radius++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      const ny = y + dy;
+      if (ny < 0 || ny >= height) continue;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const nx = x + dx;
+        if (nx < 0 || nx >= width) continue;
+        const id = puzzle.labels[ny * width + nx] ?? 0;
+        if (id !== OUTLINE && id < puzzle.regionColors.length) return id;
+      }
+    }
+  }
+  return -1;
+}
+
+function chamfer(labels: Uint16Array, width: number, height: number, source: (id: number) => boolean): Float32Array {
+  const dist = new Float32Array(labels.length);
+  for (let i = 0; i < labels.length; i++) dist[i] = source(labels[i] ?? 0) ? 0 : 1e6;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      let best = dist[index] ?? 1e6;
+      if (x > 0) best = Math.min(best, (dist[index - 1] ?? 1e6) + 1);
+      if (y > 0) best = Math.min(best, (dist[index - width] ?? 1e6) + 1);
+      if (x > 0 && y > 0) best = Math.min(best, (dist[index - width - 1] ?? 1e6) + 1.414);
+      if (x + 1 < width && y > 0) best = Math.min(best, (dist[index - width + 1] ?? 1e6) + 1.414);
+      dist[index] = best;
+    }
+  }
+  for (let y = height - 1; y >= 0; y--) {
+    for (let x = width - 1; x >= 0; x--) {
+      const index = y * width + x;
+      let best = dist[index] ?? 1e6;
+      if (x + 1 < width) best = Math.min(best, (dist[index + 1] ?? 1e6) + 1);
+      if (y + 1 < height) best = Math.min(best, (dist[index + width] ?? 1e6) + 1);
+      if (x + 1 < width && y + 1 < height) best = Math.min(best, (dist[index + width + 1] ?? 1e6) + 1.414);
+      if (x > 0 && y + 1 < height) best = Math.min(best, (dist[index + width - 1] ?? 1e6) + 1.414);
+      dist[index] = best;
+    }
+  }
+  return dist;
+}
+
+function bilinear(dist: Float32Array, width: number, height: number, x: number, y: number): number {
+  const x0 = Math.max(0, Math.min(width - 1, Math.floor(x)));
+  const y0 = Math.max(0, Math.min(height - 1, Math.floor(y)));
+  const x1 = Math.min(width - 1, x0 + 1);
+  const y1 = Math.min(height - 1, y0 + 1);
+  const tx = Math.max(0, Math.min(1, x - x0));
+  const ty = Math.max(0, Math.min(1, y - y0));
+  const a = dist[y0 * width + x0] ?? 0;
+  const b = dist[y0 * width + x1] ?? 0;
+  const c = dist[y1 * width + x0] ?? 0;
+  const d = dist[y1 * width + x1] ?? 0;
+  return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
 }
 
 function labelPx(inr: number, scale: number, fitScale: number): number {

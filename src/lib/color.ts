@@ -80,6 +80,29 @@ export function oklabToHex(lab: Lab): string {
   return rgbToHex(r, g, b);
 }
 
+/** CIE L*a*b* (D65). Delta E76 is the straight-line distance. */
+export function rgbToCielab(r: number, g: number, b: number): Lab {
+  const linear = (u: number) => {
+    const c = u / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const R = linear(r);
+  const G = linear(g);
+  const B = linear(b);
+  const x = 0.4124564 * R + 0.3575761 * G + 0.1804375 * B;
+  const y = 0.2126729 * R + 0.7151522 * G + 0.072175 * B;
+  const z = 0.0193339 * R + 0.119192 * G + 0.9503041 * B;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787037 * t + 16 / 116);
+  const fx = f(x / 0.95047);
+  const fy = f(y);
+  const fz = f(z / 1.08883);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+export function deltaE76(a: Lab, b: Lab): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
 export function labDist2(a: Lab, b: Lab): number {
   const dL = a[0] - b[0];
   const da = a[1] - b[1];

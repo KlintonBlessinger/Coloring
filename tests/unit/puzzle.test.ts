@@ -5,7 +5,7 @@ import test from 'node:test';
 import { encode } from 'jpeg-js';
 import { APP_NAME } from '../../src/lib/brand';
 import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
-import { hexToOklab, hexToRgb, labDist2, oklabToHex } from '../../src/lib/color';
+import { deltaE76, hexToOklab, hexToRgb, labDist2, oklabToHex, rgbToCielab } from '../../src/lib/color';
 import { progressFits, regionMapKey } from '../../src/lib/progress';
 import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE, type PuzzleFile } from '../../src/lib/types';
 import { loadImage, writePng } from '../../scripts/image';
@@ -207,6 +207,29 @@ test('starter puzzles cover every shelf', () => {
     for (const radius of puzzle.inr) assert.ok(1.1 * radius * MAX_SCALE >= 10, `${puzzle.id} ${radius}`);
     const labels = decodeRLE16(puzzle.labels, puzzle.width * puzzle.height);
     for (const region of labels) assert.ok(region === OUTLINE || region < puzzle.regionColors.length, puzzle.id);
+    const source = loadImage(path.join(process.cwd(), 'content/sources', `${puzzle.id}.jpg`));
+    const paletteRgb = puzzle.palette.map((hex) => hexToRgb(hex));
+    let sum = 0;
+    let counted = 0;
+    for (let y = 0; y < puzzle.height; y++) {
+      const sy = Math.min(source.height - 1, Math.round((y * (source.height - 1)) / Math.max(1, puzzle.height - 1)));
+      for (let x = 0; x < puzzle.width; x++) {
+        const region = labels[y * puzzle.width + x] ?? 0;
+        if (region === OUTLINE || region >= puzzle.regionColors.length) continue;
+        const fill = paletteRgb[puzzle.regionColors[region] ?? 0];
+        if (!fill) continue;
+        const sx = Math.min(source.width - 1, Math.round((x * (source.width - 1)) / Math.max(1, puzzle.width - 1)));
+        const o = (sy * source.width + sx) * 4;
+        sum += deltaE76(
+          rgbToCielab(source.data[o] ?? 0, source.data[o + 1] ?? 0, source.data[o + 2] ?? 0),
+          rgbToCielab(fill[0], fill[1], fill[2]),
+        );
+        counted++;
+      }
+    }
+    const meanDelta = counted ? sum / counted : Infinity;
+    console.log(`${puzzle.id} deltaE ${meanDelta.toFixed(2)}`);
+    assert.ok(meanDelta < 12, `${puzzle.id} mean deltaE ${meanDelta.toFixed(2)}`);
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
     const preset = DIFFICULTY_PRESETS[puzzle.difficulty];
     assert.ok(puzzle.regionColors.length <= preset.maxRegions + 5, puzzle.id);

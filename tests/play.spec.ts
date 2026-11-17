@@ -851,3 +851,121 @@ test('line art gallery, clownfish, unicorn, harvest, and a finished picture', as
   await jpg('lineart-finished.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+test('owner review: colors, solid fills, smooth ink, numbers, and line-art thumbs', async ({ page }) => {
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(20 * 1024);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await expect(page.locator('[data-id="animals-clownfish-reef"] canvas.thumb')).toBeVisible();
+  await page.waitForTimeout(300);
+  await jpg('fix-gallery.jpg');
+
+  await openPuzzle(page, 'animals-clownfish-reef');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  const fitted = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: id,
+          pointerType: 'touch',
+          isPrimary: id === 1,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: type === 'pointerup' ? 0 : 1,
+        }),
+      );
+    };
+    const start = 28;
+    const end = 84;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => Number(await page.locator('canvas.surface').getAttribute('data-scale'))).toBeGreaterThan(fitted * 2.4);
+  await page.waitForTimeout(300);
+  await jpg('fix-clownfish-zoom.jpg');
+
+  await page.getByTestId('back').click();
+  const harvest = puzzle('thanksgiving-first-harvest');
+  await openPuzzle(page, 'thanksgiving-first-harvest');
+  const ranked = harvest.regionColors
+    .map((_, index) => index)
+    .sort((a, b) => (harvest.area[b] ?? 0) - (harvest.area[a] ?? 0));
+  const half = ranked.slice(0, Math.round(ranked.length * 0.5));
+  await paintRegions(page, harvest, half);
+  await page.waitForTimeout(400);
+  await jpg('fix-harvest-half.jpg');
+
+  await page.getByTestId('back').click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const unicorn = puzzle('fantasy-unicorn');
+  await openPuzzle(page, 'fantasy-unicorn');
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface');
+    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+  });
+  await paintRegions(page, unicorn, unicorn.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="complete"]');
+    if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+  });
+  await page.waitForTimeout(400);
+  await jpg('fix-unicorn-finished.jpg');
+
+  await page.getByTestId('back').click();
+  const turkey = puzzle('thanksgiving-turkey');
+  await openPuzzle(page, 'thanksgiving-turkey');
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface');
+    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+  });
+  await paintRegions(page, turkey, turkey.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="complete"]');
+    if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+    const surface = document.querySelector('canvas.surface') as HTMLCanvasElement | null;
+    const host = document.createElement('div');
+    host.id = 'fix-compare';
+    host.style.cssText = 'position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:#fff';
+    const top = document.createElement('canvas');
+    const bottom = document.createElement('img');
+    top.style.cssText = 'width:100%;height:50%;object-fit:contain;background:#fff';
+    bottom.style.cssText = 'width:100%;height:50%;object-fit:contain;background:#fff';
+    bottom.src = '/art/thanksgiving-turkey.jpg';
+    host.append(top, bottom);
+    document.body.append(host);
+    if (surface) {
+      top.width = surface.width;
+      top.height = surface.height;
+      top.getContext('2d')?.drawImage(surface, 0, 0);
+    }
+  });
+  await page.locator('#fix-compare img').evaluate((img: HTMLImageElement) => (img.complete ? true : new Promise((resolve) => img.addEventListener('load', () => resolve(true), { once: true }))));
+  await page.waitForTimeout(200);
+  await jpg('fix-turkey-compare.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});

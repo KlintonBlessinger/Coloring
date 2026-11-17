@@ -1,4 +1,4 @@
-import { labDist2, oklabToHex, rgbToOklab, type Lab } from '../src/lib/color';
+import { deltaE76, hexToRgb, labDist2, oklabToHex, rgbToCielab, rgbToOklab, type Lab } from '../src/lib/color';
 import { MIN_INSCRIBED, OUTLINE } from '../src/lib/types';
 import type { Raster } from './image';
 import { traceRegions } from './paths';
@@ -66,8 +66,30 @@ export function segmentLineArt(raster: Raster, opts: SegmentOptions): Segment {
   const split = splitFlatColors(raster.data, flooded.labels, width, height);
   const clustered = clusterFills(split.means, split.areas, opts);
   const minArea = Math.max(4, Math.round((60 * width * height) / (1024 * 1024)));
-  const fitted = absorbNarrow(split.labels, clustered.colors, width, height, MIN_INSCRIBED, minArea, opts.maxRegions);
-  return describe(fitted.labels, fitted.colors, clustered.palette, width, height);
+  const fitted = absorbNarrow(
+    split.labels,
+    clustered.colors,
+    width,
+    height,
+    MIN_INSCRIBED,
+    minArea,
+    opts.maxRegions,
+    clustered.palette,
+  );
+  const sealed = sealTexture(fitted.labels, width, height);
+  const colored = colorsFromInterior(raster.data, sealed, width, height, fitted.colors.length, opts);
+  snapToCloserColor(raster.data, sealed, colored.colors, colored.palette, width, height);
+  const tightened = absorbNarrow(
+    sealed,
+    colored.colors,
+    width,
+    height,
+    MIN_INSCRIBED,
+    minArea,
+    opts.maxRegions,
+    colored.palette,
+  );
+  return describe(tightened.labels, tightened.colors, colored.palette, width, height, 2);
 }
 
 /** Thin lines darker than their surroundings. A solid dark fill is not ink. */
@@ -299,14 +321,8 @@ function mixedFill(src: Uint8Array, pixels: number[]): boolean {
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   let first = 0;
-  let second = 0;
-  for (const count of counts.values()) {
-    if (count > first) {
-      second = first;
-      first = count;
-    } else if (count > second) second = count;
-  }
-  return second > pixels.length * 0.12;
+  for (const count of counts.values()) if (count > first) first = count;
+  return first < pixels.length * 0.88;
 }
 
 function colorParts(
@@ -347,12 +363,42 @@ function colorParts(
     }
     parts.push(part);
   }
-  const keep = parts.filter((part) => part.length >= 80).sort((a, b) => b.length - a.length);
+  const biggest = parts.reduce((best, part) => (part.length > best.length ? part : best));
+  const hostKey = bucket(src, biggest[0] ?? 0);
+  const keep = parts
+    .filter((part) => part.length >= 80 || (part.length >= 12 && bucket(src, part[0] ?? 0) !== hostKey))
+    .sort((a, b) => b.length - a.length);
   if (keep.length <= 1) return [pixels];
   const kept = new Set(keep.flat());
-  const dust = pixels.filter((index) => !kept.has(index));
-  const host = keep[0]!;
-  for (const index of dust) host.push(index);
+  const dust = parts.filter((part) => part.length > 0 && !kept.has(part[0] ?? -1));
+  const centroid = (part: number[]) => {
+    let sx = 0;
+    let sy = 0;
+    for (const index of part) {
+      sx += index % width;
+      sy += (index / width) | 0;
+    }
+    return { x: sx / part.length, y: sy / part.length };
+  };
+  const centers = keep.map((part) => ({ part, key: bucket(src, part[0] ?? 0), ...centroid(part) }));
+  for (const part of dust) {
+    const key = bucket(src, part[0] ?? 0);
+    const at = centroid(part);
+    let host = centers[0]!;
+    let best = Infinity;
+    let matched = false;
+    for (const center of centers) {
+      if (center.key !== key) continue;
+      const dist = (center.x - at.x) ** 2 + (center.y - at.y) ** 2;
+      if (dist < best) {
+        best = dist;
+        host = center;
+        matched = true;
+      }
+    }
+    if (!matched) host = centers[0]!;
+    for (const index of part) host.part.push(index);
+  }
   return keep;
 }
 
@@ -399,10 +445,12 @@ function clusterFills(
     const weightB = weightOf(assign, areas, pairB);
     const keep = weightA >= weightB ? pairA : pairB;
     const drop = keep === pairA ? pairB : pairA;
+    const nextKeep = keep > drop ? keep - 1 : keep;
     centroids.splice(drop, 1);
     for (let i = 0; i < assign.length; i++) {
-      if (assign[i] === drop) assign[i] = keep;
-      else if ((assign[i] ?? 0) > drop) assign[i] = (assign[i] ?? 0) - 1;
+      const color = assign[i] ?? 0;
+      if (color === drop || color === keep) assign[i] = nextKeep;
+      else if (color > drop) assign[i] = color - 1;
     }
   }
   return { palette: centroids.map((lab) => oklabToHex(lab)), colors: assign };
@@ -426,9 +474,20 @@ export function absorbNarrow(
   minInr = MIN_INSCRIBED,
   minArea = 0,
   maxRegions = Number.POSITIVE_INFINITY,
+  palette: string[] = [],
 ): { labels: Uint16Array; colors: Int32Array } {
   let currentLabels = labels;
   let currentColors = colors;
+  const colorLabs = palette.map((hex) => {
+    const [r, g, b] = hexToRgb(hex);
+    return rgbToCielab(r, g, b);
+  });
+  const closeEnough = (colorA: number, colorB: number) => {
+    const a = colorLabs[colorA];
+    const b = colorLabs[colorB];
+    if (!a || !b) return colorA === colorB;
+    return deltaE76(a, b) <= 12;
+  };
   for (let pass = 0; pass < 12; pass++) {
     const regions = currentColors.length;
     const depth = maxInscribed(currentLabels, width, height, regions);
@@ -504,20 +563,61 @@ export function absorbNarrow(
       adj[src] = new Map();
       adj[dst]!.delete(src);
     };
-    const neighbor = (src: number): number => {
+    const largestClose = (src: number): number => {
       let best = -1;
-      let score = -1;
-      for (const [id, weight] of adj[src]!) {
-        const other = root(id);
-        if (other === src || !alive[other]) continue;
-        const same = currentColors[other] === currentColors[src];
-        const value = weight * (same ? 4 : 1) + ((depth[other] ?? 0) >= minInr ? 0.5 : 0);
-        if (value > score) {
-          score = value;
-          best = other;
+      let size = -1;
+      const color = currentColors[src] ?? 0;
+      for (let id = 0; id < regions; id++) {
+        if (!alive[id] || id === src || !closeEnough(color, currentColors[id] ?? 0)) continue;
+        if ((area[id] ?? 0) > size) {
+          size = area[id] ?? 0;
+          best = id;
         }
       }
       return best;
+    };
+    const nearestHue = (src: number): number => {
+      const from = colorLabs[currentColors[src] ?? 0];
+      if (!from) return -1;
+      let best = -1;
+      let bestDelta = Infinity;
+      for (let id = 0; id < regions; id++) {
+        if (!alive[id] || id === src) continue;
+        const to = colorLabs[currentColors[id] ?? 0];
+        if (!to) continue;
+        const delta = deltaE76(from, to);
+        if (delta < bestDelta) {
+          bestDelta = delta;
+          best = id;
+        }
+      }
+      return best;
+    };
+    const neighbor = (src: number): number => {
+      let bestSame = -1;
+      let scoreSame = -1;
+      let bestAny = -1;
+      let scoreAny = -1;
+      const origin = root(src);
+      for (const [id, weight] of adj[src]!) {
+        const other = root(id);
+        if (other === origin || !alive[other]) continue;
+        const same = closeEnough(currentColors[other] ?? 0, currentColors[origin] ?? 0);
+        const value = weight * (same ? 4 : 1) + ((depth[other] ?? 0) >= minInr ? 0.5 : 0);
+        if (same && value > scoreSame) {
+          scoreSame = value;
+          bestSame = other;
+        }
+        if (value > scoreAny) {
+          scoreAny = value;
+          bestAny = other;
+        }
+      }
+      if (bestSame >= 0) return bestSame;
+      const global = largestClose(origin);
+      if (global >= 0) return global;
+      const hue = nearestHue(origin);
+      return hue >= 0 ? hue : bestAny;
     };
     const small = Array.from({ length: regions }, (_, index) => index).filter(
       (index) => (depth[index] ?? 0) < minInr || (area[index] ?? 0) < minArea,
@@ -562,11 +662,20 @@ export function absorbNarrow(
     currentColors = Int32Array.from(nextColors);
     if (currentColors.length === before) break;
   }
-  const folded = foldThin(currentLabels, currentColors, width, height, minInr, minArea);
+  const folded = foldThin(currentLabels, currentColors, width, height, minInr, minArea, colorLabs);
   currentLabels = folded.labels;
   currentColors = folded.colors;
   if (Number.isFinite(maxRegions) && currentColors.length > maxRegions) {
-    currentLabels = capByNearest(currentLabels, width, height, currentColors.length, maxRegions);
+    currentLabels = capByNearest(
+      currentLabels,
+      width,
+      height,
+      currentColors.length,
+      maxRegions,
+      undefined,
+      currentColors,
+      colorLabs,
+    );
     const kept: number[] = [];
     const remap = new Int32Array(currentColors.length).fill(-1);
     for (let i = 0; i < currentLabels.length; i++) {
@@ -591,6 +700,7 @@ function foldThin(
   height: number,
   minInr: number,
   minArea: number,
+  colorLabs: Lab[] = [],
 ): { labels: Uint16Array; colors: Int32Array } {
   const regions = colors.length;
   const depth = maxInscribed(labels, width, height, regions);
@@ -603,14 +713,7 @@ function foldThin(
     (index) => (area[index] ?? 0) > 0 && ((area[index] ?? 0) < minArea || (depth[index] ?? 0) < minInr),
   );
   if (!thin.length) return { labels, colors };
-  const joined = capByNearest(
-    labels,
-    width,
-    height,
-    regions,
-    regions,
-    new Set(thin),
-  );
+  const joined = capByNearest(labels, width, height, regions, regions, new Set(thin), colors, colorLabs);
   const kept: number[] = [];
   const remap = new Int32Array(regions).fill(-1);
   const next = new Uint16Array(joined.length);
@@ -637,6 +740,8 @@ function capByNearest(
   regions: number,
   maxRegions: number,
   must?: Set<number>,
+  colors?: Int32Array,
+  colorLabs: Lab[] = [],
 ): Uint16Array {
   const area = new Int32Array(regions);
   const sumX = new Float64Array(regions);
@@ -680,7 +785,10 @@ function capByNearest(
       if (must?.has(id) && pending.some((item) => item !== id)) continue;
       const dx = (sumX[id] ?? 0) / Math.max(1, area[id] ?? 1) - sx;
       const dy = (sumY[id] ?? 0) / Math.max(1, area[id] ?? 1) - sy;
-      const dist = dx * dx + dy * dy;
+      const from = colorLabs[colors?.[src] ?? 0];
+      const to = colorLabs[colors?.[id] ?? 0];
+      const delta = from && to ? deltaE76(from, to) : colors && (colors[id] ?? 0) !== (colors[src] ?? 0) ? 40 : 0;
+      const dist = (delta > 16 ? 1e14 : delta * 1e4) + dx * dx + dy * dy;
       if (dist < best) {
         best = dist;
         dst = id;
@@ -1283,12 +1391,296 @@ function interiorPoints(
   return { x, y, inr: Array.from(best, (value) => Math.round(value * 100) / 100) };
 }
 
+/** Texture strokes inside one fill become that fill. A line between two colors stays ink. */
+function sealTexture(labels: Uint16Array, width: number, height: number): Uint16Array {
+  let current = labels;
+  const look = (x: number, y: number, dx: number, dy: number): number => {
+    for (let step = 1; step <= 5; step++) {
+      const nx = x + dx * step;
+      const ny = y + dy * step;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) return -1;
+      const id = current[ny * width + nx] ?? 0;
+      if (id !== OUTLINE) return id;
+    }
+    return -1;
+  };
+  for (let pass = 0; pass < 4; pass++) {
+    const next = new Uint16Array(current);
+    let changed = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = y * width + x;
+        if ((current[index] ?? 0) !== OUTLINE) continue;
+        const left = look(x, y, -1, 0);
+        const right = look(x, y, 1, 0);
+        const up = look(x, y, 0, -1);
+        const down = look(x, y, 0, 1);
+        const pick = left >= 0 && left === right ? left : up >= 0 && up === down ? up : -1;
+        if (pick < 0) continue;
+        next[index] = pick;
+        changed++;
+      }
+    }
+    current = next;
+    if (!changed) break;
+  }
+  return current;
+}
+
+/** Grow fills a couple of pixels into the ink so the color sits under the stroke. */
+function tuckLabels(labels: Uint16Array, width: number, height: number, steps: number): Uint16Array {
+  let current = labels;
+  for (let step = 0; step < steps; step++) {
+    const next = new Uint16Array(current);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = y * width + x;
+        if ((current[index] ?? 0) !== OUTLINE) continue;
+        const votes = new Map<number, number>();
+        const consider = (nx: number, ny: number) => {
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) return;
+          const id = current[ny * width + nx] ?? 0;
+          if (id === OUTLINE) return;
+          votes.set(id, (votes.get(id) ?? 0) + 1);
+        };
+        consider(x - 1, y);
+        consider(x + 1, y);
+        consider(x, y - 1);
+        consider(x, y + 1);
+        let best = -1;
+        let count = 0;
+        for (const [id, weight] of votes) {
+          if (weight > count) {
+            count = weight;
+            best = id;
+          }
+        }
+        if (best >= 0) next[index] = best;
+      }
+    }
+    current = next;
+  }
+  return current;
+}
+
+/**
+ * Pixels a long way from their region's color join a region whose palette color
+ * is actually close, so a flat fill does not repaint a neighboring hue.
+ */
+function snapToCloserColor(
+  src: Uint8Array,
+  labels: Uint16Array,
+  colors: Int32Array,
+  palette: string[],
+  width: number,
+  height: number,
+): void {
+  const labs = palette.map((hex) => {
+    const [r, g, b] = hexToRgb(hex);
+    return rgbToCielab(r, g, b);
+  });
+  const regions = colors.length;
+  const host = new Int32Array(palette.length).fill(-1);
+  const area = new Int32Array(regions);
+  for (let i = 0; i < labels.length; i++) {
+    const id = labels[i] ?? 0;
+    if (id >= regions) continue;
+    area[id] = (area[id] ?? 0) + 1;
+    const color = colors[id] ?? 0;
+    if ((area[id] ?? 0) > (host[color] === -1 ? 0 : (area[host[color]!] ?? 0))) host[color] = id;
+  }
+  for (let i = 0; i < labels.length; i++) {
+    const id = labels[i] ?? 0;
+    if (id >= regions) continue;
+    const o = i * 4;
+    const lab = rgbToCielab(src[o] ?? 0, src[o + 1] ?? 0, src[o + 2] ?? 0);
+    const own = labs[colors[id] ?? 0];
+    if (!own) continue;
+    const ownDelta = deltaE76(lab, own);
+    if (ownDelta <= 16) continue;
+    let bestColor = colors[id] ?? 0;
+    let bestDelta = ownDelta;
+    for (let color = 0; color < labs.length; color++) {
+      const delta = deltaE76(lab, labs[color]!);
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        bestColor = color;
+      }
+    }
+    if (bestDelta > ownDelta - 8) continue;
+    const next = host[bestColor] ?? -1;
+    if (next >= 0) labels[i] = next;
+  }
+}
+
+/**
+ * Each region's color is the median Lab of pixels at least 3px inside the fill,
+ * so highlights and anti-aliased edges do not pull it toward white.
+ */
+function colorsFromInterior(
+  src: Uint8Array,
+  labels: Uint16Array,
+  width: number,
+  height: number,
+  regions: number,
+  opts: SegmentOptions,
+): { palette: string[]; colors: Int32Array } {
+  const radius = 3;
+  const buckets: Lab[][] = Array.from({ length: regions }, () => []);
+  const areas = new Array<number>(regions).fill(0);
+  const owned: number[][] = Array.from({ length: regions }, () => []);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      const id = labels[index] ?? 0;
+      if (id >= regions) continue;
+      areas[id] = (areas[id] ?? 0) + 1;
+      let inside = true;
+      for (let dy = -radius; dy <= radius && inside; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) {
+          inside = false;
+          break;
+        }
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= width || (labels[ny * width + nx] ?? 0) !== id) {
+            inside = false;
+            break;
+          }
+        }
+      }
+      const o = index * 4;
+      const lab = rgbToCielab(src[o] ?? 0, src[o + 1] ?? 0, src[o + 2] ?? 0);
+      if (inside) buckets[id]!.push(lab);
+      else owned[id]!.push(index);
+    }
+  }
+  const medians: Lab[] = [];
+  for (let id = 0; id < regions; id++) {
+    let samples = buckets[id]!;
+    if (!samples.length) {
+      samples = [];
+      for (const index of owned[id]!) {
+        const o = index * 4;
+        samples.push(rgbToCielab(src[o] ?? 0, src[o + 1] ?? 0, src[o + 2] ?? 0));
+      }
+    }
+    medians.push(samples.length ? medianLab(samples) : [100, 0, 0]);
+  }
+  return clusterLabs(medians, areas, opts);
+}
+
+function medianLab(samples: Lab[]): Lab {
+  const mid = (channel: number) => {
+    const values = samples.map((sample) => sample[channel] ?? 0).sort((a, b) => a - b);
+    const half = values.length >> 1;
+    if (values.length % 2 === 1) return values[half] ?? 0;
+    return ((values[half - 1] ?? 0) + (values[half] ?? 0)) / 2;
+  };
+  return [mid(0), mid(1), mid(2)];
+}
+
+function chromaOf(lab: Lab): number {
+  return Math.hypot(lab[1], lab[2]);
+}
+
+function hueOf(lab: Lab): number {
+  let hue = (Math.atan2(lab[2], lab[1]) * 180) / Math.PI;
+  if (hue < 0) hue += 360;
+  return hue;
+}
+
+/** Distinct hues stay apart even when a palette cap wants to merge them. */
+function sameFamily(a: Lab, b: Lab, limit: number): boolean {
+  if (deltaE76(a, b) >= limit) return false;
+  if (chromaOf(a) > 18 && chromaOf(b) > 18) {
+    const delta = Math.abs(hueOf(a) - hueOf(b));
+    const hue = Math.min(delta, 360 - delta);
+    if (hue > 28) return false;
+  }
+  return true;
+}
+
+function clusterLabs(means: Lab[], areas: number[], opts: SegmentOptions): { palette: string[]; colors: Int32Array } {
+  const order = means.map((_, index) => index).sort((a, b) => (areas[b] ?? 0) - (areas[a] ?? 0));
+  const centroids: Lab[] = [];
+  const assign = new Int32Array(means.length);
+  const join = 9;
+  for (const index of order) {
+    let best = -1;
+    let bestDistance = join;
+    for (let color = 0; color < centroids.length; color++) {
+      if (!sameFamily(means[index]!, centroids[color]!, join)) continue;
+      const distance = deltaE76(means[index]!, centroids[color]!);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = color;
+      }
+    }
+    if (best < 0) {
+      best = centroids.length;
+      centroids.push(means[index]!.slice() as Lab);
+    }
+    assign[index] = best;
+  }
+  while (centroids.length > opts.maxColors && centroids.length > 1) {
+    let pairA = -1;
+    let pairB = -1;
+    let closest = Infinity;
+    const force = centroids.length > 34;
+    for (let a = 0; a < centroids.length; a++) {
+      for (let b = a + 1; b < centroids.length; b++) {
+        if (!force && !sameFamily(centroids[a]!, centroids[b]!, 10)) continue;
+        const distance = deltaE76(centroids[a]!, centroids[b]!);
+        if (distance < closest) {
+          closest = distance;
+          pairA = a;
+          pairB = b;
+        }
+      }
+    }
+    if (pairA < 0) break;
+    const weightA = weightOf(assign, areas, pairA);
+    const weightB = weightOf(assign, areas, pairB);
+    const keep = weightA >= weightB ? pairA : pairB;
+    const drop = keep === pairA ? pairB : pairA;
+    const nextKeep = keep > drop ? keep - 1 : keep;
+    centroids.splice(drop, 1);
+    for (let i = 0; i < assign.length; i++) {
+      const color = assign[i] ?? 0;
+      if (color === drop || color === keep) assign[i] = nextKeep;
+      else if (color > drop) assign[i] = color - 1;
+    }
+  }
+  return { palette: centroids.map((lab) => cielabToHex(lab)), colors: assign };
+}
+
+function cielabToHex(lab: Lab): string {
+  const f = (t: number) => {
+    const cube = t * t * t;
+    return cube > 0.008856 ? cube : (t - 16 / 116) / 7.787037;
+  };
+  const fy = (lab[0] + 16) / 116;
+  const x = 0.95047 * f(fy + lab[1] / 500);
+  const y = f(fy);
+  const z = 1.08883 * f(fy - lab[2] / 200);
+  const linear = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+  const r = linear(3.2404542 * x - 1.5371385 * y - 0.4985314 * z);
+  const g = linear(-0.969266 * x + 1.8760108 * y + 0.041556 * z);
+  const b = linear(0.0556434 * x - 0.2040259 * y + 1.0572252 * z);
+  const byte = (v: number) => Math.max(0, Math.min(255, Math.round(v * 255)));
+  const hex = (v: number) => byte(v).toString(16).padStart(2, '0');
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
 function describe(
   labels: Uint16Array,
   rawIds: Int32Array,
   palette: string[],
   width: number,
   height: number,
+  tuck = 0,
 ): Segment {
   const count = labels.length;
   const regions = rawIds.length;
@@ -1336,7 +1728,7 @@ function describe(
   const cy = placed.y;
   const inr = placed.inr;
 
-  const paths = traceRegions(labels, width, height, regions);
+  const paths = traceRegions(tuck > 0 ? tuckLabels(labels, width, height, tuck) : labels, width, height, regions);
   for (let i = 0; i < regions; i++) {
     if ((paths[i]?.length ?? 0) >= 8) continue;
     const minX = box[i * 4] ?? 0;

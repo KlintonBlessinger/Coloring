@@ -1,5 +1,6 @@
+import { hexToRgb } from './color';
 import { base64ToBytes } from './codec';
-import type { DecodedPuzzle } from './types';
+import { OUTLINE, type DecodedPuzzle } from './types';
 import type { ProgressSave } from './storage';
 
 const PAPER = '#f6f1e8';
@@ -38,6 +39,10 @@ export function drawThumbnail(canvas: HTMLCanvasElement, puzzle: DecodedPuzzle, 
   const ratio = progressRatio(filled, puzzle.regionColors.length);
   if (puzzle.mystery && ratio < 1) {
     drawHidden(ctx, size);
+    return;
+  }
+  if (!filled || ratio === 0) {
+    drawLineArt(ctx, puzzle, size);
     return;
   }
   const image = imageFor(puzzle.art);
@@ -85,6 +90,33 @@ function drawHidden(ctx: CanvasRenderingContext2D, size: number): void {
   ctx.textBaseline = 'middle';
   ctx.font = `800 ${Math.round(size * 0.42)}px Nunito, sans-serif`;
   ctx.fillText('?', size / 2, size / 2 + 4);
+}
+
+/** Unstarted cards are a coloring page: white paper, a light tint, and the ink. */
+function drawLineArt(ctx: CanvasRenderingContext2D, puzzle: DecodedPuzzle, size: number): void {
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+  const colors = puzzle.palette.map((hex) => hexToRgb(hex));
+  for (let y = 0; y < size; y++) {
+    const sy = Math.min(puzzle.height - 1, Math.floor((y * puzzle.height) / size));
+    for (let x = 0; x < size; x++) {
+      const sx = Math.min(puzzle.width - 1, Math.floor((x * puzzle.width) / size));
+      const region = puzzle.labels[sy * puzzle.width + sx] ?? 0;
+      const o = (y * size + x) * 4;
+      if (region === OUTLINE) {
+        data[o] = 0x26;
+        data[o + 1] = 0x26;
+        data[o + 2] = 0x26;
+      } else {
+        const rgb = colors[puzzle.regionColors[region] ?? 0] ?? [255, 255, 255];
+        data[o] = Math.round(255 * 0.72 + rgb[0] * 0.28);
+        data[o + 1] = Math.round(255 * 0.72 + rgb[1] * 0.28);
+        data[o + 2] = Math.round(255 * 0.72 + rgb[2] * 0.28);
+      }
+      data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
 }
 
 function soften(data: Uint8ClampedArray): void {
