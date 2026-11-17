@@ -6,9 +6,10 @@
   import { getPuzzle } from '../lib/catalog';
   import { categoryLabel, fill, t } from '../lib/i18n';
   import { markText, paletteMarks } from '../lib/labels';
+  import { applyPictureMode, hasFills, type PictureMode } from '../lib/picture-mode';
   import type { Settings } from '../lib/settings';
   import { speak } from '../lib/speech';
-  import type { ProgressSave } from '../lib/storage';
+  import { loadLastMode, loadPictureModes, loadProgress, saveLastMode, savePictureMode, type ProgressSave } from '../lib/storage';
 
   let {
     puzzleId,
@@ -36,8 +37,14 @@
   let saveError = $state(false);
   let saving = $state(false);
   let lastSel = -1;
+  let committed = $state<PictureMode | null>(null);
+  let draft = $state<PictureMode>('normal');
+  let pickerOpen = $state(false);
+  let decided = $state(false);
 
   const live = untrack(() => ({ ...settings }));
+  const playSettings = $derived(applyPictureMode(settings, committed ?? draft));
+  const copy = $derived(committed ? playSettings.language : settings.language);
 
   const pieces = puzzle
     ? Array.from({ length: 26 }, (_, i) => ({
@@ -49,13 +56,41 @@
     : [];
 
   $effect(() => {
+    const id = puzzleId;
+    const regions = puzzle?.regionColors.length ?? 0;
+    let gone = false;
+    decided = false;
+    pickerOpen = false;
+    committed = null;
+    void (async () => {
+      const [save, modes, last] = await Promise.all([loadProgress(id), loadPictureModes(), loadLastMode()]);
+      if (gone) return;
+      const remembered = modes[id];
+      const mode = (hasFills(save, regions) ? remembered : undefined) ?? last;
+      draft = mode;
+      if (hasFills(save, regions)) {
+        committed = mode;
+        pickerOpen = false;
+      } else {
+        committed = null;
+        pickerOpen = true;
+      }
+      decided = true;
+    })();
+    return () => {
+      gone = true;
+    };
+  });
+
+  $effect(() => {
     live.sound = settings.sound;
     live.haptics = settings.haptics;
     live.bigNumbers = settings.bigNumbers;
-    live.numberStyle = settings.numberStyle;
-    live.labels = settings.labels;
-    live.language = settings.language;
-    gameRef?.setLearning(settings);
+    live.numberStyle = playSettings.numberStyle;
+    live.labels = playSettings.labels;
+    live.language = playSettings.language;
+    live.mathRange = playSettings.mathRange;
+    gameRef?.setLearning(playSettings);
   });
 
   $effect(() => {
@@ -121,9 +156,27 @@
   const quiet = $derived(!!snapshot?.complete && !celebrate);
   const hiddenTitle = $derived(!!puzzle?.mystery && !snapshot?.complete);
   const ring = 2 * Math.PI * 19;
-  const copy = $derived(settings.language);
-  const factList = $derived(copy === 'es' ? (puzzle?.factsEs ?? []) : (puzzle?.facts ?? []));
-  const swatchMarks = $derived(puzzle ? paletteMarks(puzzle.palette, settings, puzzle.id) : []);
+  const factList = $derived(playSettings.language === 'es' ? (puzzle?.factsEs ?? []) : (puzzle?.facts ?? []));
+  const swatchMarks = $derived(puzzle ? paletteMarks(puzzle.palette, playSettings, puzzle.id) : []);
+  const modeName = $derived(committed === 'math' ? 'modeMath' : committed === 'espanol' ? 'modeEspanol' : 'modeNormal');
+  const pickerTitle = $derived(puzzle?.mystery ? t(settings.language, 'mystery') : (puzzle?.title ?? ''));
+
+  function openPicker() {
+    if (committed) draft = committed;
+    pickerOpen = true;
+  }
+
+  async function confirmMode() {
+    if (!puzzle) return;
+    const next = draft;
+    try {
+      await Promise.all([savePictureMode(puzzle.id, next), saveLastMode(next)]);
+    } catch {
+      saveError = true;
+    }
+    committed = next;
+    pickerOpen = false;
+  }
 
   async function saveImage() {
     if (!gameRef || saving) return;
@@ -143,7 +196,7 @@
     <button class="btn" type="button" onclick={onBack}>{t(copy, 'back')}</button>
   </div>
 {:else}
-  <div class="screen" data-testid="play" data-ready={snapshot ? '1' : '0'}>
+  <div class="screen" data-testid="play" data-ready={snapshot && committed && !pickerOpen ? '1' : '0'} data-mode={committed ?? ''}>
     <header class="topbar">
       <button class="icon-btn" type="button" aria-label={t(copy, 'back')} data-testid="back" onclick={onBack}>
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
@@ -153,7 +206,10 @@
       <div class="titles">
         <h1 class:unveil={!!puzzle.mystery && !!snapshot?.complete}>{hiddenTitle ? t(copy, 'mystery') : puzzle.title}</h1>
         <p class="sub">
-          {snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? t(copy, 'mystery') : categoryLabel(copy, puzzle.category)}
+          <span>{snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? t(copy, 'mystery') : categoryLabel(copy, puzzle.category)}</span>
+          {#if committed}
+            <button class="mode-chip" type="button" data-testid="mode-chip" data-mode={committed} onclick={openPicker}>{t(copy, modeName)}</button>
+          {/if}
         </p>
       </div>
       <button
@@ -190,9 +246,12 @@
       </button>
     </header>
 
+    <div class="play-body">
     <div class="stage">
       <div class="shake-host" class:shake={shaking}>
-        <canvas bind:this={canvasEl} class="surface"></canvas>
+        {#if decided}
+          <canvas bind:this={canvasEl} class="surface"></canvas>
+        {/if}
       </div>
       {#if celebrate}
         <div class="celebrate" data-testid="complete" role="status">
@@ -263,7 +322,7 @@
       <p class="save-error">{t(copy, 'saveError')}</p>
     {/if}
 
-    <div class="palette" class:words={settings.labels !== 'numbers'} class:loading={!snapshot} bind:this={paletteEl} data-testid="palette" role="listbox" aria-label={t(copy, 'palette')}>
+    <div class="palette" class:words={playSettings.labels !== 'numbers'} class:loading={!snapshot} bind:this={paletteEl} data-testid="palette" role="listbox" aria-label={t(copy, 'palette')}>
       {#each puzzle.palette as color, index (index)}
         {@const total = snapshot?.totals[index] ?? 0}
         {@const have = snapshot?.done[index] ?? 0}
@@ -282,7 +341,7 @@
           data-index={index}
           data-label={markText(mark)}
           onclick={() => {
-            if (settings.labels !== 'numbers') speak(markText(mark), copy, 0.9);
+            if (playSettings.labels !== 'numbers') speak(markText(mark), playSettings.language, 0.9);
             gameRef?.select(index);
           }}
         >
@@ -309,6 +368,30 @@
           </span>
         </button>
       {/each}
+    </div>
+    {#if pickerOpen}
+      <div class="mode-overlay" data-testid="mode-picker" role="dialog" aria-modal="true" aria-label={t(settings.language, 'howToColor')}>
+        <div class="mode-card">
+          <p class="eyebrow">{pickerTitle}</p>
+          <h2>{t(settings.language, 'howToColor')}</h2>
+          <div class="segment" role="group" aria-label={t(settings.language, 'howToColor')}>
+            <button type="button" data-testid="mode-normal" aria-pressed={draft === 'normal'} onclick={() => (draft = 'normal')}>{t(settings.language, 'modeNormal')}</button>
+            <button type="button" data-testid="mode-math" aria-pressed={draft === 'math'} onclick={() => (draft = 'math')}>{t(settings.language, 'modeMath')}</button>
+            <button type="button" data-testid="mode-espanol" aria-pressed={draft === 'espanol'} onclick={() => (draft = 'espanol')}>{t(settings.language, 'modeEspanol')}</button>
+          </div>
+          <p class="mode-note">
+            {#if draft === 'math'}
+              {t(settings.language, 'modeMathNote')} {t(settings.language, settings.mathRange)}
+            {:else if draft === 'espanol'}
+              {t(settings.language, 'modeEspanolNote')}
+            {:else}
+              {t(settings.language, 'modeNormalNote')}
+            {/if}
+          </p>
+          <button class="btn wide start" type="button" data-testid="mode-start" onclick={confirmMode}>{t(settings.language, 'start')}</button>
+        </div>
+      </div>
+    {/if}
     </div>
   </div>
 {/if}

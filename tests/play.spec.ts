@@ -33,11 +33,22 @@ function watch(page: Page): string[] {
   return errors;
 }
 
-async function openPuzzle(page: Page, id: string): Promise<void> {
+async function beginPicture(page: Page, mode?: 'normal' | 'math' | 'espanol'): Promise<void> {
+  const picker = page.getByTestId('mode-picker');
+  const ready = page.locator('[data-testid="play"][data-ready="1"]');
+  await expect(picker.or(ready)).toBeVisible();
+  if (await picker.isVisible()) {
+    if (mode) await page.getByTestId(`mode-${mode}`).click();
+    await page.getByTestId('mode-start').click();
+  }
+  await ready.waitFor();
+}
+
+async function openPuzzle(page: Page, id: string, mode?: 'normal' | 'math' | 'espanol'): Promise<void> {
   await page.goto(`/?open=${id}&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator(`[data-testid="puzzle-card"][data-id="${id}"]`).click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await beginPicture(page, mode);
 }
 
 async function regionPoint(page: Page, book: PuzzleFile, index: number): Promise<{ x: number; y: number }> {
@@ -155,7 +166,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   await page.locator('[data-category="All"]').click();
 
   await page.locator('[data-id="food-ice-cream-sundae"]').click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await beginPicture(page);
   await expect(page.locator('canvas.surface')).toHaveAttribute('data-numbers', '1');
 
   const selected = Number(await page.locator('.swatch.selected').getAttribute('data-index'));
@@ -222,6 +233,8 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   await page.getByTestId('tab-in-progress').click();
   await page.locator('[data-id="food-ice-cream-sundae"]').click();
   await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await expect(page.getByTestId('mode-picker')).toHaveCount(0);
+  await expect(page.getByTestId('mode-chip')).toHaveAttribute('data-mode', 'normal');
   await expect.poll(() => sample(page, book, match)).not.toEqual(before);
 
   expect(errors, errors.join('\n')).toEqual([]);
@@ -352,7 +365,7 @@ test('screenshots of gallery, fit, half colored, and a finished hard picture', a
   await page.goto(`/?shot=tree&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-id="christmas-tree-fireplace"]').click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await beginPicture(page);
   const treeArea = tree.area.reduce((sum, value) => sum + value, 0);
   const treeOrder = tree.area.map((value, index) => [value, index] as const).sort((a, b) => b[0] - a[0]);
   const treePicked: number[] = [];
@@ -370,7 +383,7 @@ test('screenshots of gallery, fit, half colored, and a finished hard picture', a
   await page.goto(`/?shot=done&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-id="food-bakery-sweets"]').click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await beginPicture(page);
   await paintRegions(page, hard, hard.regionColors.map((_, index) => index));
   await expect(page.getByTestId('complete')).toBeVisible();
   await page.waitForTimeout(2800);
@@ -440,7 +453,7 @@ test('hint, mystery, favorites, and share', async ({ page }) => {
 
   const turtle = puzzle('animals-sea-turtle');
   await page.locator('[data-id="mystery-animals-sea-turtle"]').click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await beginPicture(page);
   await expect(page.locator('.titles h1')).toHaveText('Mystery');
   const turtleOrder = turtle.area
     .map((value, index) => [value, index] as const)
@@ -457,7 +470,7 @@ test('hint, mystery, favorites, and share', async ({ page }) => {
   await page.locator('[data-category="Mystery"]').click();
   const sundae = puzzle('food-ice-cream-sundae');
   await page.locator('[data-id="mystery-food-ice-cream-sundae"]').click();
-  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await beginPicture(page);
   await paintRegions(page, sundae, sundae.regionColors.map((_, index) => index));
   await expect(page.getByTestId('complete')).toBeVisible();
   await expect(page.locator('.titles h1')).toHaveText('Ice Cream Sundae');
@@ -528,10 +541,15 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.waitForTimeout(400);
   await jpg('first-harvest.jpg');
 
-  async function openFromGallery(id: string) {
+  async function openFromGallery(id: string, mode?: 'normal' | 'math' | 'espanol' | 'resume') {
     await page.locator('[data-category="All"]').click();
     await page.locator(`[data-testid="puzzle-card"][data-id="${id}"]`).click();
-    await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+    if (mode === 'resume') {
+      await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+      await expect(page.getByTestId('mode-picker')).toHaveCount(0);
+      return;
+    }
+    await beginPicture(page, mode);
   }
 
   await page.getByTestId('back').click();
@@ -548,7 +566,24 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
       biggest = lotus.regionColors[index] ?? 0;
     }
   });
-  await openFromGallery('flowers-lotus-pond');
+  await page.locator('[data-category="All"]').click();
+  await page.locator('[data-testid="puzzle-card"][data-id="flowers-lotus-pond"]').click();
+  await expect(page.getByTestId('mode-picker')).toBeVisible();
+  await expect(page.getByTestId('mode-normal')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('mode-math').click();
+  await expect(page.getByTestId('mode-math')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('mode-picker')).toContainText('To 20');
+  await page.waitForTimeout(300);
+  await jpg('mode-picker.jpg');
+  await page.getByTestId('mode-start').click();
+  await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  await expect(page.getByTestId('mode-chip')).toHaveAttribute('data-mode', 'math');
+  const selected = Number(await page.locator('.swatch.selected').getAttribute('data-index'));
+  const filledRegion = nearestRegion(lotus, selected);
+  const beforeFill = await sample(page, lotus, filledRegion);
+  const fillPoint = await regionPoint(page, lotus, filledRegion);
+  await page.touchscreen.tap(fillPoint.x, fillPoint.y);
+  await expect.poll(() => sample(page, lotus, filledRegion)).not.toEqual(beforeFill);
   await page.locator(`.swatch[data-index="${biggest}"]`).click();
   await page.getByTestId('hint').click();
   await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
@@ -563,7 +598,8 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.getByTestId('number-times').click();
   await page.getByTestId('math-times10').click();
   await page.getByTestId('back').click();
-  await openFromGallery('flowers-lotus-pond');
+  await openFromGallery('flowers-lotus-pond', 'resume');
+  await expect(page.getByTestId('mode-chip')).toHaveAttribute('data-mode', 'math');
   const timesLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-label'))));
   for (const label of timesLabels) {
     expect(label).toBeGreaterThanOrEqual(4);
@@ -576,40 +612,23 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.waitForTimeout(400);
   await jpg('times-10.jpg');
 
-  await page.getByTestId('back').click();
-  await page.getByTestId('open-settings').click();
-  await page.getByTestId('labels-colors').click();
-  await page.getByTestId('language-en').click();
-  await page.getByTestId('back').click();
-  await openFromGallery('flowers-lotus-pond');
-  const englishLabel = await page.locator('.swatch[data-index="0"]').getAttribute('data-label');
-  expect(englishLabel).toMatch(/[A-Za-z]/);
-  expect(englishLabel).not.toMatch(/^\d+$/);
-  await page.locator('.swatch[data-index="0"]').click();
-  const spokenColor = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
-  expect(spokenColor).toContain(englishLabel ?? '');
-  expect(spokenColor).toContain('en-US');
-  const clipped = await page.locator('.palette .face').evaluateAll((nodes) =>
-    nodes.filter((node) => node.scrollWidth > node.clientWidth + 2).map((node) => node.textContent ?? ''),
-  );
-  expect(clipped).toEqual([]);
-  await page.waitForTimeout(300);
-  await jpg('color-names-en.jpg');
-
-  await page.getByTestId('back').click();
-  await page.getByTestId('open-settings').click();
-  await page.getByTestId('language-es').click();
-  await page.getByTestId('back').click();
-  await openFromGallery('flowers-lotus-pond');
-  await expect(page.getByTestId('hint')).toHaveText('Pista');
+  await page.getByTestId('mode-chip').click();
+  await expect(page.getByTestId('mode-picker')).toBeVisible();
+  await expect(page.getByTestId('mode-math')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('mode-espanol').click();
+  await page.getByTestId('mode-start').click();
+  await expect(page.getByTestId('mode-picker')).toHaveCount(0);
+  await expect(page.getByTestId('mode-chip')).toHaveAttribute('data-mode', 'espanol');
   await expect(page.locator('.sub')).toContainText('Flores');
+  await expect(page.getByTestId('hint')).toHaveText('Pista');
   const spanishLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-label') ?? ''));
   expect(spanishLabels.join(' ')).toMatch(/rosa|verde|salvia|menta|crema|dorado|cian/);
   expect(spanishLabels.join(' ')).not.toMatch(/\bgris\b/);
   expect(spanishLabels[3] ?? '').not.toMatch(/durazno/);
-  expect(spanishLabels.join(' ')).not.toBe(englishLabel);
+  expect(spanishLabels.some((label) => /^\d+$/.test(label))).toBe(false);
   await page.locator('.swatch[data-index="0"]').click();
   const spokenEs = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
+  expect(spokenEs).toContain(spanishLabels[0] ?? '');
   expect(spokenEs).toContain('es-MX');
   const clippedEs = await page.locator('.palette .face').evaluateAll((nodes) =>
     nodes.filter((node) => node.scrollWidth > node.clientWidth + 2).map((node) => node.textContent ?? ''),
@@ -619,12 +638,8 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await jpg('color-names-es.jpg');
 
   await page.getByTestId('back').click();
-  await page.getByTestId('open-settings').click();
-  await page.getByTestId('language-en').click();
-  await page.getByTestId('labels-numbers').click();
-  await page.getByTestId('back').click();
   const sundae = puzzle('food-ice-cream-sundae');
-  await openFromGallery('food-ice-cream-sundae');
+  await openFromGallery('food-ice-cream-sundae', 'normal');
   await paintRegions(page, sundae, sundae.regionColors.map((_, index) => index));
   await expect(page.getByTestId('complete')).toBeVisible();
   await expect(page.locator('.facts')).toContainText(/ice cream/i);
@@ -638,7 +653,7 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
 
   await page.getByTestId('back').click();
   const solar = puzzle('science-solar-system');
-  await openFromGallery('science-solar-system');
+  await openFromGallery('science-solar-system', 'normal');
   await paintRegions(page, solar, solar.regionColors.map((_, index) => index));
   await expect(page.getByTestId('complete')).toBeVisible();
   await expect(page.locator('.facts')).toContainText(/Jupiter is the biggest/i);

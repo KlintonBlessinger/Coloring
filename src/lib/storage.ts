@@ -1,5 +1,6 @@
 import { createStore, del, get, keys, set } from 'idb-keyval';
 import { APP_NAME } from './brand';
+import { isPictureMode, type PictureMode } from './picture-mode';
 import { DEFAULT_SETTINGS, LABEL_MODES, LANGUAGES, MATH_RANGES, NUMBER_STYLES, pickSetting, type Settings } from './settings';
 
 const store = createStore('color-cozy', 'book');
@@ -18,6 +19,17 @@ export interface BackupFile {
   settings: Settings;
   progress: Record<string, ProgressSave>;
   favorites: string[];
+  modes: Record<string, PictureMode>;
+  lastMode: PictureMode;
+}
+
+function sanitizeModes(value: unknown): Record<string, PictureMode> {
+  if (!value || typeof value !== 'object') return {};
+  const out: Record<string, PictureMode> = {};
+  for (const [id, mode] of Object.entries(value)) {
+    if (isPictureMode(mode)) out[id] = mode;
+  }
+  return out;
 }
 
 function normalizeSettings(value: Partial<Settings> | undefined): Settings {
@@ -88,11 +100,38 @@ export async function saveFavorites(ids: string[]): Promise<void> {
   await set('favorites', [...new Set(ids)], store);
 }
 
+export async function loadLastMode(): Promise<PictureMode> {
+  try {
+    const stored = await get<unknown>('last-picture-mode', store);
+    return isPictureMode(stored) ? stored : 'normal';
+  } catch {
+    return 'normal';
+  }
+}
+
+export async function saveLastMode(mode: PictureMode): Promise<void> {
+  await set('last-picture-mode', mode, store);
+}
+
+export async function loadPictureModes(): Promise<Record<string, PictureMode>> {
+  try {
+    return sanitizeModes(await get<unknown>('picture-modes', store));
+  } catch {
+    return {};
+  }
+}
+
+export async function savePictureMode(id: string, mode: PictureMode): Promise<void> {
+  const all = await loadPictureModes();
+  all[id] = mode;
+  await set('picture-modes', all, store);
+}
+
 export async function resetAllProgress(): Promise<void> {
   const all = await keys(store);
   await Promise.all(
     all.map((key) =>
-      typeof key === 'string' && key.startsWith('progress:') ? del(key, store) : Promise.resolve(),
+      typeof key === 'string' && (key.startsWith('progress:') || key === 'picture-modes') ? del(key, store) : Promise.resolve(),
     ),
   );
 }
@@ -105,6 +144,8 @@ export async function exportBackup(): Promise<BackupFile> {
     settings: await loadSettings(),
     progress: await loadAllProgress(),
     favorites: await loadFavorites(),
+    modes: await loadPictureModes(),
+    lastMode: await loadLastMode(),
   };
 }
 
@@ -120,6 +161,8 @@ export function parseBackup(text: string): BackupFile {
     settings: normalizeSettings(data.settings),
     progress: data.progress,
     favorites: Array.isArray(data.favorites) ? data.favorites.filter((id): id is string => typeof id === 'string') : [],
+    modes: sanitizeModes(data.modes),
+    lastMode: isPictureMode(data.lastMode) ? data.lastMode : 'normal',
   };
 }
 
@@ -137,4 +180,6 @@ export async function importBackup(data: BackupFile): Promise<void> {
   }
   await saveSettings(normalizeSettings(data.settings));
   await saveFavorites(data.favorites);
+  await set('picture-modes', sanitizeModes(data.modes), store);
+  await saveLastMode(isPictureMode(data.lastMode) ? data.lastMode : 'normal');
 }

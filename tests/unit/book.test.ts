@@ -4,7 +4,10 @@ import path from 'node:path';
 import test from 'node:test';
 import { formatFavoritesShare } from '../../src/lib/favorites-share';
 import { nextHintRegion } from '../../src/lib/hint';
+import { bytesToBase64 } from '../../src/lib/codec';
 import { answerBank, colorNames, mathProblem, paletteMarks, problemChoices, problemValue, regionMarks, sightWord } from '../../src/lib/labels';
+import { applyPictureMode, hasFills } from '../../src/lib/picture-mode';
+import { DEFAULT_SETTINGS } from '../../src/lib/settings';
 import { parseBackup } from '../../src/lib/storage';
 import type { ArtRecord } from '../../src/lib/types';
 import type { PuzzleFile } from '../../src/lib/types';
@@ -70,6 +73,8 @@ test('a backup without favorites still imports', () => {
   assert.equal(parsed.settings.labels, 'numbers');
   assert.equal(parsed.settings.language, 'en');
   assert.equal(parsed.settings.mathRange, 'add10');
+  assert.deepEqual(parsed.modes, {});
+  assert.equal(parsed.lastMode, 'normal');
   const hearts = parseBackup(
     JSON.stringify({ version: 1, progress: {}, favorites: ['thanksgiving-turkey', 4, 'christmas-snowman'] }),
   );
@@ -132,6 +137,33 @@ test('the art manifest covers every picture and at least five mysteries', () => 
   assert.match(doc, /manifest\.json/);
   assert.match(doc, /make-puzzle/);
   assert.match(doc, /factsEs/);
+});
+
+test('a picture mode wins, and math keeps the settings difficulty', () => {
+  const base = { ...DEFAULT_SETTINGS, mathRange: 'add20' as const };
+  const math = applyPictureMode(base, 'math');
+  assert.equal(math.numberStyle, 'adding');
+  assert.equal(math.labels, 'numbers');
+  assert.equal(math.mathRange, 'add20');
+  assert.equal(math.language, 'en');
+  assert.equal(base.numberStyle, 'plain');
+  const times = applyPictureMode({ ...base, mathRange: 'times10' }, 'math');
+  assert.equal(times.numberStyle, 'times');
+  assert.equal(times.mathRange, 'times10');
+  const espanol = applyPictureMode(base, 'espanol');
+  assert.equal(espanol.labels, 'colors');
+  assert.equal(espanol.language, 'es');
+  assert.equal(base.language, 'en');
+  const normal = applyPictureMode({ ...base, numberStyle: 'times', labels: 'words', language: 'es' }, 'normal');
+  assert.equal(normal.numberStyle, 'plain');
+  assert.equal(normal.labels, 'numbers');
+  assert.equal(normal.language, 'es');
+  const empty = { filled: bytesToBase64(new Uint8Array([0, 0, 0])), order: '', selected: 0, updatedAt: 1 };
+  const started = { ...empty, filled: bytesToBase64(new Uint8Array([0, 1, 0])) };
+  assert.equal(hasFills(null, 3), false);
+  assert.equal(hasFills(empty, 3), false);
+  assert.equal(hasFills(started, 3), true);
+  assert.equal(hasFills(started, 2), false);
 });
 
 test('math practice skips +0 and ×1 unless nothing else works', () => {
