@@ -6,9 +6,11 @@ book. This script refuses to write the pack inside the repository.
     python3 scripts/build-pack.py --sources <folder> --out <pack.zip>
 
 meta.json lists each picture, its tags, and the line-art or tonal settings
-(`pbn.mode`, `pbn.k`, `pbn.minArea`). A picture the source meta already places
-under the region floor, or marks with `pbn.acceptRegions`, is kept when the
-rest of the quality gate passes.
+(`pbn.mode`, `pbn.k`, `pbn.minArea`). An optional per-picture ``eyes`` list
+(or ``pbn.eyes``) is source-pixel boxes ``{x, y, w, h}``. The pipeline keeps
+those boxes out of min-area merging and hands them to ``protect_eyes``. A
+picture the source meta already places under the region floor, or marks with
+``pbn.acceptRegions``, is kept when the rest of the quality gate passes.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ def region_exempt(picture: dict, pipeline: dict) -> bool:
 def build_one(task: dict) -> dict:
     source = task['source']
     mode = task['mode']
-    result = segment(source, mode, k=task['k'], min_area=task['minArea'])
+    result = segment(source, mode, k=task['k'], min_area=task['minArea'], eyes=task['eyes'])
     meta = {
         'id': task['id'],
         'title': task['title'],
@@ -142,6 +144,7 @@ def tasks_from(folder: Path) -> tuple[dict, list[dict]]:
             'mode': mode,
             'k': int(settings['k']),
             'minArea': int(settings['minArea']),
+            'eyes': picture.get('eyes', settings.get('eyes')),
             'tags': [str(tag) for tag in tags],
             'facts': picture.get('facts') or [],
             'factsEs': picture.get('factsEs') or [],

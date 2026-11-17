@@ -112,24 +112,39 @@ def write_puzzle(document: dict) -> None:
     (OUT / f'{puzzle_id}.json.gz').write_bytes(gzip.compress(raw, 9))
 
 
+def picture_eyes(picture) -> list | None:
+    """Eye boxes travel with the picture record. Absent means the current art.
+
+    A tuple may end with the list. A meta record uses ``eyes`` or ``pbn.eyes``.
+    """
+    if isinstance(picture, dict):
+        settings = picture.get('pbn') or {}
+        return picture.get('eyes', settings.get('eyes'))
+    if picture and isinstance(picture[-1], list):
+        return picture[-1]
+    return None
+
+
 def build_one(picture: tuple) -> dict:
     puzzle_id, title, category, difficulty = picture[:4]
     source = SOURCES / f'{puzzle_id}.jpg'
     if not source.exists():
         raise FileNotFoundError(source)
-    if len(picture) == 6:
-        _k, min_area = picture[4], picture[5]
-        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area))
+    eyes = picture_eyes(picture)
+    numbers = [item for item in picture[4:] if isinstance(item, (int, float))]
+    if len(numbers) >= 2:
+        _k, min_area = numbers[0], numbers[1]
+        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes)
         mode = 'tonal'
     else:
         # k=28 is the line-art default. Busy pictures try a larger palette and
         # keep the closest match that still stays at or under 40 colors.
-        result = segment(str(source), 'lineart', k=28)
+        result = segment(str(source), 'lineart', k=28, eyes=eyes)
         for k in (36, 44):
             stats = result['stats']
             if stats['meanDE76'] <= 4.6 and stats['smallRadiusFraction'] <= 0.03 and stats['colors'] <= 40:
                 break
-            nxt = segment(str(source), 'lineart', k=k)
+            nxt = segment(str(source), 'lineart', k=k, eyes=eyes)
             if nxt['stats']['meanDE76'] < result['stats']['meanDE76']:
                 result = nxt
         mode = 'lineart'

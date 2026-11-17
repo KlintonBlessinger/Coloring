@@ -2,6 +2,8 @@
 
 Line art and tonal pictures become smoothed region paths plus one ink path.
 Defaults: line art k=28, min area 60, merge deltaE 6. Tonal k=36, min area 90.
+A per-picture ``eyes`` list of source-pixel boxes is kept out of min-area
+merging. ``protect_eyes`` is the plug for the upcoming eye-detail pass.
 """
 
 from __future__ import annotations
@@ -25,6 +27,87 @@ def defaults(mode: str) -> dict:
     if mode != 'lineart':
         raise ValueError(f'Unknown mode {mode}')
     return dict(LINEART)
+
+
+def normalize_eyes(raw) -> list[dict]:
+    """Per-picture eye boxes in source-image pixels, origin at the top left.
+
+    Accepted shapes, so a refreshed meta.json can use any of them:
+    ``{"x", "y", "w", "h"}``, ``[x, y, w, h]``, or ``{"box": [x, y, w, h]}``.
+    ``w`` and ``h`` may also be named ``width`` and ``height``. An empty list
+    and ``None`` both mean the picture has no eye boxes. Min-area merging
+    leaves those pixels alone. ``protect_eyes`` is where the upcoming patch
+    keeps pupils, catchlights, and eyelid lines crisp and the iris one region.
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise ValueError('eyes must be a list of boxes')
+    boxes = []
+    for item in raw:
+        if isinstance(item, dict) and 'box' in item and not any(key in item for key in ('x', 'w', 'width')):
+            item = item['box']
+        if isinstance(item, (list, tuple)):
+            if len(item) != 4:
+                raise ValueError('an eye box needs x, y, w, h')
+            x, y, w, h = item
+        elif isinstance(item, dict):
+            try:
+                x = item['x']
+                y = item['y']
+                w = item['w'] if 'w' in item else item['width']
+                h = item['h'] if 'h' in item else item['height']
+            except KeyError as error:
+                raise ValueError('an eye box needs x, y, w, h') from error
+        else:
+            raise ValueError('an eye box needs x, y, w, h')
+        values = [float(x), float(y), float(w), float(h)]
+        if not all(np.isfinite(value) for value in values) or values[2] <= 0 or values[3] <= 0:
+            raise ValueError('an eye box needs a positive width and height')
+        boxes.append({'x': values[0], 'y': values[1], 'w': values[2], 'h': values[3]})
+    return boxes
+
+
+def eye_hold_mask(height: int, width: int, eyes: list[dict], source_size: tuple[int, int]) -> np.ndarray | None:
+    """Stretch source-pixel eye boxes the same way the picture is resized."""
+    if not eyes:
+        return None
+    source_w, source_h = source_size
+    if source_w <= 0 or source_h <= 0:
+        raise ValueError('eye boxes need the source size')
+    mask = np.zeros((height, width), bool)
+    for box in eyes:
+        x0 = int(np.floor(box['x'] * width / source_w))
+        y0 = int(np.floor(box['y'] * height / source_h))
+        x1 = int(np.ceil((box['x'] + box['w']) * width / source_w))
+        y1 = int(np.ceil((box['y'] + box['h']) * height / source_h))
+        x0 = max(0, min(width, x0))
+        x1 = max(0, min(width, x1))
+        y0 = max(0, min(height, y0))
+        y1 = max(0, min(height, y1))
+        if x1 > x0 and y1 > y0:
+            mask[y0:y1, x0:x1] = True
+    return mask
+
+
+def protect_eyes(regions: np.ndarray, region_cluster: np.ndarray, ink: np.ndarray, image: np.ndarray, eyes: list[dict]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Plug for the eye pass. Returns the three arrays the rest of the pipeline uses.
+
+    The upcoming patch keeps pupils, catchlights, and eyelid lines as crisp fixed
+    detail, and the iris as one paintable region, using the boxes in ``eyes``.
+    Until that patch lands this returns the inputs unchanged, so a picture with
+    no boxes — and every picture built before the archives arrive — segments as
+    it does today. Min-area merging already skips pixels inside the boxes.
+    """
+    del image, eyes
+    return regions, region_cluster, ink
+
+
+def regions_inside(regions: np.ndarray, hold: np.ndarray | None) -> set[int] | None:
+    if hold is None or not hold.any():
+        return None
+    found = {int(value) for value in np.unique(regions[hold]) if int(value) != 0}
+    return found or None
 
 
 def lab_dist(a: np.ndarray, b: np.ndarray) -> float:
@@ -160,12 +243,17 @@ def absorb_unlabeled(reg: np.ndarray) -> np.ndarray:
     return reg[idx[0], idx[1]]
 
 
-def absorb_thin(reg: np.ndarray, region_cluster: np.ndarray, ink: np.ndarray, centers: np.ndarray, min_radius: float) -> tuple[np.ndarray, np.ndarray]:
-    """Fold regions that can never hold a 3px label into the neighbor they touch most."""
+def absorb_thin(reg: np.ndarray, region_cluster: np.ndarray, ink: np.ndarray, centers: np.ndarray, min_radius: float, keep: set[int] | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Fold regions that can never hold a 3px label into the neighbor they touch most.
+
+    ``keep`` is the set of region ids inside an eye box. Those stay whole.
+    """
     kernel = np.ones((3, 3), np.uint8)
     for _ in range(8):
         thin: list[int] = []
         for region_id in np.unique(reg):
+            if keep is not None and int(region_id) in keep:
+                continue
             ys, xs = np.where(reg == region_id)
             if len(ys) == 0:
                 continue
@@ -213,6 +301,8 @@ def absorb_thin(reg: np.ndarray, region_cluster: np.ndarray, ink: np.ndarray, ce
         thin: list[tuple[int, int]] = []
         total = 0
         for region_id in np.unique(reg):
+            if keep is not None and int(region_id) in keep:
+                continue
             ys, xs = np.where(reg == region_id)
             if len(ys) == 0:
                 continue
@@ -434,15 +524,17 @@ def seat_labels(regions: list[dict], ink_path: str, width: int, height: int) -> 
         }
 
 
-def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70) -> dict:
+def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None) -> dict:
     preset = defaults(mode)
     k = int(preset['k'] if k is None else k)
     min_area = int(preset['min_area'] if min_area is None else min_area)
     merge = float(preset['merge'] if merge is None else merge)
+    eyes = normalize_eyes(eyes)
     started = time.time()
     image = cv2.imread(src)
     if image is None:
         raise FileNotFoundError(src)
+    source_size = (int(image.shape[1]), int(image.shape[0]))
     image = cv2.resize(image, (1024, 1024), interpolation=cv2.INTER_AREA)
     height, width = image.shape[:2]
     if mode == 'lineart':
@@ -490,10 +582,17 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             count += int(found)
     region_cluster = np.array(region_cluster)
     regions = absorb_unlabeled(regions)
+    regions, region_cluster, ink = protect_eyes(regions, region_cluster, ink, image, eyes)
+    hold = eye_hold_mask(height, width, eyes, source_size)
     for _ in range(6):
-        areas = np.bincount(regions.ravel(), minlength=count + 1)
+        areas = np.bincount(regions.ravel(), minlength=int(regions.max()) + 1)
         small = (areas < min_area) & (areas > 0)
         small[0] = False
+        held = regions_inside(regions, hold)
+        if held:
+            for region_id in held:
+                if region_id < len(small):
+                    small[region_id] = False
         if not small.any():
             break
         regions[small[regions]] = 0
@@ -503,7 +602,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     remap[kept] = np.arange(len(kept))
     regions = remap[regions]
     region_cluster = region_cluster[kept]
-    regions, region_cluster = absorb_thin(regions, region_cluster, ink, centers, 3.0)
+    regions, region_cluster = absorb_thin(regions, region_cluster, ink, centers, 3.0, regions_inside(regions, hold))
     region_count = len(np.unique(regions))
     used = sorted(set(int(v) for v in region_cluster.tolist()))
     palette_lab: dict[int, np.ndarray] = {}
@@ -516,7 +615,8 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         palette_lab[cluster] = np.median(source_lab[sample], axis=0) if int(np.count_nonzero(sample)) > 0 else centers[cluster]
     regions = snap_closer(regions, region_cluster, palette_lab, source_lab, ink)
     # Snapping steals edge pixels and can leave a region too thin to number.
-    regions, region_cluster = absorb_thin(regions, region_cluster, ink, centers, 3.0)
+    # Recompute the hold after ids change. Eye boxes stay out of this fold too.
+    regions, region_cluster = absorb_thin(regions, region_cluster, ink, centers, 3.0, regions_inside(regions, hold))
     region_count = len(np.unique(regions))
     used = sorted(set(int(v) for v in region_cluster.tolist()))
     palette_lab = {}
@@ -609,6 +709,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         'k': k,
         'minArea': min_area,
         'merge': merge,
+        'eyes': len(eyes),
         'regions': len(paths),
         'colors': len(palette),
         'regionsRadiusLt3': small,
