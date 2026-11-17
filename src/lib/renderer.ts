@@ -1,4 +1,6 @@
 import { mixHex } from './color';
+import { regionMarks, type RegionMark } from './labels';
+import { DEFAULT_SETTINGS, type Settings } from './settings';
 import type { DecodedPuzzle } from './types';
 
 const PAPER = '#f4f1eb';
@@ -40,6 +42,8 @@ export class Renderer {
   private visual: Uint8Array | null = null;
   private selected = 0;
   private big: boolean;
+  private marks: RegionMark[];
+  private learningKey: string;
   private cssW = 0;
   private cssH = 0;
   private dpr = 1;
@@ -61,6 +65,8 @@ export class Renderer {
     this.puzzle = puzzle;
     this.filled = filled;
     this.big = bigNumbers;
+    this.marks = regionMarks(puzzle, DEFAULT_SETTINGS);
+    this.learningKey = `plain|numbers|en|${bigNumbers ? 1 : 0}`;
     view.classList.add('surface');
     const viewCtx = view.getContext('2d');
     if (!viewCtx) throw new Error('Canvas is not available.');
@@ -85,6 +91,16 @@ export class Renderer {
   setBigNumbers(big: boolean): void {
     if (this.big === big) return;
     this.big = big;
+    this.learningKey = this.learningKey.replace(/\|[01]$/, `|${big ? 1 : 0}`);
+    this.requestDraw();
+  }
+
+  setLearning(next: Settings): void {
+    const key = `${next.numberStyle}|${next.labels}|${next.language}|${next.bigNumbers ? 1 : 0}`;
+    if (key === this.learningKey) return;
+    this.learningKey = key;
+    this.big = next.bigNumbers;
+    this.marks = regionMarks(this.puzzle, next);
     this.requestDraw();
   }
 
@@ -396,18 +412,22 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = NUMBER;
+      ctx.strokeStyle = NUMBER;
       for (let i = 0; i < this.puzzle.regionColors.length; i++) {
         if (this.isFilled(i)) continue;
         const radius = Math.sqrt((this.puzzle.area[i] ?? 0) / Math.PI) * this.scale;
-        const n = (this.puzzle.regionColors[i] ?? 0) + 1;
-        const need = (n >= 10 ? 15 : 11) * (this.big ? 0.78 : 1);
-        if (radius < need) continue;
-        const font = Math.min(this.big ? 30 : 20, radius * (this.big ? 0.95 : 0.72));
-        ctx.font = `800 ${font}px Nunito, sans-serif`;
         const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
         const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
-        ctx.fillText(String(n), x, y);
-        numbers = true;
+        const mark = this.marks[i] ?? { kind: 'text' as const, text: String((this.puzzle.regionColors[i] ?? 0) + 1) };
+        if (mark.kind === 'dots') {
+          if (drawDots(ctx, mark.count, x, y, radius)) numbers = true;
+          continue;
+        }
+        if (mark.kind === 'tally') {
+          if (drawTally(ctx, mark.count, x, y, radius)) numbers = true;
+          continue;
+        }
+        if (drawFittedText(ctx, mark.text, x, y, radius, this.big)) numbers = true;
       }
     }
 
@@ -425,4 +445,80 @@ export class Renderer {
     this.view.dataset.numbers = numbers ? '1' : '0';
     this.view.dataset.ghost = showGhost ? '1' : '0';
   }
+}
+
+function drawDots(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, radius: number): boolean {
+  const dot = Math.min(5.5, Math.max(2.2, radius * 0.22));
+  const gap = dot * 0.7;
+  const width = count * dot * 2 + Math.max(0, count - 1) * gap;
+  if (width > radius * 1.85 || dot < 2.2) return false;
+  ctx.fillStyle = NUMBER;
+  const start = x - width / 2 + dot;
+  for (let i = 0; i < count; i++) {
+    ctx.beginPath();
+    ctx.arc(start + i * (dot * 2 + gap), y, dot, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return true;
+}
+
+function drawTally(ctx: CanvasRenderingContext2D, count: number, x: number, y: number, radius: number): boolean {
+  const markW = Math.min(8, Math.max(3, radius * 0.22));
+  const gap = markW * 0.35;
+  const groupW = 4 * markW + 3 * gap;
+  const groups = Math.ceil(count / 5);
+  const extras = count % 5;
+  const width = groups * groupW + Math.max(0, groups - 1) * markW + (extras === 0 ? 0 : 0);
+  if (width > radius * 1.95 || markW < 3) return false;
+  const height = Math.min(radius * 1.15, markW * 3.2);
+  ctx.strokeStyle = NUMBER;
+  ctx.lineWidth = Math.max(1.4, markW * 0.28);
+  ctx.lineCap = 'round';
+  let cursor = x - width / 2;
+  let left = count;
+  for (let group = 0; group < groups; group++) {
+    const take = Math.min(5, left);
+    const sticks = Math.min(4, take);
+    for (let i = 0; i < sticks; i++) {
+      const lineX = cursor + markW / 2;
+      ctx.beginPath();
+      ctx.moveTo(lineX, y - height / 2);
+      ctx.lineTo(lineX, y + height / 2);
+      ctx.stroke();
+      cursor += markW + gap;
+    }
+    if (take === 5) {
+      ctx.beginPath();
+      ctx.moveTo(cursor - (markW + gap) * 4, y + height / 2);
+      ctx.lineTo(cursor - gap, y - height / 2);
+      ctx.stroke();
+    }
+    left -= take;
+    if (left > 0) cursor += markW * 0.4;
+  }
+  return true;
+}
+
+function drawFittedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, radius: number, big: boolean): boolean {
+  const short = text.length <= 2;
+  const numeric = /^\d+$/.test(text);
+  if (short) {
+    const need = (numeric && text.length >= 2 ? 15 : 11) * (big ? 0.78 : 1);
+    if (radius < need) return false;
+  }
+  let font = Math.min(big ? 30 : 20, radius * (big ? 0.95 : 0.72));
+  if (!short) font = Math.min(font, big ? 26 : 18);
+  ctx.fillStyle = NUMBER;
+  ctx.font = `800 ${font}px Nunito, sans-serif`;
+  let width = ctx.measureText(text).width;
+  const maxWidth = radius * 1.65;
+  if (width > maxWidth) {
+    font *= maxWidth / width;
+    if (font < 9) return false;
+    ctx.font = `800 ${font}px Nunito, sans-serif`;
+    width = ctx.measureText(text).width;
+    if (width > maxWidth * 1.05) return false;
+  }
+  ctx.fillText(text, x, y);
+  return true;
 }

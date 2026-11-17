@@ -1,4 +1,4 @@
-export const CATEGORIES = ['Thanksgiving', 'Christmas', 'Animals', 'Flowers', 'Food', 'Fantasy', 'Patterns'] as const;
+export const CATEGORIES = ['Thanksgiving', 'Christmas', 'Animals', 'Flowers', 'Food', 'Fantasy', 'Patterns', 'Science'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
@@ -70,10 +70,16 @@ export interface ArtRecord {
   mystery: boolean;
   source?: string;
   tags: ArtTags;
+  /** Two or three short, accurate facts for kids. */
+  facts: string[];
+  /** Spanish translations of `facts`, in the same order. */
+  factsEs: string[];
 }
 
 export interface DecodedPuzzle extends Omit<PuzzleFile, 'labels'> {
   labels: Uint16Array;
   mystery: boolean;
   tags: ArtTags;
+  facts: string[];
+  factsEs: string[];
 }

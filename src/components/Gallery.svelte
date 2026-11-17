@@ -1,6 +1,8 @@
 <script lang="ts">
   import { APP_NAME } from '../lib/brand';
   import { listPuzzles } from '../lib/catalog';
+  import { categoryLabel, t } from '../lib/i18n';
+  import type { Settings } from '../lib/settings';
   import { drawThumbnail, filledFromSave, progressRatio } from '../lib/thumb';
   import type { ProgressSave } from '../lib/storage';
   import { CATEGORIES, type Category, type DecodedPuzzle } from '../lib/types';
@@ -10,12 +12,14 @@
   let {
     progress,
     favorites,
+    settings,
     onOpen,
     onSettings,
     onToggleFavorite,
   }: {
     progress: Record<string, ProgressSave>;
     favorites: string[];
+    settings: Settings;
     onOpen: (id: string) => void;
     onSettings: () => void;
     onToggleFavorite: (id: string) => void;
@@ -56,7 +60,7 @@
   }
 
   function labelFor(puzzle: DecodedPuzzle, ratio: number): string {
-    if (puzzle.mystery && ratio < 1) return 'Mystery picture';
+    if (puzzle.mystery && ratio < 1) return t(settings.language, 'mysteryPicture');
     return puzzle.title;
   }
 
@@ -64,12 +68,12 @@
 
   const empty = $derived(
     category === 'Favorites'
-      ? 'No favorites yet. Tap the heart on a picture.'
+      ? t(settings.language, 'emptyFavorites')
       : tab === 'progress'
-        ? 'Nothing in progress. Open a picture and tap a color.'
+        ? t(settings.language, 'emptyProgress')
         : tab === 'done'
-          ? 'Finished pictures will wait here.'
-          : 'No pictures on this shelf.',
+          ? t(settings.language, 'emptyDone')
+          : t(settings.language, 'emptyShelf'),
   );
 </script>
 
@@ -79,10 +83,10 @@
       <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
       <div>
         <h1>{APP_NAME}</h1>
-        <p class="lede">Color by number, offline.</p>
+        <p class="lede">{t(settings.language, 'lede')}</p>
       </div>
     </div>
-    <button class="icon-btn" type="button" aria-label="Settings" data-testid="open-settings" onclick={onSettings}>
+    <button class="icon-btn" type="button" aria-label={t(settings.language, 'openSettings')} data-testid="open-settings" onclick={onSettings}>
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
         <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" />
         <path
@@ -97,15 +101,15 @@
   </header>
 
   <div class="tabs" role="tablist">
-    <button type="button" role="tab" data-testid="tab-all" aria-selected={tab === 'all'} onclick={() => (tab = 'all')}>All</button>
-    <button type="button" role="tab" data-testid="tab-in-progress" aria-selected={tab === 'progress'} onclick={() => (tab = 'progress')}>In progress</button>
-    <button type="button" role="tab" data-testid="tab-finished" aria-selected={tab === 'done'} onclick={() => (tab = 'done')}>Finished</button>
+    <button type="button" role="tab" data-testid="tab-all" aria-selected={tab === 'all'} onclick={() => (tab = 'all')}>{t(settings.language, 'tabAll')}</button>
+    <button type="button" role="tab" data-testid="tab-in-progress" aria-selected={tab === 'progress'} onclick={() => (tab = 'progress')}>{t(settings.language, 'tabProgress')}</button>
+    <button type="button" role="tab" data-testid="tab-finished" aria-selected={tab === 'done'} onclick={() => (tab = 'done')}>{t(settings.language, 'tabFinished')}</button>
   </div>
 
   <div class="chips">
-    <button type="button" class="chip" class:on={category === 'All'} data-testid="category-chip" data-category="All" onclick={() => (category = 'All')}>All</button>
-    <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => (category = 'Favorites')}>Favorites</button>
-    <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => (category = 'Mystery')}>Mystery</button>
+    <button type="button" class="chip" class:on={category === 'All'} data-testid="category-chip" data-category="All" onclick={() => (category = 'All')}>{t(settings.language, 'all')}</button>
+    <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => (category = 'Favorites')}>{t(settings.language, 'favorites')}</button>
+    <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => (category = 'Mystery')}>{t(settings.language, 'mystery')}</button>
     {#each CATEGORIES as name (name)}
       <button
         type="button"
@@ -114,7 +118,7 @@
         data-testid="category-chip"
         data-category={name}
         onclick={() => (category = name)}
-      >{name}</button>
+      >{categoryLabel(settings.language, name)}</button>
     {/each}
   </div>
 
@@ -131,7 +135,7 @@
         data-favorite={puzzle.id}
         data-on={loved ? '1' : '0'}
         aria-pressed={loved}
-        aria-label={loved ? `Remove ${hidden ? 'mystery picture' : puzzle.title} from favorites` : `Favorite ${hidden ? 'mystery picture' : puzzle.title}`}
+        aria-label={loved ? `${t(settings.language, 'removeFavorite')}: ${hidden ? t(settings.language, 'mysteryPicture') : puzzle.title}` : `${t(settings.language, 'addFavorite')}: ${hidden ? t(settings.language, 'mysteryPicture') : puzzle.title}`}
         onclick={(event) => {
           event.stopPropagation();
           onToggleFavorite(puzzle.id);
@@ -156,10 +160,10 @@
         <div class="thumb-wrap">
           <canvas class="thumb" width="280" height="280" use:paint={{ puzzle, save: progress[puzzle.id] }}></canvas>
         </div>
-        <span class="card-title">{hidden ? 'Mystery' : puzzle.title}</span>
+        <span class="card-title">{hidden ? t(settings.language, 'mystery') : puzzle.title}</span>
         <span class="meta">
-          <span>{hidden ? 'Mystery' : puzzle.category}</span>
-          <span class="badge {puzzle.difficulty}">{puzzle.difficulty}</span>
+          <span>{hidden ? t(settings.language, 'mystery') : categoryLabel(settings.language, puzzle.category)}</span>
+          <span class="badge {puzzle.difficulty}">{t(settings.language, puzzle.difficulty)}</span>
         </span>
         {#if ratio > 0}
           <span class="meter" class:done={ratio >= 1}><span style="width: {Math.round(ratio * 100)}%"></span></span>
@@ -174,7 +178,7 @@
         {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === name)}
         {#if items.length}
           <section class="shelf" data-shelf={name}>
-            <h2 class="shelf-title">{name}</h2>
+            <h2 class="shelf-title">{categoryLabel(settings.language, name)}</h2>
             <div class="shelf-row">
               {#each items as puzzle (puzzle.id)}
                 {@render picture(puzzle)}
@@ -185,7 +189,7 @@
       {/each}
       {#if mysteryShelf.length}
         <section class="shelf" data-shelf="Mystery">
-          <h2 class="shelf-title">Mystery</h2>
+          <h2 class="shelf-title">{t(settings.language, 'mystery')}</h2>
           <div class="shelf-row">
             {#each mysteryShelf as puzzle (puzzle.id)}
               {@render picture(puzzle)}
@@ -197,7 +201,9 @@
   {:else}
     <div class="grid">
       {#if category === 'Favorites' || category === 'Mystery'}
-        <h2 class="shelf-title span">{category}</h2>
+        <h2 class="shelf-title span">{category === 'Favorites' ? t(settings.language, 'favorites') : t(settings.language, 'mystery')}</h2>
+      {:else if category !== 'All'}
+        <h2 class="shelf-title span">{categoryLabel(settings.language, category)}</h2>
       {/if}
       {#each visible as puzzle (puzzle.id)}
         {@render picture(puzzle)}

@@ -12,11 +12,13 @@ Edit `src/art/manifest.json` and add an object to `pictures`:
 
 - `id` — slug, the same name as the puzzle file
 - `title`
-- `category` — Thanksgiving, Christmas, Animals, Flowers, Food, Fantasy, or Patterns
+- `category` — Thanksgiving, Christmas, Animals, Flowers, Food, Fantasy, Patterns, or Science
 - `difficulty` — easy, medium, or hard
 - `mystery` — `true` hides the thumbnail, the ghost image, and the title until the picture is finished
 - `source` — only for a mystery that reuses another picture. Set this to that picture's id and skip generating a second puzzle
 - `tags` — `subject`, `setting`, `season`, `mood`, `palette`, `style`, and `complexity`
+- `facts` — two or three short, accurate facts for kids, in English
+- `factsEs` — the same facts in Spanish, in the same order
 
 A mystery with `source` shows up on the Mystery shelf. The original picture stays on its own shelf, with its own progress.
 

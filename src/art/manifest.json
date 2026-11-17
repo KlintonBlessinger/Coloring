@@ -7,14 +7,41 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["cat", "window"],
-        "setting": ["indoors", "windowsill"],
-        "season": ["any"],
-        "mood": ["cozy", "quiet"],
-        "palette": ["cream", "warm gray", "soft green"],
-        "style": ["storybook"],
+        "subject": [
+          "cat",
+          "window"
+        ],
+        "setting": [
+          "indoors",
+          "windowsill"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "cozy",
+          "quiet"
+        ],
+        "palette": [
+          "cream",
+          "warm gray",
+          "soft green"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "House cats sleep about 12 to 16 hours a day.",
+        "A cat’s whiskers help it judge whether a gap is wide enough to walk through.",
+        "A cat’s eyes reflect light, which helps it see in dim places."
+      ],
+      "factsEs": [
+        "Los gatos de casa duermen unas 12 a 16 horas al día.",
+        "Los bigotes ayudan al gato a saber si un hueco es lo bastante ancho para pasar.",
+        "Los ojos del gato reflejan la luz, y eso le ayuda a ver cuando hay poca luz."
+      ]
     },
     {
       "id": "animals-fox-family",
@@ -23,14 +50,40 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["fox", "family"],
-        "setting": ["forest"],
-        "season": ["any"],
-        "mood": ["playful", "warm"],
-        "palette": ["orange", "green", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "fox",
+          "family"
+        ],
+        "setting": [
+          "forest"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "playful",
+          "warm"
+        ],
+        "palette": [
+          "orange",
+          "green",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Red fox kits are usually born in the spring, and both parents help care for them.",
+        "A fox can hear small animals moving under the snow.",
+        "A red fox is a wild member of the dog family."
+      ],
+      "factsEs": [
+        "Las crías del zorro rojo suelen nacer en primavera, y el padre y la madre las cuidan.",
+        "Un zorro puede oír a un animal pequeño que se mueve bajo la nieve.",
+        "El zorro rojo es un pariente salvaje de los perros."
+      ]
     },
     {
       "id": "animals-sea-turtle",
@@ -39,14 +92,43 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["sea turtle", "fish", "coral", "starfish"],
-        "setting": ["underwater", "reef"],
-        "season": ["any"],
-        "mood": ["calm", "curious"],
-        "palette": ["aqua", "coral", "sand"],
-        "style": ["storybook"],
+        "subject": [
+          "sea turtle",
+          "fish",
+          "coral",
+          "starfish"
+        ],
+        "setting": [
+          "underwater",
+          "reef"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "calm",
+          "curious"
+        ],
+        "palette": [
+          "aqua",
+          "coral",
+          "sand"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Sea turtles have lived in the oceans since the time of the dinosaurs.",
+        "Mothers come ashore on sandy beaches to lay their eggs.",
+        "A sea turtle cannot pull its head and flippers all the way into its shell the way a land turtle can."
+      ],
+      "factsEs": [
+        "Las tortugas marinas viven en el océano desde la época de los dinosaurios.",
+        "Las madres salen a playas de arena para poner sus huevos.",
+        "Una tortuga marina no puede esconder del todo la cabeza y las aletas en el caparazón, como sí puede una tortuga de tierra."
+      ]
     },
     {
       "id": "flowers-lotus-pond",
@@ -55,14 +137,40 @@
       "difficulty": "easy",
       "mystery": false,
       "tags": {
-        "subject": ["lotus", "pond", "flowers"],
-        "setting": ["garden pond"],
-        "season": ["summer"],
-        "mood": ["peaceful"],
-        "palette": ["pink", "green", "water blue"],
-        "style": ["storybook"],
+        "subject": [
+          "lotus",
+          "pond",
+          "flowers"
+        ],
+        "setting": [
+          "garden pond"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "peaceful"
+        ],
+        "palette": [
+          "pink",
+          "green",
+          "water blue"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "A lotus flower often opens in the morning and closes in the afternoon.",
+        "Lotus leaves shed water, so droplets bead up and roll off.",
+        "Lotus seeds can stay alive for hundreds of years."
+      ],
+      "factsEs": [
+        "La flor de loto suele abrirse por la mañana y cerrarse por la tarde.",
+        "Las hojas de loto sueltan el agua, así que las gotas se hacen bolitas y ruedan.",
+        "Las semillas de loto pueden seguir vivas durante cientos de años."
+      ]
     },
     {
       "id": "flowers-cottage-garden",
@@ -71,14 +179,40 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["cottage", "garden", "flowers"],
-        "setting": ["cottage garden"],
-        "season": ["summer"],
-        "mood": ["cheerful"],
-        "palette": ["green", "pink", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "cottage",
+          "garden",
+          "flowers"
+        ],
+        "setting": [
+          "cottage garden"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "cheerful"
+        ],
+        "palette": [
+          "green",
+          "pink",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Bees collect nectar and pollen, and they help flowers make seeds.",
+        "Many garden flowers are grown because they smell sweet.",
+        "Butterflies taste with their feet."
+      ],
+      "factsEs": [
+        "Las abejas recogen néctar y polen, y ayudan a las flores a hacer semillas.",
+        "Muchas flores del jardín se cultivan porque huelen dulce.",
+        "Las mariposas prueban con los pies."
+      ]
     },
     {
       "id": "flowers-peony-bouquet",
@@ -87,14 +221,39 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["peony", "bouquet"],
-        "setting": ["still life"],
-        "season": ["spring"],
-        "mood": ["gentle"],
-        "palette": ["pink", "cream", "green"],
-        "style": ["storybook"],
+        "subject": [
+          "peony",
+          "bouquet"
+        ],
+        "setting": [
+          "still life"
+        ],
+        "season": [
+          "spring"
+        ],
+        "mood": [
+          "gentle"
+        ],
+        "palette": [
+          "pink",
+          "cream",
+          "green"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Peonies bloom with big flowers in late spring.",
+        "Ants drink nectar on the buds and do not hurt the flower.",
+        "A cut peony stem can last about a week in fresh water."
+      ],
+      "factsEs": [
+        "Las peonías abren flores grandes al final de la primavera.",
+        "Las hormigas beben el néctar de los capullos y no dañan la flor.",
+        "Un tallo de peonía cortado puede durar cerca de una semana en agua fresca."
+      ]
     },
     {
       "id": "food-bakery-sweets",
@@ -103,14 +262,41 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["cupcake", "cake", "macaron"],
-        "setting": ["bakery"],
-        "season": ["any"],
-        "mood": ["sweet", "cheerful"],
-        "palette": ["pink", "pastel", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "cupcake",
+          "cake",
+          "macaron"
+        ],
+        "setting": [
+          "bakery"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "sweet",
+          "cheerful"
+        ],
+        "palette": [
+          "pink",
+          "pastel",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Yeast is a tiny fungus that makes dough rise by producing gas.",
+        "A cupcake is a small cake baked in a cup.",
+        "A macaron is made with almond flour, sugar, and egg whites."
+      ],
+      "factsEs": [
+        "La levadura es un hongo diminuto que hace subir la masa al producir gas.",
+        "Un cupcake es un pastelito horneado en un molde.",
+        "Un macaron se hace con harina de almendra, azúcar y claras de huevo."
+      ]
     },
     {
       "id": "food-ice-cream-sundae",
@@ -119,14 +305,39 @@
       "difficulty": "easy",
       "mystery": false,
       "tags": {
-        "subject": ["ice cream", "sundae"],
-        "setting": ["dessert"],
-        "season": ["summer"],
-        "mood": ["playful"],
-        "palette": ["pink", "cream", "chocolate"],
-        "style": ["storybook"],
+        "subject": [
+          "ice cream",
+          "sundae"
+        ],
+        "setting": [
+          "dessert"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "playful"
+        ],
+        "palette": [
+          "pink",
+          "cream",
+          "chocolate"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Ice cream is a frozen dessert made from cream or milk and sugar.",
+        "Stirring the mix while it freezes keeps the ice crystals small.",
+        "A sundae is ice cream served with a topping."
+      ],
+      "factsEs": [
+        "El helado es un postre congelado hecho con crema o leche y azúcar.",
+        "Revolver la mezcla mientras se congela mantiene pequeños los cristales de hielo.",
+        "Un sundae es helado servido con un aderezo."
+      ]
     },
     {
       "id": "food-picnic",
@@ -135,14 +346,40 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["picnic", "basket", "blanket"],
-        "setting": ["outdoors"],
-        "season": ["summer"],
-        "mood": ["relaxed"],
-        "palette": ["green", "red", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "picnic",
+          "basket",
+          "blanket"
+        ],
+        "setting": [
+          "outdoors"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "relaxed"
+        ],
+        "palette": [
+          "green",
+          "red",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "A picnic is a meal eaten outdoors.",
+        "Ants follow scent trails to find food.",
+        "Covering food helps keep insects off a picnic."
+      ],
+      "factsEs": [
+        "Un picnic es una comida al aire libre.",
+        "Las hormigas siguen rastros de olor para encontrar comida.",
+        "Tapar la comida ayuda a que los insectos no se suban al picnic."
+      ]
     },
     {
       "id": "fantasy-unicorn",
@@ -151,14 +388,39 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["unicorn"],
-        "setting": ["meadow"],
-        "season": ["spring"],
-        "mood": ["magical", "gentle"],
-        "palette": ["pastel", "gold", "green"],
-        "style": ["storybook"],
+        "subject": [
+          "unicorn"
+        ],
+        "setting": [
+          "meadow"
+        ],
+        "season": [
+          "spring"
+        ],
+        "mood": [
+          "magical",
+          "gentle"
+        ],
+        "palette": [
+          "pastel",
+          "gold",
+          "green"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "A unicorn is an imaginary horse with one horn.",
+        "Unicorn stories are centuries old in Europe, the Middle East, and Asia.",
+        "No living animal is a unicorn. Narwhal tusks were once sold as unicorn horns."
+      ],
+      "factsEs": [
+        "El unicornio es un caballo imaginario con un solo cuerno.",
+        "Los cuentos de unicornios tienen siglos en Europa, el Medio Oriente y Asia.",
+        "Ningún animal vivo es un unicornio. Los colmillos de narval se vendieron alguna vez como cuernos de unicornio."
+      ]
     },
     {
       "id": "fantasy-mermaid",
@@ -167,14 +429,39 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["mermaid", "ocean"],
-        "setting": ["sea"],
-        "season": ["summer"],
-        "mood": ["dreamy"],
-        "palette": ["teal", "pink", "sand"],
-        "style": ["storybook"],
+        "subject": [
+          "mermaid",
+          "ocean"
+        ],
+        "setting": [
+          "sea"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "dreamy"
+        ],
+        "palette": [
+          "teal",
+          "pink",
+          "sand"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "A mermaid is an imaginary person with a fish tail.",
+        "Mermaid stories are told in many countries, including old tales from Europe, Africa, and Asia.",
+        "Dolphins are mammals, so they must come up to breathe air."
+      ],
+      "factsEs": [
+        "Una sirena es una persona imaginaria con cola de pez.",
+        "Los cuentos de sirenas se cuentan en muchos países, incluso relatos antiguos de Europa, África y Asia.",
+        "Los delfines son mamíferos, así que tienen que salir a respirar aire."
+      ]
     },
     {
       "id": "fantasy-castle",
@@ -183,14 +470,39 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["castle", "hill"],
-        "setting": ["countryside"],
-        "season": ["any"],
-        "mood": ["grand"],
-        "palette": ["stone", "green", "sky"],
-        "style": ["storybook"],
+        "subject": [
+          "castle",
+          "hill"
+        ],
+        "setting": [
+          "countryside"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "grand"
+        ],
+        "palette": [
+          "stone",
+          "green",
+          "sky"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Many stone castles were built in the Middle Ages as homes and as defenses.",
+        "A moat is a ditch around a castle, and some moats were filled with water.",
+        "Building on a hill helped people see visitors coming."
+      ],
+      "factsEs": [
+        "Muchos castillos de piedra se construyeron en la Edad Media como casas y como defensa.",
+        "Un foso es una zanja alrededor del castillo, y algunos fosos se llenaban de agua.",
+        "Construir en una colina ayudaba a ver quién se acercaba."
+      ]
     },
     {
       "id": "patterns-folk-art",
@@ -199,14 +511,39 @@
       "difficulty": "easy",
       "mystery": false,
       "tags": {
-        "subject": ["folk pattern", "flowers"],
-        "setting": ["decorative"],
-        "season": ["any"],
-        "mood": ["festive"],
-        "palette": ["red", "blue", "cream"],
-        "style": ["folk pattern"],
+        "subject": [
+          "folk pattern",
+          "flowers"
+        ],
+        "setting": [
+          "decorative"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "festive"
+        ],
+        "palette": [
+          "red",
+          "blue",
+          "cream"
+        ],
+        "style": [
+          "folk pattern"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Folk art is made by ordinary people for homes, clothes, or festivals.",
+        "Patterns are often passed down in a family or a town.",
+        "Bright colors and repeated shapes are common in folk art."
+      ],
+      "factsEs": [
+        "El arte popular lo hacen personas comunes para la casa, la ropa o las fiestas.",
+        "Los diseños suelen pasar de una familia o un pueblo a la siguiente generación.",
+        "Los colores vivos y las formas que se repiten son frecuentes en el arte popular."
+      ]
     },
     {
       "id": "patterns-stained-glass",
@@ -215,14 +552,37 @@
       "difficulty": "medium",
       "mystery": false,
       "tags": {
-        "subject": ["stained glass", "geometric"],
-        "setting": ["window"],
-        "season": ["any"],
-        "mood": ["luminous"],
-        "palette": ["jewel tones"],
-        "style": ["stained glass"],
+        "subject": [
+          "stained glass",
+          "geometric"
+        ],
+        "setting": [
+          "window"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "luminous"
+        ],
+        "palette": [
+          "jewel tones"
+        ],
+        "style": [
+          "stained glass"
+        ],
         "complexity": "medium"
-      }
+      },
+      "facts": [
+        "Stained glass is colored glass held together by lead or another metal.",
+        "Light shining through the glass makes the colors glow.",
+        "Many old churches use stained glass to tell stories."
+      ],
+      "factsEs": [
+        "El vitral es vidrio de color unido con plomo u otro metal.",
+        "La luz que pasa por el vidrio hace brillar los colores.",
+        "Muchas iglesias antiguas usan vitrales para contar historias."
+      ]
     },
     {
       "id": "patterns-mandala",
@@ -231,14 +591,37 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["mandala", "pattern"],
-        "setting": ["decorative"],
-        "season": ["any"],
-        "mood": ["meditative"],
-        "palette": ["jewel tones"],
-        "style": ["pattern"],
+        "subject": [
+          "mandala",
+          "pattern"
+        ],
+        "setting": [
+          "decorative"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "meditative"
+        ],
+        "palette": [
+          "jewel tones"
+        ],
+        "style": [
+          "pattern"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "A mandala is a round design, often with matching sides.",
+        "In some traditions, people make mandalas as a calm practice.",
+        "The word mandala comes from Sanskrit and means circle."
+      ],
+      "factsEs": [
+        "Un mandala es un diseño redondo, a menudo con lados iguales.",
+        "En algunas tradiciones, la gente hace mandalas como una práctica tranquila.",
+        "La palabra mandala viene del sánscrito y significa círculo."
+      ]
     },
     {
       "id": "thanksgiving-turkey",
@@ -247,14 +630,40 @@
       "difficulty": "easy",
       "mystery": false,
       "tags": {
-        "subject": ["turkey", "leaves", "acorns"],
-        "setting": ["autumn yard"],
-        "season": ["autumn"],
-        "mood": ["cheerful"],
-        "palette": ["brown", "orange", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "turkey",
+          "leaves",
+          "acorns"
+        ],
+        "setting": [
+          "autumn yard"
+        ],
+        "season": [
+          "autumn"
+        ],
+        "mood": [
+          "cheerful"
+        ],
+        "palette": [
+          "brown",
+          "orange",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Wild turkeys can fly short distances, even though they look heavy.",
+        "A male turkey is a tom, and a female is a hen.",
+        "Turkeys see in color and can spot movement over a wide view."
+      ],
+      "factsEs": [
+        "Los pavos salvajes pueden volar distancias cortas, aunque se vean pesados.",
+        "Al macho se le llama pavo y a la hembra pava.",
+        "Los pavos ven en color y pueden notar el movimiento en un campo de visión amplio."
+      ]
     },
     {
       "id": "thanksgiving-dinner",
@@ -263,14 +672,41 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["turkey dinner", "pie", "table"],
-        "setting": ["dining room"],
-        "season": ["autumn"],
-        "mood": ["warm", "grateful"],
-        "palette": ["brown", "cream", "orange"],
-        "style": ["storybook"],
+        "subject": [
+          "turkey dinner",
+          "pie",
+          "table"
+        ],
+        "setting": [
+          "dining room"
+        ],
+        "season": [
+          "autumn"
+        ],
+        "mood": [
+          "warm",
+          "grateful"
+        ],
+        "palette": [
+          "brown",
+          "cream",
+          "orange"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "In the United States, Thanksgiving is the fourth Thursday of November.",
+        "Many families today eat turkey, cranberries, and pumpkin pie.",
+        "Cranberries grow in bogs."
+      ],
+      "factsEs": [
+        "En Estados Unidos, el Día de Acción de Gracias es el cuarto jueves de noviembre.",
+        "Hoy muchas familias comen pavo, arándanos y pastel de calabaza.",
+        "Los arándanos crecen en pantanos."
+      ]
     },
     {
       "id": "thanksgiving-porch",
@@ -279,14 +715,39 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["porch", "pumpkins"],
-        "setting": ["front porch"],
-        "season": ["autumn"],
-        "mood": ["welcoming"],
-        "palette": ["orange", "brown", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "porch",
+          "pumpkins"
+        ],
+        "setting": [
+          "front porch"
+        ],
+        "season": [
+          "autumn"
+        ],
+        "mood": [
+          "welcoming"
+        ],
+        "palette": [
+          "orange",
+          "brown",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "A pumpkin is a kind of squash, and it grows on a vine.",
+        "A porch is a covered place at the door of a house.",
+        "Pumpkins can be orange, white, green, or blue-gray."
+      ],
+      "factsEs": [
+        "La calabaza es pariente del zapallo y crece en una enredadera.",
+        "Un porche es un lugar cubierto junto a la puerta de la casa.",
+        "Las calabazas pueden ser anaranjadas, blancas, verdes o gris azuladas."
+      ]
     },
     {
       "id": "thanksgiving-cornucopia",
@@ -295,14 +756,40 @@
       "difficulty": "medium",
       "mystery": false,
       "tags": {
-        "subject": ["cornucopia", "harvest", "fruit"],
-        "setting": ["table"],
-        "season": ["autumn"],
-        "mood": ["abundant"],
-        "palette": ["orange", "gold", "green"],
-        "style": ["storybook"],
+        "subject": [
+          "cornucopia",
+          "harvest",
+          "fruit"
+        ],
+        "setting": [
+          "table"
+        ],
+        "season": [
+          "autumn"
+        ],
+        "mood": [
+          "abundant"
+        ],
+        "palette": [
+          "orange",
+          "gold",
+          "green"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "medium"
-      }
+      },
+      "facts": [
+        "A cornucopia is a horn-shaped symbol of a good harvest.",
+        "The name comes from Latin and means horn of plenty.",
+        "Corn, squash, and beans, called the Three Sisters, were important foods grown by many Indigenous peoples of the Americas."
+      ],
+      "factsEs": [
+        "Una cornucopia es un símbolo con forma de cuerno de una buena cosecha.",
+        "El nombre viene del latín y significa cuerno de la abundancia.",
+        "El maíz, la calabaza y los frijoles, llamados las Tres Hermanas, fueron alimentos importantes que cultivaron muchos pueblos indígenas de las Américas."
+      ]
     },
     {
       "id": "thanksgiving-pumpkin-patch",
@@ -311,14 +798,40 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["pumpkins", "barn", "wagon"],
-        "setting": ["farm"],
-        "season": ["autumn"],
-        "mood": ["cheerful"],
-        "palette": ["orange", "red", "green"],
-        "style": ["storybook"],
+        "subject": [
+          "pumpkins",
+          "barn",
+          "wagon"
+        ],
+        "setting": [
+          "farm"
+        ],
+        "season": [
+          "autumn"
+        ],
+        "mood": [
+          "cheerful"
+        ],
+        "palette": [
+          "orange",
+          "red",
+          "green"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Pumpkin plants are planted in spring and picked in autumn.",
+        "A pumpkin is a fruit because it grows from a flower and holds seeds.",
+        "The heaviest pumpkins can weigh more than 1,000 pounds."
+      ],
+      "factsEs": [
+        "Las plantas de calabaza se siembran en primavera y se cosechan en otoño.",
+        "La calabaza es una fruta porque nace de una flor y guarda semillas.",
+        "Las calabazas más pesadas pueden pesar más de 1,000 libras."
+      ]
     },
     {
       "id": "christmas-snowman",
@@ -327,14 +840,40 @@
       "difficulty": "easy",
       "mystery": false,
       "tags": {
-        "subject": ["snowman", "trees", "bird"],
-        "setting": ["snowy yard"],
-        "season": ["winter"],
-        "mood": ["cheerful"],
-        "palette": ["white", "blue", "red"],
-        "style": ["storybook"],
+        "subject": [
+          "snowman",
+          "trees",
+          "bird"
+        ],
+        "setting": [
+          "snowy yard"
+        ],
+        "season": [
+          "winter"
+        ],
+        "mood": [
+          "cheerful"
+        ],
+        "palette": [
+          "white",
+          "blue",
+          "red"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Snow is made of ice crystals that form in clouds.",
+        "Snow melts when the air is warmer than 32 degrees Fahrenheit, which is 0 degrees Celsius.",
+        "Most snowflakes have six sides because of the way ice crystals grow."
+      ],
+      "factsEs": [
+        "La nieve está hecha de cristales de hielo que se forman en las nubes.",
+        "La nieve se derrite cuando el aire pasa de 32 grados Fahrenheit, que son 0 grados Celsius.",
+        "La mayoría de los copos de nieve tienen seis lados por la forma en que crecen los cristales de hielo."
+      ]
     },
     {
       "id": "christmas-wreath-cocoa",
@@ -343,14 +882,40 @@
       "difficulty": "easy",
       "mystery": false,
       "tags": {
-        "subject": ["wreath", "cocoa", "cookies"],
-        "setting": ["indoors"],
-        "season": ["winter"],
-        "mood": ["cozy"],
-        "palette": ["green", "red", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "wreath",
+          "cocoa",
+          "cookies"
+        ],
+        "setting": [
+          "indoors"
+        ],
+        "season": [
+          "winter"
+        ],
+        "mood": [
+          "cozy"
+        ],
+        "palette": [
+          "green",
+          "red",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Cocoa powder comes from cacao beans.",
+        "Cacao trees grow in warm, rainy places near the equator.",
+        "An evergreen wreath stays green because the plant does not drop all of its leaves at once."
+      ],
+      "factsEs": [
+        "El cacao en polvo sale de las semillas del cacao.",
+        "Los árboles de cacao crecen en lugares cálidos y lluviosos cerca del ecuador.",
+        "Una corona de hoja perenne sigue verde porque la planta no suelta todas sus hojas a la vez."
+      ]
     },
     {
       "id": "christmas-tree-fireplace",
@@ -359,14 +924,42 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["christmas tree", "fireplace", "stockings", "dog"],
-        "setting": ["living room"],
-        "season": ["winter"],
-        "mood": ["cozy", "festive"],
-        "palette": ["red", "green", "cream"],
-        "style": ["storybook"],
+        "subject": [
+          "christmas tree",
+          "fireplace",
+          "stockings",
+          "dog"
+        ],
+        "setting": [
+          "living room"
+        ],
+        "season": [
+          "winter"
+        ],
+        "mood": [
+          "cozy",
+          "festive"
+        ],
+        "palette": [
+          "red",
+          "green",
+          "cream"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Many Christmas trees are evergreens that keep their needles through the winter.",
+        "A wood fire in a fireplace warms the room.",
+        "Hanging stockings by the fire is a Christmas custom in many homes."
+      ],
+      "factsEs": [
+        "Muchos árboles de Navidad son de hoja perenne y conservan sus agujas en invierno.",
+        "Un fuego de leña en la chimenea calienta la habitación.",
+        "Colgar calcetines junto al fuego es una costumbre navideña en muchas casas."
+      ]
     },
     {
       "id": "christmas-gingerbread-village",
@@ -375,14 +968,41 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["gingerbread", "houses", "snow"],
-        "setting": ["village"],
-        "season": ["winter"],
-        "mood": ["sweet", "festive"],
-        "palette": ["brown", "white", "candy colors"],
-        "style": ["storybook"],
+        "subject": [
+          "gingerbread",
+          "houses",
+          "snow"
+        ],
+        "setting": [
+          "village"
+        ],
+        "season": [
+          "winter"
+        ],
+        "mood": [
+          "sweet",
+          "festive"
+        ],
+        "palette": [
+          "brown",
+          "white",
+          "candy colors"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Gingerbread is a cookie or cake flavored with ginger and other spices.",
+        "Ginger is a root that people use in cooking.",
+        "Decorated gingerbread houses became a popular European holiday craft in the 1800s."
+      ],
+      "factsEs": [
+        "El pan de jengibre es una galleta o un pastel con sabor a jengibre y otras especias.",
+        "El jengibre es una raíz que se usa para cocinar.",
+        "Las casitas de jengibre decoradas se volvieron una manualidad navideña popular en Europa en el siglo XIX."
+      ]
     },
     {
       "id": "christmas-reindeer-sleigh",
@@ -391,14 +1011,39 @@
       "difficulty": "hard",
       "mystery": false,
       "tags": {
-        "subject": ["reindeer", "sleigh"],
-        "setting": ["snowy night"],
-        "season": ["winter"],
-        "mood": ["magical"],
-        "palette": ["brown", "red", "snow"],
-        "style": ["storybook"],
+        "subject": [
+          "reindeer",
+          "sleigh"
+        ],
+        "setting": [
+          "snowy night"
+        ],
+        "season": [
+          "winter"
+        ],
+        "mood": [
+          "magical"
+        ],
+        "palette": [
+          "brown",
+          "red",
+          "snow"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Arctic reindeer eyes shift from gold in summer to blue in winter.",
+        "Reindeer are called caribou in North America, and they live in cold northern places.",
+        "Both male and female reindeer grow antlers."
+      ],
+      "factsEs": [
+        "Los ojos del reno ártico cambian de dorados en verano a azules en invierno.",
+        "Al reno se le llama caribú en América del Norte, y vive en lugares fríos del norte.",
+        "Tanto los renos machos como las hembras tienen astas."
+      ]
     },
     {
       "id": "mystery-animals-sea-turtle",
@@ -408,14 +1053,43 @@
       "mystery": true,
       "source": "animals-sea-turtle",
       "tags": {
-        "subject": ["sea turtle", "fish", "coral", "starfish"],
-        "setting": ["underwater", "reef"],
-        "season": ["any"],
-        "mood": ["calm", "curious"],
-        "palette": ["aqua", "coral", "sand"],
-        "style": ["storybook"],
+        "subject": [
+          "sea turtle",
+          "fish",
+          "coral",
+          "starfish"
+        ],
+        "setting": [
+          "underwater",
+          "reef"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "calm",
+          "curious"
+        ],
+        "palette": [
+          "aqua",
+          "coral",
+          "sand"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "Sea turtles have lived in the oceans since the time of the dinosaurs.",
+        "Mothers come ashore on sandy beaches to lay their eggs.",
+        "A sea turtle cannot pull its head and flippers all the way into its shell the way a land turtle can."
+      ],
+      "factsEs": [
+        "Las tortugas marinas viven en el océano desde la época de los dinosaurios.",
+        "Las madres salen a playas de arena para poner sus huevos.",
+        "Una tortuga marina no puede esconder del todo la cabeza y las aletas en el caparazón, como sí puede una tortuga de tierra."
+      ]
     },
     {
       "id": "mystery-christmas-snowman",
@@ -425,14 +1099,40 @@
       "mystery": true,
       "source": "christmas-snowman",
       "tags": {
-        "subject": ["snowman", "trees", "bird"],
-        "setting": ["snowy yard"],
-        "season": ["winter"],
-        "mood": ["cheerful"],
-        "palette": ["white", "blue", "red"],
-        "style": ["storybook"],
+        "subject": [
+          "snowman",
+          "trees",
+          "bird"
+        ],
+        "setting": [
+          "snowy yard"
+        ],
+        "season": [
+          "winter"
+        ],
+        "mood": [
+          "cheerful"
+        ],
+        "palette": [
+          "white",
+          "blue",
+          "red"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Snow is made of ice crystals that form in clouds.",
+        "Snow melts when the air is warmer than 32 degrees Fahrenheit, which is 0 degrees Celsius.",
+        "Most snowflakes have six sides because of the way ice crystals grow."
+      ],
+      "factsEs": [
+        "La nieve está hecha de cristales de hielo que se forman en las nubes.",
+        "La nieve se derrite cuando el aire pasa de 32 grados Fahrenheit, que son 0 grados Celsius.",
+        "La mayoría de los copos de nieve tienen seis lados por la forma en que crecen los cristales de hielo."
+      ]
     },
     {
       "id": "mystery-flowers-lotus-pond",
@@ -442,14 +1142,40 @@
       "mystery": true,
       "source": "flowers-lotus-pond",
       "tags": {
-        "subject": ["lotus", "pond", "flowers"],
-        "setting": ["garden pond"],
-        "season": ["summer"],
-        "mood": ["peaceful"],
-        "palette": ["pink", "green", "water blue"],
-        "style": ["storybook"],
+        "subject": [
+          "lotus",
+          "pond",
+          "flowers"
+        ],
+        "setting": [
+          "garden pond"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "peaceful"
+        ],
+        "palette": [
+          "pink",
+          "green",
+          "water blue"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "A lotus flower often opens in the morning and closes in the afternoon.",
+        "Lotus leaves shed water, so droplets bead up and roll off.",
+        "Lotus seeds can stay alive for hundreds of years."
+      ],
+      "factsEs": [
+        "La flor de loto suele abrirse por la mañana y cerrarse por la tarde.",
+        "Las hojas de loto sueltan el agua, así que las gotas se hacen bolitas y ruedan.",
+        "Las semillas de loto pueden seguir vivas durante cientos de años."
+      ]
     },
     {
       "id": "mystery-fantasy-unicorn",
@@ -459,14 +1185,39 @@
       "mystery": true,
       "source": "fantasy-unicorn",
       "tags": {
-        "subject": ["unicorn"],
-        "setting": ["meadow"],
-        "season": ["spring"],
-        "mood": ["magical", "gentle"],
-        "palette": ["pastel", "gold", "green"],
-        "style": ["storybook"],
+        "subject": [
+          "unicorn"
+        ],
+        "setting": [
+          "meadow"
+        ],
+        "season": [
+          "spring"
+        ],
+        "mood": [
+          "magical",
+          "gentle"
+        ],
+        "palette": [
+          "pastel",
+          "gold",
+          "green"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "hard"
-      }
+      },
+      "facts": [
+        "A unicorn is an imaginary horse with one horn.",
+        "Unicorn stories are centuries old in Europe, the Middle East, and Asia.",
+        "No living animal is a unicorn. Narwhal tusks were once sold as unicorn horns."
+      ],
+      "factsEs": [
+        "El unicornio es un caballo imaginario con un solo cuerno.",
+        "Los cuentos de unicornios tienen siglos en Europa, el Medio Oriente y Asia.",
+        "Ningún animal vivo es un unicornio. Los colmillos de narval se vendieron alguna vez como cuernos de unicornio."
+      ]
     },
     {
       "id": "mystery-food-ice-cream-sundae",
@@ -476,14 +1227,209 @@
       "mystery": true,
       "source": "food-ice-cream-sundae",
       "tags": {
-        "subject": ["ice cream", "sundae"],
-        "setting": ["dessert"],
-        "season": ["summer"],
-        "mood": ["playful"],
-        "palette": ["pink", "cream", "chocolate"],
-        "style": ["storybook"],
+        "subject": [
+          "ice cream",
+          "sundae"
+        ],
+        "setting": [
+          "dessert"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "playful"
+        ],
+        "palette": [
+          "pink",
+          "cream",
+          "chocolate"
+        ],
+        "style": [
+          "storybook"
+        ],
         "complexity": "easy"
-      }
+      },
+      "facts": [
+        "Ice cream is a frozen dessert made from cream or milk and sugar.",
+        "Stirring the mix while it freezes keeps the ice crystals small.",
+        "A sundae is ice cream served with a topping."
+      ],
+      "factsEs": [
+        "El helado es un postre congelado hecho con crema o leche y azúcar.",
+        "Revolver la mezcla mientras se congela mantiene pequeños los cristales de hielo.",
+        "Un sundae es helado servido con un aderezo."
+      ]
+    },
+    {
+      "id": "science-solar-system",
+      "title": "Solar System",
+      "category": "Science",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": [
+          "solar system",
+          "planets",
+          "sun"
+        ],
+        "setting": [
+          "space"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "curious"
+        ],
+        "palette": [
+          "blue",
+          "gold",
+          "orange"
+        ],
+        "style": [
+          "storybook"
+        ],
+        "complexity": "medium"
+      },
+      "facts": [
+        "The planets in order from the Sun are Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune.",
+        "Jupiter is the biggest planet.",
+        "Earth is the third planet from the Sun, and it is the one we live on."
+      ],
+      "factsEs": [
+        "Los planetas, en orden desde el Sol, son Mercurio, Venus, Tierra, Marte, Júpiter, Saturno, Urano y Neptuno.",
+        "Júpiter es el planeta más grande.",
+        "La Tierra es el tercer planeta desde el Sol, y es el planeta en el que vivimos."
+      ]
+    },
+    {
+      "id": "science-water-cycle",
+      "title": "Water Cycle",
+      "category": "Science",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": [
+          "water cycle",
+          "rain",
+          "river"
+        ],
+        "setting": [
+          "mountains",
+          "lake"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "calm"
+        ],
+        "palette": [
+          "blue",
+          "green",
+          "yellow"
+        ],
+        "style": [
+          "storybook"
+        ],
+        "complexity": "medium"
+      },
+      "facts": [
+        "Evaporation is when the Sun turns water into vapor that rises into the air.",
+        "Condensation is when that vapor cools and forms clouds.",
+        "Precipitation is water falling back down as rain, snow, sleet, or hail."
+      ],
+      "factsEs": [
+        "La evaporación es cuando el Sol convierte el agua en vapor que sube al aire.",
+        "La condensación es cuando ese vapor se enfría y forma nubes.",
+        "La precipitación es el agua que vuelve a caer como lluvia, nieve, aguanieve o granizo."
+      ]
+    },
+    {
+      "id": "science-butterfly-life-cycle",
+      "title": "Butterfly Life Cycle",
+      "category": "Science",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": [
+          "butterfly",
+          "caterpillar",
+          "milkweed"
+        ],
+        "setting": [
+          "garden"
+        ],
+        "season": [
+          "summer"
+        ],
+        "mood": [
+          "gentle"
+        ],
+        "palette": [
+          "orange",
+          "green",
+          "pink"
+        ],
+        "style": [
+          "storybook"
+        ],
+        "complexity": "medium"
+      },
+      "facts": [
+        "A butterfly has four stages: egg, caterpillar, chrysalis, and butterfly.",
+        "Monarch caterpillars eat milkweed.",
+        "Inside the chrysalis, the caterpillar changes into a butterfly."
+      ],
+      "factsEs": [
+        "La mariposa tiene cuatro etapas: huevo, oruga, crisálida y mariposa.",
+        "Las orugas de la mariposa monarca comen algodoncillo.",
+        "Dentro de la crisálida, la oruga se transforma en mariposa."
+      ]
+    },
+    {
+      "id": "thanksgiving-first-harvest",
+      "title": "The First Harvest (1621)",
+      "category": "Thanksgiving",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": [
+          "harvest feast",
+          "Wampanoag",
+          "Pilgrims"
+        ],
+        "setting": [
+          "autumn village"
+        ],
+        "season": [
+          "autumn"
+        ],
+        "mood": [
+          "shared",
+          "warm"
+        ],
+        "palette": [
+          "orange",
+          "brown",
+          "blue"
+        ],
+        "style": [
+          "storybook"
+        ],
+        "complexity": "hard"
+      },
+      "facts": [
+        "In 1621, the Wampanoag and the English Pilgrims shared a harvest feast that lasted about three days.",
+        "The Wampanoag leader was Ousamequin, also called Massasoit, and about 90 Wampanoag men attended.",
+        "The meal likely included deer brought by the Wampanoag, and wild fowl."
+      ],
+      "factsEs": [
+        "En 1621, los Wampanoag y los peregrinos ingleses compartieron una fiesta de cosecha que duró unos tres días.",
+        "El líder Wampanoag era Ousamequin, también llamado Massasoit, y asistieron unos 90 hombres Wampanoag.",
+        "La comida probablemente incluyó venado que trajeron los Wampanoag, y aves silvestres."
+      ]
     }
   ]
 }

@@ -148,7 +148,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(30);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(34);
   await page.locator('[data-category="Flowers"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await expect(page.locator('[data-id="flowers-lotus-pond"]')).toBeVisible();
@@ -482,4 +482,131 @@ test('hint, mystery, favorites, and share', async ({ page }) => {
   expect(shared).toContain('Subject:');
   expect(shared).toMatch(/not started|in progress|finished/);
   fs.writeFileSync(path.join(mediaDir, 'share-favorites.txt'), shared.endsWith('\n') ? shared : `${shared}\n`);
+});
+
+test('learning labels, facts, science shelf, and the first harvest', async ({ page }) => {
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.addInitScript(() => {
+    class SpeechSynthesisUtterance {
+      text = '';
+      lang = '';
+      rate = 1;
+      voice: unknown = null;
+      constructor(text?: string) {
+        this.text = text ?? '';
+      }
+    }
+    const synth = {
+      cancel() {},
+      resume() {},
+      speak(utterance: { text?: string; lang?: string; rate?: number }) {
+        sessionStorage.setItem(
+          'color-cozy-speech',
+          JSON.stringify({ text: utterance.text ?? '', lang: utterance.lang ?? '', rate: utterance.rate ?? 1 }),
+        );
+      },
+      getVoices() {
+        return [];
+      },
+    };
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: SpeechSynthesisUtterance });
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: synth });
+  });
+
+  await page.goto(`/?shot=science&t=${Date.now()}`);
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await page.locator('[data-category="Science"]').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(mediaDir, 'science-shelf.png') });
+
+  await openPuzzle(page, 'thanksgiving-first-harvest');
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(mediaDir, 'first-harvest.png') });
+
+  async function openFromGallery(id: string) {
+    await page.locator('[data-category="All"]').click();
+    await page.locator(`[data-testid="puzzle-card"][data-id="${id}"]`).click();
+    await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
+  }
+
+  await page.getByTestId('back').click();
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('number-adding').click();
+  await page.getByTestId('back').click();
+  const lotus = puzzle('flowers-lotus-pond');
+  let biggest = 0;
+  let biggestArea = -1;
+  lotus.area.forEach((area, index) => {
+    if (area > biggestArea) {
+      biggestArea = area;
+      biggest = lotus.regionColors[index] ?? 0;
+    }
+  });
+  await openFromGallery('flowers-lotus-pond');
+  await page.locator(`.swatch[data-index="${biggest}"]`).click();
+  await page.getByTestId('hint').click();
+  await expect.poll(async () => page.locator('canvas.surface').getAttribute('data-numbers')).toBe('1');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(mediaDir, 'adding-zoom.png') });
+
+  await page.getByTestId('back').click();
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('number-times').click();
+  await page.getByTestId('back').click();
+  await openFromGallery('flowers-lotus-pond');
+  await expect(page.locator('.swatch[data-index="0"]')).toHaveAttribute('data-label', '1');
+  await expect(page.locator('.swatch[data-index="1"]')).toHaveAttribute('data-label', '2');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(mediaDir, 'times-palette.png') });
+
+  await page.getByTestId('back').click();
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('labels-colors').click();
+  await page.getByTestId('language-en').click();
+  await page.getByTestId('back').click();
+  await openFromGallery('flowers-lotus-pond');
+  const englishLabel = await page.locator('.swatch[data-index="0"]').getAttribute('data-label');
+  expect(englishLabel).toMatch(/[A-Za-z]/);
+  expect(englishLabel).not.toMatch(/^\d+$/);
+  await page.locator('.swatch[data-index="0"]').click();
+  const spokenColor = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
+  expect(spokenColor).toContain(englishLabel ?? '');
+  expect(spokenColor).toContain('en-US');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(mediaDir, 'color-names-en.png') });
+
+  await page.getByTestId('back').click();
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('language-es').click();
+  await page.getByTestId('back').click();
+  await openFromGallery('flowers-lotus-pond');
+  await expect(page.getByTestId('hint')).toHaveText('Pista');
+  await expect(page.locator('.sub')).toContainText('Flores');
+  const spanishLabels = await page.locator('.swatch').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-label') ?? ''));
+  expect(spanishLabels.join(' ')).toMatch(/rojo|azul|verde|amarillo|naranja|turquesa|morado|rosa|marrón|dorado|crema|gris|añil|menta|durazno|granate|lavanda|claro|oscuro/);
+  expect(spanishLabels.join(' ')).not.toBe(englishLabel);
+  await page.locator('.swatch[data-index="0"]').click();
+  const spokenEs = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
+  expect(spokenEs).toContain('es-MX');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(mediaDir, 'color-names-es.png') });
+
+  await page.getByTestId('back').click();
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('language-en').click();
+  await page.getByTestId('labels-numbers').click();
+  await page.getByTestId('back').click();
+  const sundae = puzzle('food-ice-cream-sundae');
+  await openFromGallery('food-ice-cream-sundae');
+  await paintRegions(page, sundae, sundae.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await expect(page.locator('.facts')).toContainText(/ice cream/i);
+  await page.getByTestId('read-facts').click();
+  const spokenFacts = await page.evaluate(() => sessionStorage.getItem('color-cozy-speech') ?? '');
+  expect(spokenFacts).toContain('Ice cream');
+  expect(spokenFacts).toContain('en-US');
+  expect(spokenFacts).toContain('0.85');
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(mediaDir, 'facts-card.png') });
 });

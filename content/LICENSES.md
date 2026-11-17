@@ -30,6 +30,10 @@ No third-party artwork is shipped. The Nunito font is bundled from [@fontsource/
 | `content/sources/christmas-tree-fireplace.jpg` | Tree by the Fireplace | Original project art | Original, made for Color Cozy |
 | `content/sources/christmas-gingerbread-village.jpg` | Gingerbread Village | Original project art | Original, made for Color Cozy |
 | `content/sources/christmas-reindeer-sleigh.jpg` | Reindeer Sleigh | Original project art | Original, made for Color Cozy |
+| `content/sources/science-solar-system.jpg` | Solar System | Original project art | Original, made for Color Cozy |
+| `content/sources/science-water-cycle.jpg` | Water Cycle | Original project art | Original, made for Color Cozy |
+| `content/sources/science-butterfly-life-cycle.jpg` | Butterfly Life Cycle | Original project art | Original, made for Color Cozy |
+| `content/sources/thanksgiving-first-harvest.jpg` | The First Harvest (1621) | Original project art | Original, made for Color Cozy |
 
 To turn a family photo into a puzzle, run:
 

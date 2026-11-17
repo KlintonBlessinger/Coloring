@@ -77,7 +77,9 @@
         {settings}
         favorite={favorites.includes(puzzleId)}
         onBack={back}
-        onToggleFavorite={() => toggleFavorite(puzzleId)}
+        onToggleFavorite={() => {
+          if (puzzleId) toggleFavorite(puzzleId);
+        }}
         onSaved={(id, save) => {
           progress = { ...progress, [id]: save };
         }}
@@ -101,6 +103,6 @@
       }}
     />
   {:else}
-    <Gallery {progress} {favorites} onOpen={openPuzzle} onSettings={openSettings} onToggleFavorite={toggleFavorite} />
+    <Gallery {progress} {favorites} {settings} onOpen={openPuzzle} onSettings={openSettings} onToggleFavorite={toggleFavorite} />
   {/if}
 </div>

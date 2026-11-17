@@ -3,6 +3,7 @@ import { base64ToBytes, bytesToBase64, decodeOrder, encodeOrder } from './codec'
 import { getPuzzle } from './catalog';
 import { nextHintRegion } from './hint';
 import { Renderer } from './renderer';
+import type { Settings } from './settings';
 import { loadProgress, saveProgress, type ProgressSave } from './storage';
 import type { DecodedPuzzle } from './types';
 
@@ -143,6 +144,10 @@ export class Game {
 
   setBigNumbers(big: boolean): void {
     this.renderer.setBigNumbers(big);
+  }
+
+  setLearning(settings: Settings): void {
+    this.renderer.setLearning(settings);
   }
 
   snapshot(): Snapshot {

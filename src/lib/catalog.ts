@@ -30,7 +30,9 @@ const EMPTY_TAGS: ArtTags = {
 
 const records = (manifestFile as { pictures: ArtRecord[] }).pictures;
 
-function decode(file: PuzzleFile): Omit<DecodedPuzzle, 'mystery' | 'tags'> {
+type StoredPuzzle = Omit<DecodedPuzzle, 'mystery' | 'tags' | 'facts' | 'factsEs'>;
+
+function decode(file: PuzzleFile): StoredPuzzle {
   if (file.encoding !== 'regions-v1') throw new Error(`Unknown puzzle encoding for ${file.id}`);
   const labels = decodeRLE16(file.labels, file.width * file.height);
   if (file.paths.length !== file.regionColors.length) {
@@ -42,10 +44,10 @@ function decode(file: PuzzleFile): Omit<DecodedPuzzle, 'mystery' | 'tags'> {
   return { ...file, labels };
 }
 
-const byId = new Map<string, Omit<DecodedPuzzle, 'mystery' | 'tags'>>();
+const byId = new Map<string, StoredPuzzle>();
 for (const file of Object.values(modules)) byId.set(file.id, decode(file));
 
-function present(base: Omit<DecodedPuzzle, 'mystery' | 'tags'>, record: ArtRecord | undefined, mystery: boolean): DecodedPuzzle {
+function present(base: StoredPuzzle, record: ArtRecord | undefined, mystery: boolean): DecodedPuzzle {
   return {
     ...base,
     id: record?.id ?? base.id,
@@ -54,6 +56,8 @@ function present(base: Omit<DecodedPuzzle, 'mystery' | 'tags'>, record: ArtRecor
     difficulty: record?.difficulty ?? base.difficulty,
     mystery,
     tags: record?.tags ?? EMPTY_TAGS,
+    facts: record?.facts ?? [],
+    factsEs: record?.factsEs ?? [],
   };
 }
 

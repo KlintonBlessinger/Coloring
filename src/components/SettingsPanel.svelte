@@ -2,7 +2,8 @@
   import { listPuzzles } from '../lib/catalog';
   import { formatFavoritesShare, sharePlainText } from '../lib/favorites-share';
   import { downloadBlob } from '../lib/download';
-  import type { Settings } from '../lib/settings';
+  import { t } from '../lib/i18n';
+  import { LABEL_MODES, LANGUAGES, NUMBER_STYLES, type Settings } from '../lib/settings';
   import {
     exportBackup,
     importBackup,
@@ -36,21 +37,25 @@
   let confirmReset = $state(false);
   let status = $state('');
 
-  function toggle(key: keyof Settings) {
+  function toggle(key: 'sound' | 'haptics' | 'bigNumbers') {
     onChange({ ...settings, [key]: !settings[key] });
+  }
+
+  function pick<K extends 'numberStyle' | 'labels' | 'language'>(key: K, value: Settings[K]) {
+    onChange({ ...settings, [key]: value });
   }
 
   async function shareFavorites() {
     const text = formatFavoritesShare(favorites, progress, listPuzzles());
     const how = await sharePlainText(text);
-    status = how === 'shared' ? 'Favorites shared.' : 'Favorites copied.';
+    status = how === 'shared' ? t(settings.language, 'favoritesShared') : t(settings.language, 'favoritesCopied');
   }
 
   async function exportFile() {
     const backup = await exportBackup();
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     downloadBlob(blob, 'color-cozy-backup.json');
-    status = 'Backup downloaded.';
+    status = t(settings.language, 'backupDownloaded');
   }
 
   async function onImport(event: Event) {
@@ -64,9 +69,9 @@
       onProgress(await loadAllProgress());
       onFavorites(await loadFavorites());
       onSettings(data.settings);
-      status = 'Backup imported.';
+      status = t(settings.language, 'backupImported');
     } catch (error) {
-      status = error instanceof Error ? error.message : 'Could not import that file.';
+      status = error instanceof Error ? error.message : t(settings.language, 'importFailed');
     }
   }
 
@@ -74,59 +79,81 @@
     await resetAllProgress();
     onProgress({});
     confirmReset = false;
-    status = 'Progress cleared on this device.';
+    status = t(settings.language, 'progressCleared');
   }
 </script>
 
 <div class="screen settings" data-testid="settings">
   <header class="topbar">
-    <button class="icon-btn" type="button" aria-label="Back" data-testid="back" onclick={onBack}>
+    <button class="icon-btn" type="button" aria-label={t(settings.language, 'back')} data-testid="back" onclick={onBack}>
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
         <path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </button>
     <div class="titles">
-      <h1>Settings</h1>
-      <p class="sub">Just this device.</p>
+      <h1>{t(settings.language, 'settings')}</h1>
+      <p class="sub">{t(settings.language, 'justThisDevice')}</p>
     </div>
   </header>
 
   <div class="stack">
+    <div class="choice-block">
+      <p class="choice-label">{t(settings.language, 'numberStyle')}</p>
+      <div class="choices" role="group" aria-label={t(settings.language, 'numberStyle')}>
+        {#each NUMBER_STYLES as style (style)}
+          <button type="button" data-testid="number-{style}" aria-pressed={settings.numberStyle === style} onclick={() => pick('numberStyle', style)}>{t(settings.language, style)}</button>
+        {/each}
+      </div>
+    </div>
+    <div class="choice-block">
+      <p class="choice-label">{t(settings.language, 'labels')}</p>
+      <div class="choices" role="group" aria-label={t(settings.language, 'labels')}>
+        {#each LABEL_MODES as mode (mode)}
+          <button type="button" data-testid="labels-{mode}" aria-pressed={settings.labels === mode} onclick={() => pick('labels', mode)}>{t(settings.language, mode)}</button>
+        {/each}
+      </div>
+    </div>
+    <div class="choice-block">
+      <p class="choice-label">{t(settings.language, 'language')}</p>
+      <div class="choices" role="group" aria-label={t(settings.language, 'language')}>
+        {#each LANGUAGES as language (language)}
+          <button type="button" data-testid="language-{language}" aria-pressed={settings.language === language} onclick={() => pick('language', language)}>{language === 'es' ? t(settings.language, 'espanol') : t(settings.language, 'english')}</button>
+        {/each}
+      </div>
+    </div>
     <button class="row" type="button" data-testid="big-numbers-toggle" role="switch" aria-checked={settings.bigNumbers} onclick={() => toggle('bigNumbers')}>
-      <span><strong>Big numbers</strong><small>Easier to read when you zoom out</small></span>
+      <span><strong>{t(settings.language, 'bigNumbers')}</strong><small>{t(settings.language, 'bigNumbersHint')}</small></span>
       <i class="switch" class:on={settings.bigNumbers}></i>
     </button>
     <button class="row" type="button" data-testid="sound-toggle" role="switch" aria-checked={settings.sound} onclick={() => toggle('sound')}>
-      <span><strong>Sound</strong><small>Off unless you turn it on</small></span>
+      <span><strong>{t(settings.language, 'sound')}</strong><small>{t(settings.language, 'soundHint')}</small></span>
       <i class="switch" class:on={settings.sound}></i>
     </button>
     <button class="row" type="button" data-testid="haptics-toggle" role="switch" aria-checked={settings.haptics} onclick={() => toggle('haptics')}>
-      <span><strong>Haptics</strong><small>A tiny buzz when a spot fills</small></span>
+      <span><strong>{t(settings.language, 'haptics')}</strong><small>{t(settings.language, 'hapticsHint')}</small></span>
       <i class="switch" class:on={settings.haptics}></i>
     </button>
 
-    <button class="btn wide" type="button" data-testid="share-favorites" onclick={shareFavorites}>Share favorites</button>
-    <button class="btn wide" type="button" data-testid="export-backup" onclick={exportFile}>Export backup</button>
+    <button class="btn wide" type="button" data-testid="share-favorites" onclick={shareFavorites}>{t(settings.language, 'shareFavorites')}</button>
+    <button class="btn wide" type="button" data-testid="export-backup" onclick={exportFile}>{t(settings.language, 'exportBackup')}</button>
     <label class="file-btn">
-      Import backup
+      {t(settings.language, 'importBackup')}
       <input type="file" accept="application/json,.json" data-testid="import-backup" onchange={onImport} />
     </label>
 
     {#if !confirmReset}
-      <button class="btn danger wide" type="button" data-testid="reset-progress" onclick={() => (confirmReset = true)}>Reset progress</button>
+      <button class="btn danger wide" type="button" data-testid="reset-progress" onclick={() => (confirmReset = true)}>{t(settings.language, 'resetProgress')}</button>
     {:else}
       <div class="confirm">
-        <p>Erase every saved picture on this device?</p>
+        <p>{t(settings.language, 'eraseQuestion')}</p>
         <div class="actions">
-          <button class="btn danger" type="button" data-testid="reset-confirm" onclick={erase}>Erase</button>
-          <button class="btn secondary" type="button" data-testid="reset-cancel" onclick={() => (confirmReset = false)}>Cancel</button>
+          <button class="btn danger" type="button" data-testid="reset-confirm" onclick={erase}>{t(settings.language, 'erase')}</button>
+          <button class="btn secondary" type="button" data-testid="reset-cancel" onclick={() => (confirmReset = false)}>{t(settings.language, 'cancel')}</button>
         </div>
       </div>
     {/if}
 
     {#if status}<p class="status" data-testid="settings-status">{status}</p>{/if}
-    <p class="note">
-      iOS can clear saved pictures if the app sits unused. Export a backup when you want a copy you can bring back.
-    </p>
+    <p class="note">{t(settings.language, 'backupNote')}</p>
   </div>
 </div>
