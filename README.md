@@ -30,7 +30,7 @@ npm run make-puzzle -- \
   --thumb content/thumbs/sunday.png
 ```
 
-Categories: Animals, Flowers, Food, Fantasy, Patterns.
+Categories: Thanksgiving, Christmas, Animals, Flowers, Food, Fantasy, Patterns. Holiday shelves are listed first.
 
 Starter pictures are original illustrations. See [content/LICENSES.md](content/LICENSES.md). Regenerate them with `npm run puzzles` after the source JPGs are in `/tmp/coloring-art`, or turn one photo into a puzzle with `npm run make-puzzle`.
 

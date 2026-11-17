@@ -5,7 +5,7 @@ import { loadImage, resizeToLongEdge } from './image';
 import { makePuzzle, writePuzzle, writeSolutionThumb } from './make-puzzle';
 import { segmentImage } from './segment';
 
-const ART = '/tmp/coloring-art';
+const ART_DIRS = ['/tmp/coloring-art', '/tmp/holiday-art'];
 
 const PICTURES: { file: string; title: string; category: Category; difficulty?: Difficulty }[] = [
   { file: 'animals-cat-window', title: 'Cat in the Window', category: 'Animals', difficulty: 'hard' },
@@ -23,7 +23,25 @@ const PICTURES: { file: string; title: string; category: Category; difficulty?: 
   { file: 'patterns-folk-art', title: 'Folk Art', category: 'Patterns', difficulty: 'easy' },
   { file: 'patterns-stained-glass', title: 'Stained Glass', category: 'Patterns' },
   { file: 'patterns-mandala', title: 'Mandala', category: 'Patterns', difficulty: 'hard' },
+  { file: 'thanksgiving-turkey', title: 'Thanksgiving Turkey', category: 'Thanksgiving', difficulty: 'easy' },
+  { file: 'thanksgiving-dinner', title: 'Thanksgiving Dinner', category: 'Thanksgiving', difficulty: 'hard' },
+  { file: 'thanksgiving-porch', title: 'Thanksgiving Porch', category: 'Thanksgiving', difficulty: 'hard' },
+  { file: 'thanksgiving-cornucopia', title: 'Cornucopia', category: 'Thanksgiving' },
+  { file: 'thanksgiving-pumpkin-patch', title: 'Pumpkin Patch', category: 'Thanksgiving' },
+  { file: 'christmas-snowman', title: 'Snowman', category: 'Christmas', difficulty: 'easy' },
+  { file: 'christmas-wreath-cocoa', title: 'Wreath and Cocoa', category: 'Christmas', difficulty: 'easy' },
+  { file: 'christmas-tree-fireplace', title: 'Tree by the Fireplace', category: 'Christmas', difficulty: 'hard' },
+  { file: 'christmas-gingerbread-village', title: 'Gingerbread Village', category: 'Christmas', difficulty: 'hard' },
+  { file: 'christmas-reindeer-sleigh', title: 'Reindeer Sleigh', category: 'Christmas' },
 ];
+
+function sourceFile(id: string): string {
+  for (const dir of ART_DIRS) {
+    const file = path.join(dir, `${id}.jpg`);
+    if (fs.existsSync(file)) return file;
+  }
+  throw new Error(`Missing illustration for ${id}`);
+}
 
 const puzzleDir = path.join('src', 'puzzles');
 const thumbDir = path.join('content', 'thumbs');
@@ -51,7 +69,7 @@ const lines = [
 
 const report: string[] = [];
 for (const picture of PICTURES) {
-  const source = path.join(ART, `${picture.file}.jpg`);
+  const source = sourceFile(picture.file);
   const image = loadImage(source);
   fs.copyFileSync(source, path.join(sourceDir, `${picture.file}.jpg`));
   let difficulty = picture.difficulty;

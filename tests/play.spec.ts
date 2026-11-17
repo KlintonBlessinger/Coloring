@@ -77,7 +77,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(15);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(25);
   await page.locator('[data-category="Flowers"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await expect(page.locator('[data-id="flowers-lotus-pond"]')).toBeVisible();
