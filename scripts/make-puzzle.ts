@@ -2,11 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { encodeRLE, decodeRLE } from '../src/lib/codec';
+import { encode } from 'jpeg-js';
+import { encodeRLE } from '../src/lib/codec';
 import { hexToRgb } from '../src/lib/color';
 import { CATEGORIES, DIFFICULTY_PRESETS, type Category, type Difficulty, type PuzzleFile } from '../src/lib/types';
 import { loadImage, resizeToLongEdge, writePng, type Raster } from './image';
-import { quantize } from './quantize';
+import { segmentImage } from './segment';
 
 export interface MakeOptions {
   image: Raster;
@@ -16,63 +17,84 @@ export interface MakeOptions {
   difficulty: Difficulty;
   size?: number;
   colors?: number;
+  artFile?: string;
 }
 
 export function makePuzzle(opts: MakeOptions): PuzzleFile {
   const preset = DIFFICULTY_PRESETS[opts.difficulty];
   const colors = opts.colors ?? preset.colors;
-  if (colors < preset.minColors || colors > preset.maxColors) {
-    throw new Error(
-      `--colors ${colors} is outside the ${opts.difficulty} range of ${preset.minColors}-${preset.maxColors}.`,
-    );
-  }
+  if (colors < 8 || colors > 40) throw new Error('--colors must be between 8 and 40.');
   const sized = resizeToLongEdge(opts.image, opts.size ?? preset.size);
-  const quant = quantize(sized.data, sized.width, sized.height, {
-    target: colors,
-    min: preset.minColors,
-    max: preset.maxColors,
+  const scale = (sized.width * sized.height) / (preset.size * preset.size);
+  const segment = segmentImage(sized, {
+    colors,
+    minColors: Math.min(preset.minColors, colors),
+    maxColors: Math.max(preset.maxColors, colors),
+    minArea: Math.max(8, Math.round(preset.minArea * scale)),
+    maxRegions: preset.maxRegions,
     seed: hash(opts.id),
   });
+  if (opts.artFile) writeArt(opts.image, opts.artFile);
   return {
     id: opts.id,
     title: opts.title,
     category: opts.category,
     difficulty: opts.difficulty,
-    width: sized.width,
-    height: sized.height,
-    palette: quant.palette,
-    encoding: 'rle-u16le',
-    cells: encodeRLE(quant.cells),
+    width: segment.width,
+    height: segment.height,
+    palette: segment.palette,
+    encoding: 'regions-v1',
+    labels: encodeRLE(segment.labels),
+    regionColors: segment.regionColors,
+    paths: segment.paths,
+    cx: segment.cx,
+    cy: segment.cy,
+    area: segment.area,
+    box: segment.box,
+    art: `art/${opts.id}.jpg`,
   };
 }
 
 export function writePuzzle(file: PuzzleFile, outFile: string): void {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
-  fs.writeFileSync(outFile, `${JSON.stringify(file, null, 2)}\n`);
+  fs.writeFileSync(outFile, `${JSON.stringify(file)}\n`);
 }
 
-export function writeSolutionThumb(file: PuzzleFile, thumbFile: string, maxSide = 280): void {
-  const cells = decodeRLE(file.cells, file.width * file.height);
-  const factor = Math.max(1, Math.round(maxSide / Math.max(file.width, file.height)));
-  const width = file.width * factor;
-  const height = file.height * factor;
-  const data = new Uint8Array(width * height * 4);
+export function writeSolutionThumb(file: PuzzleFile, thumbFile: string): void {
   const colors = file.palette.map((hex) => hexToRgb(hex));
-  for (let y = 0; y < file.height; y++) {
-    for (let x = 0; x < file.width; x++) {
-      const rgb = colors[cells[y * file.width + x] ?? 0] ?? [0, 0, 0];
-      for (let dy = 0; dy < factor; dy++) {
-        for (let dx = 0; dx < factor; dx++) {
-          const i = ((y * factor + dy) * width + (x * factor + dx)) * 4;
-          data[i] = rgb[0];
-          data[i + 1] = rgb[1];
-          data[i + 2] = rgb[2];
-          data[i + 3] = 255;
-        }
-      }
-    }
+  const data = new Uint8Array(file.width * file.height * 4);
+  const labels = decodeLabels(file);
+  for (let i = 0; i < labels.length; i++) {
+    const region = labels[i] ?? 0;
+    const rgb = colors[file.regionColors[region] ?? 0] ?? [244, 239, 230];
+    const o = i * 4;
+    data[o] = rgb[0];
+    data[o + 1] = rgb[1];
+    data[o + 2] = rgb[2];
+    data[o + 3] = 255;
   }
-  writePng(thumbFile, { width, height, data });
+  writePng(thumbFile, { width: file.width, height: file.height, data });
+}
+
+function decodeLabels(file: PuzzleFile): Uint16Array {
+  const binary = Buffer.from(file.labels, 'base64');
+  const view = new Uint16Array(binary.buffer, binary.byteOffset, binary.byteLength / 2);
+  const out = new Uint16Array(file.width * file.height);
+  let cursor = 0;
+  for (let i = 0; i < view.length; i += 2) {
+    const count = view[i] ?? 0;
+    const value = view[i + 1] ?? 0;
+    out.fill(value, cursor, cursor + count);
+    cursor += count;
+  }
+  return out;
+}
+
+function writeArt(image: Raster, file: string): void {
+  const sized = resizeToLongEdge(image, 768);
+  const encoded = encode({ data: sized.data, width: sized.width, height: sized.height }, 82);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, encoded.data);
 }
 
 function hash(text: string): number {
@@ -111,6 +133,7 @@ function main(): void {
       id: { type: 'string' },
       size: { type: 'string' },
       colors: { type: 'string' },
+      art: { type: 'string' },
     },
     strict: true,
   });
@@ -126,24 +149,24 @@ function main(): void {
   }
   const category = values.category ?? '';
   const difficulty = values.difficulty ?? '';
-  if (!isCategory(category)) {
-    throw new Error(`Category must be one of ${CATEGORIES.join(', ')}.`);
-  }
+  if (!isCategory(category)) throw new Error(`Category must be one of ${CATEGORIES.join(', ')}.`);
   if (!isDifficulty(difficulty)) throw new Error('Difficulty must be easy, medium, or hard.');
   const title = values.title ?? '';
+  const id = values.id || slug(title);
   const puzzle = makePuzzle({
     image: loadImage(values.input ?? ''),
-    id: values.id || slug(title),
+    id,
     title,
     category,
     difficulty,
+    artFile: values.art || path.join('public', 'art', `${id}.jpg`),
     ...(values.size ? { size: Number(values.size) } : {}),
     ...(values.colors ? { colors: Number(values.colors) } : {}),
   });
   writePuzzle(puzzle, values.out ?? '');
   writeSolutionThumb(puzzle, values.thumb ?? '');
   console.log(
-    `${puzzle.id}: ${puzzle.width}x${puzzle.height}, ${puzzle.palette.length} colors -> ${values.out}`,
+    `${puzzle.id}: ${puzzle.regionColors.length} regions, ${puzzle.palette.length} colors, ${puzzle.difficulty} -> ${values.out}`,
   );
 }
 

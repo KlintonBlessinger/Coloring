@@ -18,7 +18,7 @@ npm run preview
 
 ## Make a puzzle from a picture
 
-Easy grids are about 40×40 with 8–12 colors, medium about 80×80 with 16–24, and hard about 120×120 with 30–40. The script resizes the long edge, runs k-means in OKLab, and merges near-duplicate colors.
+The script denoises the picture, quantizes it to about 16–30 colors in OKLab, splits the shapes into tappable regions, and traces smooth outlines. Easy pictures keep fewer regions. Hard pictures keep hundreds, and the busiest keep up to about two thousand.
 
 ```bash
 npm run make-puzzle -- \
@@ -32,7 +32,7 @@ npm run make-puzzle -- \
 
 Categories: Animals, Flowers, Food, Fantasy, Patterns.
 
-Starter pictures are original drawings. See [content/LICENSES.md](content/LICENSES.md). Regenerate them with `npm run puzzles`.
+Starter pictures are original illustrations. See [content/LICENSES.md](content/LICENSES.md). Regenerate them with `npm run puzzles` after the source JPGs are in `/tmp/coloring-art`, or turn one photo into a puzzle with `npm run make-puzzle`.
 
 ## Pages
 

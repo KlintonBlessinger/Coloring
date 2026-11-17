@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "puzzles": "tsx scripts/draw-originals.ts && tsx scripts/make-all.ts",
+    "puzzles": "tsx scripts/make-all.ts",
     "make-puzzle": "tsx scripts/make-puzzle.ts",
     "icons": "tsx scripts/make-icons.ts",
     "test:unit": "tsx --test tests/unit/*.test.ts",

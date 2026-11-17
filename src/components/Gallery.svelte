@@ -35,12 +35,14 @@
   });
 
   function ratioOf(puzzle: DecodedPuzzle): number {
-    return progressRatio(filledFromSave(puzzle, progress[puzzle.id]), puzzle.cells.length);
+    return progressRatio(filledFromSave(puzzle, progress[puzzle.id]), puzzle.regionColors.length);
   }
 
   function paint(node: HTMLCanvasElement, params: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) {
-    const draw = (current: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) =>
-      drawThumbnail(node, current.puzzle, filledFromSave(current.puzzle, current.save));
+    const draw = (current: { puzzle: DecodedPuzzle; save: ProgressSave | undefined }) => {
+      const filled = filledFromSave(current.puzzle, current.save);
+      drawThumbnail(node, current.puzzle, progressRatio(filled, current.puzzle.regionColors.length));
+    };
     draw(params);
     return { update: draw };
   }
@@ -111,8 +113,8 @@
         <div class="thumb-wrap">
           <canvas
             class="thumb"
-            width={puzzle.width}
-            height={puzzle.height}
+            width="280"
+            height="280"
             use:paint={{ puzzle, save: progress[puzzle.id] }}
           ></canvas>
         </div>

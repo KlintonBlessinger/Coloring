@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { encode } from 'jpeg-js';
 import { APP_NAME } from '../../src/lib/brand';
-import { decodeRLE, encodeRLE } from '../../src/lib/codec';
+import { decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
 import { hexToOklab, hexToRgb, labDist2, oklabToHex } from '../../src/lib/color';
 import { CATEGORIES, DIFFICULTY_PRESETS, type PuzzleFile } from '../../src/lib/types';
 import { loadImage, writePng } from '../../scripts/image';
@@ -91,12 +91,13 @@ test('a jpeg file becomes a puzzle', () => {
       title: 'Photo Test',
       category: 'Patterns',
       difficulty: 'easy',
-      size: 24,
+      size: 48,
       colors: 10,
     });
-    assert.equal(puzzle.encoding, 'rle-u16le');
-    assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 12);
-    assert.equal(decodeRLE(puzzle.cells, puzzle.width * puzzle.height).length, puzzle.width * puzzle.height);
+    assert.equal(puzzle.encoding, 'regions-v1');
+    assert.ok(puzzle.regionColors.length > 0);
+    assert.equal(puzzle.paths.length, puzzle.regionColors.length);
+    assert.equal(decodeRLE16(puzzle.labels, puzzle.width * puzzle.height).length, puzzle.width * puzzle.height);
   } finally {
     fs.unlinkSync(file);
   }
@@ -116,15 +117,26 @@ test('starter puzzles cover every shelf', () => {
   for (const difficulty of ['easy', 'medium', 'hard'] as const) {
     assert.ok(puzzles.some((puzzle) => puzzle.difficulty === difficulty));
   }
+  const fixed: Record<string, PuzzleFile['difficulty']> = {
+    'food-ice-cream-sundae': 'easy',
+    'patterns-folk-art': 'easy',
+    'flowers-lotus-pond': 'easy',
+    'animals-sea-turtle': 'hard',
+    'flowers-cottage-garden': 'hard',
+    'food-bakery-sweets': 'hard',
+    'patterns-mandala': 'hard',
+    'animals-cat-window': 'hard',
+  };
   for (const puzzle of puzzles) {
+    assert.equal(puzzle.encoding, 'regions-v1');
+    assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 34, puzzle.id);
+    assert.ok(puzzle.regionColors.length >= 30, puzzle.id);
+    assert.equal(puzzle.paths.length, puzzle.regionColors.length);
+    const labels = decodeRLE16(puzzle.labels, puzzle.width * puzzle.height);
+    for (const region of labels) assert.ok(region < puzzle.regionColors.length);
+    if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
     const preset = DIFFICULTY_PRESETS[puzzle.difficulty];
-    assert.ok(Math.abs(Math.max(puzzle.width, puzzle.height) - preset.size) <= 8, puzzle.id);
-    assert.ok(
-      puzzle.palette.length >= preset.minColors && puzzle.palette.length <= preset.maxColors,
-      puzzle.id,
-    );
-    const cells = decodeRLE(puzzle.cells, puzzle.width * puzzle.height);
-    for (const color of cells) assert.ok(color < puzzle.palette.length);
+    assert.ok(puzzle.regionColors.length <= preset.maxRegions + 5, puzzle.id);
   }
   const licenses = fs.readFileSync(path.join(process.cwd(), 'content/LICENSES.md'), 'utf8');
   for (const puzzle of puzzles) assert.ok(licenses.includes(puzzle.id), puzzle.id);

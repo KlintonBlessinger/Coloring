@@ -1,7 +1,9 @@
-import { hexToRgb, mixHex } from './color';
+import { mixHex } from './color';
 import type { DecodedPuzzle } from './types';
 
-const UNFILLED = '#f3eee6';
+const PAPER = '#f4f1eb';
+const OPEN = '#e3dfd8';
+const INK = '#2c2623';
 const NUMBER = '#4a3f3a';
 
 interface Camera {
@@ -18,9 +20,8 @@ interface Anim {
 }
 
 /**
- * One on-screen canvas. Color and highlight live on tiny cell-sized layers and
- * are scaled with nearest-neighbor. Numbers are baked once and cleared per cell
- * as they are filled, so a pan is a few image blits.
+ * Vector coloring surface. Region paths share smoothed edges, so fills meet
+ * without stair-steps, and strokes stay a constant width on screen.
  */
 export class Renderer {
   readonly puzzle: DecodedPuzzle;
@@ -28,34 +29,29 @@ export class Renderer {
   panX = 0;
   panY = 0;
   scale = 1;
+  artAlpha = 0;
 
   private readonly view: HTMLCanvasElement;
   private readonly viewCtx: CanvasRenderingContext2D;
-  private readonly colorCanvas: HTMLCanvasElement;
-  private readonly colorCtx: CanvasRenderingContext2D;
-  private readonly hiCanvas: HTMLCanvasElement;
-  private readonly hiCtx: CanvasRenderingContext2D;
-  private readonly numCanvas: HTMLCanvasElement;
-  private readonly numCtx: CanvasRenderingContext2D;
+  private readonly paths: Path2D[];
+  private readonly tint: string[];
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
   private selected = 0;
   private big: boolean;
-  private numCell = 18;
   private cssW = 0;
   private cssH = 0;
   private dpr = 1;
   private cameraReady = false;
   private replaying = false;
   private pulseUntil = 0;
+  private artFade: { from: number; to: number; start: number; ms: number } | null = null;
   private anim: Anim | null = null;
   private raf = 0;
   private dead = false;
-  private readonly maxScale = 72;
+  private readonly maxScale = 28;
   private readonly ro: ResizeObserver;
-  private readonly tintA: string[];
-  private readonly tintB: string[];
-  private readonly rgb: [number, number, number][];
+  readonly artImage: HTMLImageElement;
 
   constructor(view: HTMLCanvasElement, puzzle: DecodedPuzzle, filled: Uint8Array, bigNumbers: boolean) {
     this.view = view;
@@ -63,41 +59,19 @@ export class Renderer {
     this.puzzle = puzzle;
     this.filled = filled;
     this.big = bigNumbers;
+    view.classList.add('surface');
     const viewCtx = view.getContext('2d');
     if (!viewCtx) throw new Error('Canvas is not available.');
     this.viewCtx = viewCtx;
-
-    this.colorCanvas = document.createElement('canvas');
-    this.colorCanvas.width = puzzle.width;
-    this.colorCanvas.height = puzzle.height;
-    this.hiCanvas = document.createElement('canvas');
-    this.hiCanvas.width = puzzle.width;
-    this.hiCanvas.height = puzzle.height;
-    this.numCanvas = document.createElement('canvas');
-    const colorCtx = this.colorCanvas.getContext('2d', { alpha: false });
-    const hiCtx = this.hiCanvas.getContext('2d');
-    const numCtx = this.numCanvas.getContext('2d');
-    if (!colorCtx || !hiCtx || !numCtx) throw new Error('Canvas is not available.');
-    this.colorCtx = colorCtx;
-    this.hiCtx = hiCtx;
-    this.numCtx = numCtx;
-
-    this.rgb = puzzle.palette.map((hex) => hexToRgb(hex));
-    this.tintA = puzzle.palette.map((hex) => mixHex(UNFILLED, hex, 0.34));
-    this.tintB = puzzle.palette.map((hex) => mixHex(UNFILLED, hex, 0.52));
-    this.chooseNumCell();
-    this.rebuildColors();
-    this.rebuildHighlight();
-    this.rebuildNumbers();
-
+    this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
+    this.tint = puzzle.palette.map((hex) => mixHex(OPEN, hex, 0.55));
+    this.artImage = new Image();
+    this.artImage.onload = () => this.requestDraw();
+    const base = import.meta.env.BASE_URL || '/';
+    this.artImage.src = `${base.endsWith('/') ? base : `${base}/`}${puzzle.art}`;
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(view.parentElement ?? view);
     this.resize();
-    void document.fonts?.ready.then(() => {
-      if (this.dead) return;
-      this.rebuildNumbers();
-      this.requestDraw();
-    });
   }
 
   destroy(): void {
@@ -109,19 +83,11 @@ export class Renderer {
   setBigNumbers(big: boolean): void {
     if (this.big === big) return;
     this.big = big;
-    this.chooseNumCell();
-    this.rebuildNumbers();
-    if (this.cameraReady) {
-      const readable = this.numberFloor();
-      if (this.scale < readable) this.scale = readable;
-      this.clampPan();
-    }
     this.requestDraw();
   }
 
   setSelected(index: number): void {
     this.selected = index;
-    this.rebuildHighlight();
     this.requestDraw();
   }
 
@@ -130,19 +96,28 @@ export class Renderer {
     this.requestDraw();
   }
 
-  /** Draw from a temporary fill buffer. Pass null to show the real progress again. */
   setVisual(visual: Uint8Array | null): void {
     this.visual = visual;
-    this.rebuildColors();
-    this.rebuildHighlight();
-    this.rebuildNumbers();
     this.requestDraw();
   }
 
-  paintIndex(index: number): void {
-    const x = index % this.puzzle.width;
-    const y = (index / this.puzzle.width) | 0;
-    this.paintPixel(x, y);
+  setArtAlpha(alpha: number): void {
+    this.artFade = null;
+    this.artAlpha = alpha;
+    this.requestDraw();
+  }
+
+  fadeInArt(): void {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      this.setArtAlpha(1);
+      return;
+    }
+    this.artFade = { from: this.artAlpha, to: 1, start: performance.now(), ms: 900 };
+    this.requestDraw();
+  }
+
+  paintIndex(_index: number): void {
     this.requestDraw();
   }
 
@@ -182,24 +157,20 @@ export class Renderer {
     let maxX = 0;
     let maxY = 0;
     for (const index of indices) {
-      const x = index % this.puzzle.width;
-      const y = (index / this.puzzle.width) | 0;
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
+      const o = index * 4;
+      minX = Math.min(minX, this.puzzle.box[o] ?? minX);
+      minY = Math.min(minY, this.puzzle.box[o + 1] ?? minY);
+      maxX = Math.max(maxX, this.puzzle.box[o + 2] ?? maxX);
+      maxY = Math.max(maxY, this.puzzle.box[o + 3] ?? maxY);
     }
     const pad = 28;
-    const bw = Math.max(1, maxX - minX + 1);
-    const bh = Math.max(1, maxY - minY + 1);
-    let scale = Math.min((this.cssW - pad * 2) / bw, (this.cssH - pad * 2) / bh);
-    scale = this.clampScale(Math.max(scale, this.numberFloor()));
-    const cx = (minX + maxX + 1) / 2;
-    const cy = (minY + maxY + 1) / 2;
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    const scale = this.clampScale(Math.min((this.cssW - pad * 2) / bw, (this.cssH - pad * 2) / bh));
     const saved = this.camera();
     this.scale = scale;
-    this.panX = this.cssW / 2 - cx * scale;
-    this.panY = this.cssH / 2 - cy * scale;
+    this.panX = this.cssW / 2 - ((minX + maxX) / 2) * scale;
+    this.panY = this.cssH / 2 - ((minY + maxY) / 2) * scale;
     this.clampPan();
     const to = this.camera();
     this.applyCamera(saved);
@@ -221,7 +192,35 @@ export class Renderer {
     const cx = Math.floor((x - this.panX) / this.scale);
     const cy = Math.floor((y - this.panY) / this.scale);
     if (cx < 0 || cy < 0 || cx >= this.puzzle.width || cy >= this.puzzle.height) return null;
-    return cy * this.puzzle.width + cx;
+    return this.puzzle.labels[cy * this.puzzle.width + cx] ?? 0;
+  }
+
+  async renderBlob(): Promise<Blob> {
+    const canvas = document.createElement('canvas');
+    const edge = 1200;
+    const scale = edge / Math.max(this.puzzle.width, this.puzzle.height);
+    canvas.width = Math.round(this.puzzle.width * scale);
+    canvas.height = Math.round(this.puzzle.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not create image');
+    if (this.artImage.complete && this.artImage.naturalWidth) {
+      ctx.drawImage(this.artImage, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = PAPER;
+      ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
+      for (let i = 0; i < this.paths.length; i++) {
+        ctx.fillStyle = this.puzzle.palette[this.puzzle.regionColors[i] ?? 0] ?? PAPER;
+        ctx.fill(this.paths[i]!, 'evenodd');
+      }
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = INK;
+      ctx.lineJoin = 'round';
+      for (const path of this.paths) ctx.stroke(path);
+    }
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Could not create image');
+    return blob;
   }
 
   private camera(): Camera {
@@ -238,16 +237,6 @@ export class Renderer {
     return (this.visual ?? this.filled)[index] === 1;
   }
 
-  private chooseNumCell(): void {
-    const maxDim = Math.max(this.puzzle.width, this.puzzle.height);
-    const want = this.big ? 30 : 20;
-    this.numCell = Math.max(12, Math.min(want, Math.floor(4096 / maxDim)));
-  }
-
-  private numberFloor(): number {
-    return this.big ? 11 : 14;
-  }
-
   private clampScale(scale: number): number {
     return Math.max(this.minScale(), Math.min(this.maxScale, scale));
   }
@@ -260,7 +249,7 @@ export class Renderer {
   private clampPan(): void {
     const worldW = this.puzzle.width * this.scale;
     const worldH = this.puzzle.height * this.scale;
-    const margin = 32;
+    const margin = 24;
     if (worldW <= this.cssW) this.panX = (this.cssW - worldW) / 2;
     else this.panX = Math.min(margin, Math.max(this.cssW - worldW - margin, this.panX));
     if (worldH <= this.cssH) this.panY = (this.cssH - worldH) / 2;
@@ -278,108 +267,13 @@ export class Renderer {
     this.view.height = Math.max(1, Math.round(cssH * this.dpr));
     if (cssW < 2 || cssH < 2) return;
     if (!this.cameraReady) {
-      const fit = Math.min((cssW - 16) / this.puzzle.width, (cssH - 16) / this.puzzle.height);
-      this.scale = Math.min(this.maxScale, Math.max(fit, this.numberFloor()));
+      this.scale = Math.min((cssW - 16) / this.puzzle.width, (cssH - 16) / this.puzzle.height);
       this.panX = (cssW - this.puzzle.width * this.scale) / 2;
       this.panY = (cssH - this.puzzle.height * this.scale) / 2;
       this.clampPan();
       this.cameraReady = true;
     }
     this.requestDraw();
-  }
-
-  private rebuildColors(): void {
-    const { width, height, cells } = this.puzzle;
-    const image = this.colorCtx.createImageData(width, height);
-    const data = image.data;
-    const blank = hexToRgb(UNFILLED);
-    for (let i = 0; i < cells.length; i++) {
-      const rgb = this.isFilled(i) ? this.rgb[cells[i] ?? 0]! : blank;
-      const o = i * 4;
-      data[o] = rgb[0];
-      data[o + 1] = rgb[1];
-      data[o + 2] = rgb[2];
-      data[o + 3] = 255;
-    }
-    this.colorCtx.putImageData(image, 0, 0);
-  }
-
-  private rebuildHighlight(): void {
-    const { width, height, cells } = this.puzzle;
-    this.hiCtx.clearRect(0, 0, width, height);
-    const image = this.hiCtx.createImageData(width, height);
-    const data = image.data;
-    for (let i = 0; i < cells.length; i++) {
-      if (this.isFilled(i) || cells[i] !== this.selected) continue;
-      const x = i % width;
-      const y = (i / width) | 0;
-      const rgb = hexToRgb(((x + y) & 1) === 0 ? this.tintA[this.selected]! : this.tintB[this.selected]!);
-      const o = i * 4;
-      data[o] = rgb[0];
-      data[o + 1] = rgb[1];
-      data[o + 2] = rgb[2];
-      data[o + 3] = 255;
-    }
-    this.hiCtx.putImageData(image, 0, 0);
-  }
-
-  private rebuildNumbers(): void {
-    const { width, height, cells } = this.puzzle;
-    const size = this.numCell;
-    this.numCanvas.width = width * size;
-    this.numCanvas.height = height * size;
-    const ctx = this.numCtx;
-    ctx.clearRect(0, 0, this.numCanvas.width, this.numCanvas.height);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = NUMBER;
-    const main = this.font(false);
-    const small = this.font(true);
-    for (let pass = 0; pass < 2; pass++) {
-      ctx.font = pass === 0 ? main : small;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const index = y * width + x;
-          if (this.isFilled(index)) continue;
-          const n = (cells[index] ?? 0) + 1;
-          if (pass === 0 ? n >= 10 : n < 10) continue;
-          ctx.fillText(String(n), x * size + size / 2, y * size + size / 2 + size * 0.04);
-        }
-      }
-    }
-  }
-
-  private font(small: boolean): string {
-    const frac = this.big ? (small ? 0.58 : 0.74) : small ? 0.46 : 0.58;
-    return `800 ${Math.max(8, Math.floor(this.numCell * frac))}px Nunito, sans-serif`;
-  }
-
-  private paintPixel(x: number, y: number): void {
-    const index = y * this.puzzle.width + x;
-    const colorIndex = this.puzzle.cells[index] ?? 0;
-    const filled = this.isFilled(index);
-    this.colorCtx.fillStyle = filled ? this.puzzle.palette[colorIndex]! : UNFILLED;
-    this.colorCtx.fillRect(x, y, 1, 1);
-    if (!filled && colorIndex === this.selected) {
-      this.hiCtx.fillStyle = ((x + y) & 1) === 0 ? this.tintA[colorIndex]! : this.tintB[colorIndex]!;
-      this.hiCtx.fillRect(x, y, 1, 1);
-    } else {
-      this.hiCtx.clearRect(x, y, 1, 1);
-    }
-    const size = this.numCell;
-    this.numCtx.clearRect(x * size, y * size, size, size);
-    if (!filled) {
-      const n = colorIndex + 1;
-      this.numCtx.fillStyle = NUMBER;
-      this.numCtx.textAlign = 'center';
-      this.numCtx.textBaseline = 'middle';
-      this.numCtx.font = this.font(n >= 10);
-      this.numCtx.fillText(String(n), x * size + size / 2, y * size + size / 2 + size * 0.04);
-    }
-  }
-
-  private showNumbers(): boolean {
-    return !this.replaying && this.scale >= (this.big ? 10 : 13);
   }
 
   private requestDraw(): void {
@@ -391,7 +285,7 @@ export class Renderer {
     this.raf = 0;
     if (this.dead) return;
     this.draw();
-    if (this.anim || performance.now() < this.pulseUntil) this.requestDraw();
+    if (this.anim || this.artFade || performance.now() < this.pulseUntil) this.requestDraw();
   }
 
   private draw(): void {
@@ -404,56 +298,71 @@ export class Renderer {
       this.scale = this.anim.from.scale + (this.anim.to.scale - this.anim.from.scale) * e;
       if (t >= 1) this.anim = null;
     }
+    if (this.artFade) {
+      const t = Math.min(1, (now - this.artFade.start) / this.artFade.ms);
+      const e = 1 - (1 - t) ** 3;
+      this.artAlpha = this.artFade.from + (this.artFade.to - this.artFade.from) * e;
+      if (t >= 1) this.artFade = null;
+    }
     if (this.cssW < 2 || this.cssH < 2) return;
     const ctx = this.viewCtx;
     const dpr = this.dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.view.width, this.view.height);
-    ctx.imageSmoothingEnabled = false;
-    const dx = Math.round(this.panX * dpr);
-    const dy = Math.round(this.panY * dpr);
-    const dw = Math.max(1, Math.round(this.puzzle.width * this.scale * dpr));
-    const dh = Math.max(1, Math.round(this.puzzle.height * this.scale * dpr));
-    ctx.drawImage(this.colorCanvas, dx, dy, dw, dh);
-    let alpha = 1;
-    if (now < this.pulseUntil) {
-      const wave = 0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80);
-      alpha = 0.28 + 0.72 * wave;
+    ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, this.puzzle.width, this.puzzle.height);
+    const pulse = now < this.pulseUntil ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((this.pulseUntil - now) / 80)) : 1;
+    for (let i = 0; i < this.paths.length; i++) {
+      const path = this.paths[i]!;
+      if (!path) continue;
+      const color = this.puzzle.regionColors[i] ?? 0;
+      if (this.isFilled(i)) ctx.fillStyle = this.puzzle.palette[color] ?? OPEN;
+      else if (color === this.selected) ctx.fillStyle = this.tint[color] ?? OPEN;
+      else ctx.fillStyle = OPEN;
+      ctx.globalAlpha = !this.isFilled(i) && color === this.selected ? pulse : 1;
+      ctx.fill(path, 'evenodd');
     }
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(this.hiCanvas, dx, dy, dw, dh);
     ctx.globalAlpha = 1;
-    if (this.showNumbers()) {
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(this.numCanvas, dx, dy, dw, dh);
-      ctx.imageSmoothingEnabled = false;
+    ctx.lineWidth = 1.35 / this.scale;
+    ctx.strokeStyle = INK;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.miterLimit = 2;
+    for (const path of this.paths) ctx.stroke(path);
+
+    let numbers = false;
+    if (!this.replaying && this.artAlpha < 0.35) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = NUMBER;
+      for (let i = 0; i < this.puzzle.regionColors.length; i++) {
+        if (this.isFilled(i)) continue;
+        const radius = Math.sqrt((this.puzzle.area[i] ?? 0) / Math.PI) * this.scale;
+        const n = (this.puzzle.regionColors[i] ?? 0) + 1;
+        const need = (n >= 10 ? 15 : 11) * (this.big ? 0.78 : 1);
+        if (radius < need) continue;
+        const font = Math.min(this.big ? 30 : 20, radius * (this.big ? 0.95 : 0.72));
+        ctx.font = `800 ${font}px Nunito, sans-serif`;
+        const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
+        const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
+        ctx.fillText(String(n), x, y);
+        numbers = true;
+      }
     }
-    if (this.scale >= 8) this.drawGrid(ctx, dpr);
+
+    if (this.artAlpha > 0.01 && this.artImage.complete && this.artImage.naturalWidth) {
+      ctx.setTransform(this.scale * dpr, 0, 0, this.scale * dpr, this.panX * dpr, this.panY * dpr);
+      ctx.globalAlpha = this.artAlpha;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.artImage, 0, 0, this.puzzle.width, this.puzzle.height);
+      ctx.globalAlpha = 1;
+    }
+
     this.view.dataset.scale = String(this.scale);
     this.view.dataset.panX = String(this.panX);
     this.view.dataset.panY = String(this.panY);
-    this.view.dataset.numbers = this.showNumbers() ? '1' : '0';
-  }
-
-  private drawGrid(ctx: CanvasRenderingContext2D, dpr: number): void {
-    const { width, height } = this.puzzle;
-    ctx.beginPath();
-    ctx.lineWidth = Math.max(1, Math.round(dpr * 0.6));
-    ctx.strokeStyle = 'rgba(80, 60, 45, 0.16)';
-    const x0 = Math.max(0, Math.floor(-this.panX / this.scale));
-    const y0 = Math.max(0, Math.floor(-this.panY / this.scale));
-    const x1 = Math.min(width, Math.ceil((this.cssW - this.panX) / this.scale));
-    const y1 = Math.min(height, Math.ceil((this.cssH - this.panY) / this.scale));
-    for (let x = x0; x <= x1; x++) {
-      const sx = Math.round((this.panX + x * this.scale) * dpr) + 0.5;
-      ctx.moveTo(sx, Math.round(Math.max(0, this.panY) * dpr));
-      ctx.lineTo(sx, Math.round(Math.min(this.cssH, this.panY + height * this.scale) * dpr));
-    }
-    for (let y = y0; y <= y1; y++) {
-      const sy = Math.round((this.panY + y * this.scale) * dpr) + 0.5;
-      ctx.moveTo(Math.round(Math.max(0, this.panX) * dpr), sy);
-      ctx.lineTo(Math.round(Math.min(this.cssW, this.panX + width * this.scale) * dpr), sy);
-    }
-    ctx.stroke();
+    this.view.dataset.numbers = numbers ? '1' : '0';
   }
 }

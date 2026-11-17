@@ -1,4 +1,4 @@
-import { decodeRLE } from './codec';
+import { decodeRLE16 } from './codec';
 import { CATEGORIES, type Category, type DecodedPuzzle, type Difficulty, type PuzzleFile } from './types';
 
 const modules = import.meta.glob('../puzzles/*.json', {
@@ -10,12 +10,15 @@ const categoryRank = new Map<Category, number>(CATEGORIES.map((category, index) 
 const difficultyRank: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
 
 function decode(file: PuzzleFile): DecodedPuzzle {
-  if (file.encoding !== 'rle-u16le') throw new Error(`Unknown puzzle encoding for ${file.id}`);
-  const cells = decodeRLE(file.cells, file.width * file.height);
-  for (const color of cells) {
-    if (color >= file.palette.length) throw new Error(`Color index out of range in ${file.id}`);
+  if (file.encoding !== 'regions-v1') throw new Error(`Unknown puzzle encoding for ${file.id}`);
+  const labels = decodeRLE16(file.labels, file.width * file.height);
+  if (file.paths.length !== file.regionColors.length) {
+    throw new Error(`Region data does not match in ${file.id}`);
   }
-  return { ...file, cells };
+  for (const region of labels) {
+    if (region >= file.regionColors.length) throw new Error(`Region index out of range in ${file.id}`);
+  }
+  return { ...file, labels };
 }
 
 const puzzles = Object.values(modules)

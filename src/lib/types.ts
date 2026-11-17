@@ -4,16 +4,23 @@ export type Category = (typeof CATEGORIES)[number];
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
+/** Working resolution, palette size, and how finely regions are kept. */
 export const DIFFICULTY_PRESETS: Record<
   Difficulty,
-  { size: number; colors: number; minColors: number; maxColors: number }
+  { size: number; colors: number; minColors: number; maxColors: number; minArea: number; maxRegions: number }
 > = {
-  easy: { size: 40, colors: 10, minColors: 8, maxColors: 12 },
-  medium: { size: 80, colors: 20, minColors: 16, maxColors: 24 },
-  hard: { size: 120, colors: 34, minColors: 30, maxColors: 40 },
+  easy: { size: 512, colors: 16, minColors: 10, maxColors: 20, minArea: 32, maxRegions: 260 },
+  medium: { size: 512, colors: 22, minColors: 14, maxColors: 26, minArea: 22, maxRegions: 1000 },
+  hard: { size: 512, colors: 28, minColors: 16, maxColors: 32, minArea: 16, maxRegions: 2000 },
 };
 
-/** Self-describing puzzle file. `cells` is little-endian uint16 RLE: [count, colorIndex, ...]. */
+export const OUTLINE = 65535;
+
+/**
+ * Region puzzle. `labels` is a uint16 RLE of the label map (65535 = not a region).
+ * Region i has `regionColors[i]`, an SVG `paths[i]` in label-map coordinates, and
+ * `cx`/`cy`/`area`/`box` for numbers and hints.
+ */
 export interface PuzzleFile {
   id: string;
   title: string;
@@ -22,10 +29,19 @@ export interface PuzzleFile {
   width: number;
   height: number;
   palette: string[];
-  encoding: 'rle-u16le';
-  cells: string;
+  encoding: 'regions-v1';
+  labels: string;
+  regionColors: number[];
+  paths: string[];
+  cx: number[];
+  cy: number[];
+  area: number[];
+  /** minX, minY, maxX, maxY per region, packed. */
+  box: number[];
+  /** Illustration used for the gallery and the completion crossfade, relative to the site base. */
+  art: string;
 }
 
-export interface DecodedPuzzle extends Omit<PuzzleFile, 'cells'> {
-  cells: Uint8Array;
+export interface DecodedPuzzle extends Omit<PuzzleFile, 'labels'> {
+  labels: Uint16Array;
 }

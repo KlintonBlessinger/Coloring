@@ -38,7 +38,8 @@ export class Game {
   private filledCount = 0;
   private undoStack: number[][] = [];
   private stroke: number[] | null = null;
-  private lastCell = -1;
+  private lastX = 0;
+  private lastY = 0;
   private mode: 'none' | 'paint' | 'pan' | 'pinch' = 'none';
   private moved = false;
   private down = { x: 0, y: 0, cell: -1 };
@@ -65,9 +66,9 @@ export class Game {
     this.puzzle = puzzle;
     this.hooks = hooks;
     this.sfx = new Sfx(hooks.getSound);
-    this.filled = new Uint8Array(puzzle.cells.length);
+    this.filled = new Uint8Array(puzzle.regionColors.length);
     this.totals = new Uint32Array(puzzle.palette.length);
-    for (const color of puzzle.cells) this.totals[color] = (this.totals[color] ?? 0) + 1;
+    for (const color of puzzle.regionColors) this.totals[color] = (this.totals[color] ?? 0) + 1;
     this.done = new Uint32Array(puzzle.palette.length);
     this.renderer = new Renderer(canvas, puzzle, this.filled, bigNumbers);
     this.onPointerDown = (event) => this.pointerDown(event);
@@ -164,11 +165,11 @@ export class Game {
 
   hint(): void {
     if (this.replaying) return;
-    const cells: number[] = [];
-    for (let i = 0; i < this.puzzle.cells.length; i++) {
-      if (!this.filled[i] && this.puzzle.cells[i] === this.selected) cells.push(i);
+    const regions: number[] = [];
+    for (let i = 0; i < this.puzzle.regionColors.length; i++) {
+      if (!this.filled[i] && this.puzzle.regionColors[i] === this.selected) regions.push(i);
     }
-    this.renderer.focusCells(cells);
+    this.renderer.focusCells(regions);
   }
 
   undo(): void {
@@ -180,7 +181,7 @@ export class Game {
     for (const index of stroke) {
       if (!this.filled[index]) continue;
       this.filled[index] = 0;
-      const color = this.puzzle.cells[index] ?? 0;
+      const color = this.puzzle.regionColors[index] ?? 0;
       this.done[color] = Math.max(0, (this.done[color] ?? 0) - 1);
       this.filledCount--;
       this.renderer.paintIndex(index);
@@ -203,6 +204,7 @@ export class Game {
       this.replaying = false;
       this.renderer.setReplaying(false);
       this.renderer.setVisual(null);
+      this.renderer.fadeInArt();
       return;
     }
     this.replaying = true;
@@ -228,27 +230,14 @@ export class Game {
         this.replaying = false;
         this.renderer.setReplaying(false);
         this.renderer.setVisual(null);
+        this.renderer.fadeInArt();
       }
     };
     this.replayRaf = requestAnimationFrame(step);
   }
 
-  async renderBlob(): Promise<Blob> {
-    const scale = Math.max(4, Math.min(12, Math.floor(1600 / Math.max(this.puzzle.width, this.puzzle.height))));
-    const canvas = document.createElement('canvas');
-    canvas.width = this.puzzle.width * scale;
-    canvas.height = this.puzzle.height * scale;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not create image');
-    for (let y = 0; y < this.puzzle.height; y++) {
-      for (let x = 0; x < this.puzzle.width; x++) {
-        ctx.fillStyle = this.puzzle.palette[this.puzzle.cells[y * this.puzzle.width + x] ?? 0] ?? '#ffffff';
-        ctx.fillRect(x * scale, y * scale, scale, scale);
-      }
-    }
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) throw new Error('Could not create image');
-    return blob;
+  renderBlob(): Promise<Blob> {
+    return this.renderer.renderBlob();
   }
 
   private applySave(save: ProgressSave | null): void {
@@ -279,6 +268,7 @@ export class Game {
           ? save.selected
           : this.pickStart();
       this.celebrated = this.filledCount === this.filled.length;
+      if (this.celebrated) this.renderer.setArtAlpha(1);
     } catch {
       this.filled.fill(0);
       this.order = [];
@@ -292,7 +282,7 @@ export class Game {
     this.filledCount = 0;
     for (let i = 0; i < this.filled.length; i++) {
       if (!this.filled[i]) continue;
-      const color = this.puzzle.cells[i] ?? 0;
+      const color = this.puzzle.regionColors[i] ?? 0;
       this.done[color] = (this.done[color] ?? 0) + 1;
       this.filledCount++;
     }
@@ -333,11 +323,12 @@ export class Game {
     }
     this.moved = false;
     const cell = this.renderer.hit(event.clientX, event.clientY);
+    this.lastX = event.clientX;
+    this.lastY = event.clientY;
     this.down = { x: event.clientX, y: event.clientY, cell: cell ?? -1 };
-    if (!this.replaying && cell != null && !this.filled[cell] && this.puzzle.cells[cell] === this.selected) {
+    if (!this.replaying && cell != null && !this.filled[cell] && this.puzzle.regionColors[cell] === this.selected) {
       this.mode = 'paint';
       this.stroke = [];
-      this.lastCell = cell;
       this.paintCell(cell);
       this.emit();
     } else {
@@ -355,11 +346,9 @@ export class Game {
       return;
     }
     if (this.mode === 'paint') {
-      const hit = this.renderer.hit(event.clientX, event.clientY);
-      if (hit == null) return;
-      const from = this.lastCell >= 0 ? this.lastCell : hit;
-      this.walk(from, hit, (index) => this.paintCell(index));
-      this.lastCell = hit;
+      this.paintStroke(this.lastX, this.lastY, event.clientX, event.clientY);
+      this.lastX = event.clientX;
+      this.lastY = event.clientY;
       this.emit();
       return;
     }
@@ -391,7 +380,7 @@ export class Game {
     }
     if (was === 'pan' && !this.moved) {
       const cell = this.down.cell;
-      if (cell >= 0 && !this.filled[cell] && this.puzzle.cells[cell] !== this.selected && !this.replaying) {
+      if (cell >= 0 && !this.filled[cell] && this.puzzle.regionColors[cell] !== this.selected && !this.replaying) {
         this.hooks.onShake();
         this.haptic(12, true);
       }
@@ -403,7 +392,7 @@ export class Game {
   }
 
   private paintCell(index: number): boolean {
-    if (this.replaying || this.filled[index] || this.puzzle.cells[index] !== this.selected) return true;
+    if (this.replaying || this.filled[index] || this.puzzle.regionColors[index] !== this.selected) return true;
     this.filled[index] = 1;
     this.done[this.selected] = (this.done[this.selected] ?? 0) + 1;
     this.filledCount++;
@@ -446,29 +435,13 @@ export class Game {
     }
   }
 
-  private walk(from: number, to: number, visit: (index: number) => boolean): void {
-    const w = this.puzzle.width;
-    let x0 = from % w;
-    let y0 = (from / w) | 0;
-    const x1 = to % w;
-    const y1 = (to / w) | 0;
-    const dx = Math.abs(x1 - x0);
-    const sx = x0 < x1 ? 1 : -1;
-    const dy = -Math.abs(y1 - y0);
-    const sy = y0 < y1 ? 1 : -1;
-    let err = dx + dy;
-    for (;;) {
-      if (!visit(y0 * w + x0)) return;
-      if (x0 === x1 && y0 === y1) return;
-      const e2 = 2 * err;
-      if (e2 >= dy) {
-        err += dy;
-        x0 += sx;
-      }
-      if (e2 <= dx) {
-        err += dx;
-        y0 += sy;
-      }
+  private paintStroke(x0: number, y0: number, x1: number, y1: number): void {
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 3));
+    for (let step = 1; step <= steps; step++) {
+      const t = step / steps;
+      const region = this.renderer.hit(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+      if (region == null) continue;
+      if (!this.paintCell(region)) return;
     }
   }
 
