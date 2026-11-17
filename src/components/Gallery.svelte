@@ -14,6 +14,7 @@
     progress,
     favorites,
     settings,
+    packTick = 0,
     onOpen,
     onSettings,
     onToggleFavorite,
@@ -21,6 +22,8 @@
     progress: Record<string, ProgressSave>;
     favorites: string[];
     settings: Settings;
+    /** Changes when an imported pack is added or removed, so the shelves refresh. */
+    packTick?: number;
     onOpen: (id: string) => void;
     onSettings: () => void;
     onToggleFavorite: (id: string) => void;
@@ -31,11 +34,12 @@
   let habitat = $state<'all' | AnimalHabitat>('all');
 
   const visible = $derived.by(() => {
+    packTick;
     const items = listPuzzles().filter((puzzle: CatalogEntry) => {
       if (category === 'Favorites' && !favorites.includes(puzzle.id)) return false;
       if (category === 'Mystery' && !puzzle.mystery) return false;
       if (category !== 'All' && category !== 'Favorites' && category !== 'Mystery') {
-        if (puzzle.mystery || puzzle.category !== category) return false;
+        if (puzzle.packId || puzzle.mystery || puzzle.category !== category) return false;
       }
       if (category === 'Animals' && habitat !== 'all' && !puzzle.tags.setting.includes(habitat)) return false;
       const ratio = ratioOf(puzzle);
@@ -58,7 +62,24 @@
     return puzzle.title;
   }
 
-  const mysteryShelf = $derived(visible.filter((puzzle) => puzzle.mystery));
+  const mysteryShelf = $derived(visible.filter((puzzle) => puzzle.mystery && !puzzle.packId));
+
+  const packShelves = $derived.by(() => {
+    const order: string[] = [];
+    const groups = new Map<string, CatalogEntry[]>();
+    for (const puzzle of visible) {
+      if (!puzzle.packId) continue;
+      for (const shelf of puzzle.shelves ?? []) {
+        const items = groups.get(shelf);
+        if (items) items.push(puzzle);
+        else {
+          groups.set(shelf, [puzzle]);
+          order.push(shelf);
+        }
+      }
+    }
+    return order.map((shelf) => ({ shelf, items: groups.get(shelf) ?? [] }));
+  });
 
   const empty = $derived(
     category === 'Favorites'
@@ -167,11 +188,11 @@
         onclick={() => onOpen(puzzle.id)}
       >
         <div class="thumb-wrap">
-          <img class="thumb" alt="" width="280" height="280" src={asset(`thumbs/${puzzle.file}.jpg`)} />
+          <img class="thumb" alt="" width="280" height="280" src={puzzle.thumbUrl ?? asset(`thumbs/${puzzle.file}.jpg`)} />
         </div>
         <span class="card-title">{hidden ? t(settings.language, 'mystery') : puzzle.title}</span>
         <span class="meta">
-          <span>{hidden ? t(settings.language, 'mystery') : categoryLabel(settings.language, puzzle.category)}</span>
+          <span>{hidden ? t(settings.language, 'mystery') : (puzzle.shelfName ?? categoryLabel(settings.language, puzzle.category))}</span>
           <span class="badge {puzzle.difficulty}">{t(settings.language, puzzle.difficulty)}</span>
         </span>
         {#if ratio > 0}
@@ -187,7 +208,7 @@
         {#if name === 'Animals'}
           {#each ANIMAL_HABITATS as habitatName (habitatName)}
             {#if habitatName === 'realistic'}
-              {@const realisticItems = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes('realistic'))}
+              {@const realisticItems = visible.filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes('realistic'))}
               {#if realisticItems.length}
                 {@const rest = realisticItems.filter((puzzle) => !REALISTIC_GROUPS.some((group) => puzzle.tags.subject.includes(group)))}
                 <section class="shelf" data-shelf="realistic">
@@ -214,7 +235,7 @@
                 </section>
               {/if}
             {:else}
-              {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes(habitatName))}
+              {@const items = visible.filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes(habitatName))}
               {#if items.length}
                 <section class="shelf" data-shelf={habitatName}>
                   <h2 class="shelf-title">{habitatLabel(settings.language, habitatName)}</h2>
@@ -227,7 +248,7 @@
               {/if}
             {/if}
           {/each}
-          {@const rest = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && !ANIMAL_HABITATS.some((habitatName) => puzzle.tags.setting.includes(habitatName)))}
+          {@const rest = visible.filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === 'Animals' && !ANIMAL_HABITATS.some((habitatName) => puzzle.tags.setting.includes(habitatName)))}
           {#if rest.length}
             <section class="shelf" data-shelf="Animals">
               <h2 class="shelf-title">{categoryLabel(settings.language, 'Animals')}</h2>
@@ -239,7 +260,7 @@
             </section>
           {/if}
         {:else}
-          {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === name)}
+          {@const items = visible.filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === name)}
           {#if items.length}
             <section class="shelf" data-shelf={name}>
               <h2 class="shelf-title">{categoryLabel(settings.language, name)}</h2>
@@ -251,6 +272,16 @@
             </section>
           {/if}
         {/if}
+      {/each}
+      {#each packShelves as group (group.shelf)}
+        <section class="shelf" data-shelf={group.shelf} data-pack-shelf={group.shelf}>
+          <h2 class="shelf-title">{group.shelf}</h2>
+          <div class="shelf-row">
+            {#each group.items as puzzle (puzzle.id)}
+              {@render picture(puzzle)}
+            {/each}
+          </div>
+        </section>
       {/each}
       {#if mysteryShelf.length}
         <section class="shelf" data-shelf="Mystery">

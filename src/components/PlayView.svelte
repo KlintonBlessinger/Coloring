@@ -225,7 +225,7 @@
       <div class="titles">
         <h1 class:unveil={!!entry.mystery && !!snapshot?.complete}>{hiddenTitle ? t(copy, 'mystery') : entry.title}</h1>
         <p class="sub">
-          <span>{snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? t(copy, 'mystery') : categoryLabel(copy, entry.category)}</span>
+          <span>{snapshot ? Math.round((snapshot.filledCount / snapshot.total) * 100) : 0}% · {hiddenTitle ? t(copy, 'mystery') : (entry.shelfName ?? categoryLabel(copy, entry.category))}</span>
           {#if committed}
             <button class="mode-chip" type="button" data-testid="mode-chip" data-mode={committed} onclick={openPicker}>{t(copy, modeName)}</button>
           {/if}

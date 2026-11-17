@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "puzzles": "python3 scripts/build_vectors.py",
     "gate": "python3 scripts/gate.py",
+    "pack": "python3 scripts/build-pack.py",
     "make-puzzle": "tsx scripts/make-puzzle.ts",
     "icons": "tsx scripts/make-icons.ts",
     "test:unit": "tsx --test tests/unit/*.test.ts",

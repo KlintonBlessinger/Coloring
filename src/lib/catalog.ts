@@ -1,5 +1,6 @@
 import manifestFile from '../art/manifest.json' with { type: 'json' };
 import indexFile from '../art/puzzle-index.json' with { type: 'json' };
+import type { InstalledPack } from './packs';
 import { asset, decodeVector, readCompressed, type VectorFile } from './vector';
 import { CATEGORIES, type ArtRecord, type ArtTags, type Category, type DecodedPuzzle, type Difficulty } from './types';
 
@@ -17,6 +18,13 @@ export interface CatalogEntry {
   regionCount: number;
   colorCount: number;
   art: string;
+  /** Set when the picture came from a pack imported on this device. */
+  packId?: string;
+  /** Shelf titles from the pack tags. The first one is the card label. */
+  shelves?: string[];
+  shelfName?: string;
+  /** Data URL for a pack card. Public pictures use the thumb in public/thumbs. */
+  thumbUrl?: string;
 }
 
 interface IndexEntry {
@@ -80,15 +88,69 @@ export function listArt(): ArtRecord[] {
   return records;
 }
 
+const loaded = new Map<string, Promise<DecodedPuzzle | null>>();
+let packEntries: CatalogEntry[] = [];
+const packFiles = new Map<string, VectorFile>();
+const packArt = new Map<string, string>();
+const packRecords = new Map<string, ArtRecord>();
+
+export function isPublicPuzzle(id: string): boolean {
+  return recordById.has(id);
+}
+
+/** Replace the pictures imported on this device. Public pictures stay as they are. */
+export function installPacks(packs: InstalledPack[]): void {
+  packEntries = [];
+  packFiles.clear();
+  packArt.clear();
+  packRecords.clear();
+  loaded.clear();
+  for (const pack of packs) {
+    for (const picture of pack.pictures) {
+      const regions = picture.puzzle.regions?.length ?? 0;
+      const colors = picture.puzzle.palette?.length ?? 0;
+      const shelfName = picture.shelves[0];
+      packEntries.push({
+        id: picture.id,
+        title: picture.title,
+        category: 'Fantasy',
+        difficulty: picture.difficulty,
+        mystery: false,
+        tags: { ...EMPTY_TAGS, subject: picture.shelves },
+        facts: picture.facts,
+        factsEs: picture.factsEs,
+        file: picture.id,
+        regionCount: regions,
+        colorCount: colors,
+        art: picture.art,
+        packId: pack.id,
+        shelves: picture.shelves,
+        shelfName,
+        thumbUrl: picture.thumb,
+      });
+      packFiles.set(picture.id, picture.puzzle);
+      if (picture.art) packArt.set(picture.id, picture.art);
+      packRecords.set(picture.id, {
+        id: picture.id,
+        title: picture.title,
+        category: 'Fantasy',
+        difficulty: picture.difficulty,
+        mystery: false,
+        tags: { ...EMPTY_TAGS, subject: picture.shelves },
+        facts: picture.facts,
+        factsEs: picture.factsEs,
+      });
+    }
+  }
+}
+
 export function listPuzzles(): CatalogEntry[] {
-  return puzzles;
+  return [...puzzles, ...packEntries];
 }
 
 export function getPuzzle(id: string): CatalogEntry | undefined {
-  return puzzles.find((puzzle) => puzzle.id === id);
+  return puzzles.find((puzzle) => puzzle.id === id) ?? packEntries.find((puzzle) => puzzle.id === id);
 }
-
-const loaded = new Map<string, Promise<DecodedPuzzle | null>>();
 
 export function loadPuzzle(id: string): Promise<DecodedPuzzle | null> {
   const cached = loaded.get(id);
@@ -101,6 +163,13 @@ export function loadPuzzle(id: string): Promise<DecodedPuzzle | null> {
 async function fetchPuzzle(id: string): Promise<DecodedPuzzle | null> {
   const entry = getPuzzle(id);
   if (!entry) return null;
+  const packed = packFiles.get(id);
+  if (packed) {
+    const decoded = decodeVector(packed, packRecords.get(id));
+    const art = packArt.get(id);
+    if (art) decoded.art = art;
+    return decoded;
+  }
   const record = recordById.get(id);
   const br = await readCompressed(asset(`puzzles/${entry.file}.json.br`), 'br' as CompressionFormat);
   const gzipped = br ?? (await readCompressed(asset(`puzzles/${entry.file}.json.gz`), 'gzip'));

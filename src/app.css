@@ -774,6 +774,10 @@ h1 {
 .tally i { width: 2px; height: 13px; border-radius: 1px; background: currentColor; }
 .tally i.slash { transform: rotate(24deg); height: 16px; }
 .status { margin: 0; font-weight: 800; }
+.parents { margin-top: 18px; padding-top: 8px; border-top: 1px solid rgba(80, 60, 40, 0.12); }
+.parents h2 { margin: 8px 0; font-size: 1.05rem; }
+.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; }
+.pack-row span { font-weight: 800; }
 .confirm { background: #fbe4dc; border-radius: 16px; padding: 14px; }
 .confirm p { margin: 0 0 10px; font-weight: 800; }
 .confirm .actions { display: flex; }

@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { listPuzzles } from '../lib/catalog';
+  import { installPacks, isPublicPuzzle, listPuzzles } from '../lib/catalog';
   import { formatFavoritesShare, sharePlainText } from '../lib/favorites-share';
   import { downloadBlob } from '../lib/download';
   import { t } from '../lib/i18n';
+  import { deleteInstalledPack, loadInstalledPacks, otherPackIds, parsePack, saveInstalledPack, type InstalledPack } from '../lib/packs';
   import { LABEL_MODES, LANGUAGES, NUMBER_STYLES, type MathRange, type NumberStyle, type Settings } from '../lib/settings';
   import {
     exportBackup,
@@ -23,6 +24,7 @@
     onProgress,
     onFavorites,
     onSettings,
+    onPacks,
   }: {
     settings: Settings;
     progress: Record<string, ProgressSave>;
@@ -32,10 +34,18 @@
     onProgress: (progress: Record<string, ProgressSave>) => void;
     onFavorites: (favorites: string[]) => void;
     onSettings: (settings: Settings) => void;
+    onPacks: () => void;
   } = $props();
 
   let confirmReset = $state(false);
   let status = $state('');
+  let packs = $state<InstalledPack[]>([]);
+
+  $effect(() => {
+    void loadInstalledPacks().then((stored) => {
+      packs = stored;
+    });
+  });
   const practiceRanges = $derived(
     settings.numberStyle === 'adding' ? (['add10', 'add20'] as const) : (['times5', 'times10'] as const),
   );
@@ -83,6 +93,39 @@
     } catch (error) {
       status = error instanceof Error ? error.message : t(settings.language, 'importFailed');
     }
+  }
+
+  async function onImportPack(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const pack = await parsePack(new Uint8Array(await file.arrayBuffer()));
+      const taken = otherPackIds(packs, pack);
+      for (const picture of pack.pictures) {
+        if (isPublicPuzzle(picture.id) || taken.has(picture.id)) {
+          throw new Error(`Picture ${picture.id} is already in the book.`);
+        }
+      }
+      packs = await saveInstalledPack(pack);
+      installPacks(packs);
+      onPacks();
+      const hearts = await loadFavorites();
+      onFavorites(hearts);
+      status = t(settings.language, 'packAdded');
+    } catch (error) {
+      status = error instanceof Error ? error.message : t(settings.language, 'importFailed');
+    }
+  }
+
+  async function removePack(id: string) {
+    packs = await deleteInstalledPack(id);
+    installPacks(packs);
+    onPacks();
+    onProgress(await loadAllProgress());
+    onFavorites(await loadFavorites());
+    status = t(settings.language, 'packRemoved');
   }
 
   async function erase() {
@@ -202,6 +245,25 @@
         </div>
       </div>
     {/if}
+
+    <section class="parents" data-testid="parents">
+      <h2>{t(settings.language, 'forParents')}</h2>
+      <p class="note">{t(settings.language, 'picturePacksHint')}</p>
+      <label class="file-btn">
+        {t(settings.language, 'addPack')}
+        <input type="file" accept=".zip,.json,application/zip,application/json" data-testid="import-pack" onchange={onImportPack} />
+      </label>
+      {#if packs.length === 0}
+        <p class="note">{t(settings.language, 'noPacks')}</p>
+      {:else}
+        {#each packs as pack (pack.id)}
+          <div class="pack-row">
+            <span>{pack.title}</span>
+            <button class="btn secondary" type="button" data-testid="remove-pack" data-pack={pack.id} onclick={() => removePack(pack.id)}>{t(settings.language, 'removePack')}</button>
+          </div>
+        {/each}
+      {/if}
+    </section>
 
     {#if status}<p class="status" data-testid="settings-status">{status}</p>{/if}
     <p class="note">{t(settings.language, 'backupNote')}</p>

@@ -4,7 +4,8 @@
   import PlayView from './components/PlayView.svelte';
   import SettingsPanel from './components/SettingsPanel.svelte';
   import { applyAudioSettings } from './lib/audio';
-  import { getPuzzle } from './lib/catalog';
+  import { getPuzzle, installPacks } from './lib/catalog';
+  import { loadInstalledPacks } from './lib/packs';
   import type { Settings } from './lib/settings';
   import { loadAllProgress, loadFavorites, saveFavorites, saveSettings, type ProgressSave } from './lib/storage';
 
@@ -17,6 +18,7 @@
   let puzzleId = $state<string | null>(null);
   let progress = $state<Record<string, ProgressSave>>({});
   let favorites = $state<string[]>([]);
+  let packTick = $state(0);
 
   function show(state: { screen?: Screen; puzzleId?: string | null } | null) {
     if (state?.screen === 'play' && state.puzzleId && getPuzzle(state.puzzleId)) {
@@ -47,9 +49,12 @@
     show(history.state);
     const onPop = () => show(history.state);
     window.addEventListener('popstate', onPop);
-    void Promise.all([loadAllProgress(), loadFavorites()]).then(([saved, hearts]) => {
+    void Promise.all([loadAllProgress(), loadFavorites(), loadInstalledPacks()]).then(([saved, hearts, packs]) => {
+      installPacks(packs);
+      packTick += 1;
       progress = saved;
       favorites = hearts;
+      show(history.state);
     });
     return () => window.removeEventListener('popstate', onPop);
   });
@@ -111,8 +116,11 @@
       onSettings={(next) => {
         settings = next;
       }}
+      onPacks={() => {
+        packTick += 1;
+      }}
     />
   {:else}
-    <Gallery {progress} {favorites} {settings} onOpen={openPuzzle} onSettings={openSettings} onToggleFavorite={toggleFavorite} />
+    <Gallery {progress} {favorites} {settings} {packTick} onOpen={openPuzzle} onSettings={openSettings} onToggleFavorite={toggleFavorite} />
   {/if}
 </div>

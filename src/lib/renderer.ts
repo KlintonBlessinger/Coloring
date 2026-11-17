@@ -556,6 +556,7 @@ export class Renderer {
 }
 
 function assetUrl(path: string): string {
+  if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://')) return path;
   const base = import.meta.env.BASE_URL || '/';
   const root = base.endsWith('/') ? base : `${base}/`;
   return `${root}${path.replace(/^\//, '')}`;

@@ -1206,3 +1206,56 @@ test('realistic v3 groups on the shelf', async ({ page }) => {
   await jpg('vector-realistic-v3-shelf.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+test('an imported pack gets a shelf for each tag and survives a reload', async ({ page }) => {
+  const errors = watch(page);
+  const pack = {
+    format: 'color-cozy-pack',
+    version: 1,
+    id: 'sample-pack',
+    title: 'Sample pack',
+    pictures: [
+      {
+        id: 'blue-house',
+        title: 'Blue House',
+        difficulty: 'easy',
+        tags: ['Blue House', 'Private'],
+        facts: ['A house with a blue door.'],
+        factsEs: ['Una casa con una puerta azul.'],
+        puzzle: {
+          id: 'blue-house',
+          title: 'Blue House',
+          category: 'Shows',
+          difficulty: 'easy',
+          mode: 'lineart',
+          w: 64,
+          h: 64,
+          palette: [{ n: 1, hex: '#3d6ec9' }],
+          regions: [{ id: 0, n: 1, d: 'M0 0L64 0L64 64L0 64Z', label: { x: 32, y: 32, r: 16 } }],
+          ink: '',
+        },
+        thumb: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      },
+    ],
+  };
+  const file = path.join(mediaDir, 'sample-pack.json');
+  fs.mkdirSync(mediaDir, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(pack));
+  await page.goto('/');
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('import-pack').setInputFiles(file);
+  await expect(page.getByTestId('settings-status')).toHaveText('Picture pack added.');
+  await page.getByTestId('back').click();
+  await page.reload();
+  const shelf = page.locator('[data-pack-shelf="Blue House"]');
+  await shelf.scrollIntoViewIfNeeded();
+  await expect(shelf.getByRole('heading', { name: 'Blue House' })).toBeVisible();
+  await expect(shelf.locator('[data-id="blue-house"]')).toContainText('Blue House');
+  await page.getByTestId('open-settings').click();
+  await page.locator('[data-testid="remove-pack"][data-pack="sample-pack"]').click();
+  await expect(page.getByTestId('settings-status')).toHaveText('Picture pack removed.');
+  await page.getByTestId('back').click();
+  await expect(page.locator('[data-pack-shelf="Blue House"]')).toHaveCount(0);
+  fs.unlinkSync(file);
+  expect(errors, errors.join('\n')).toEqual([]);
+});

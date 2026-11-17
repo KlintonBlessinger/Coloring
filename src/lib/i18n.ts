@@ -91,6 +91,13 @@ const STRINGS = {
     modeMathNote: 'Problems at your practice setting:',
     modeEspanolNote: 'Spanish color names. Tap a color to hear it.',
     start: 'Start',
+    forParents: 'For parents',
+    picturePacksHint: 'A pack stays on this device. It is not part of the public book.',
+    addPack: 'Add picture pack',
+    removePack: 'Remove',
+    packAdded: 'Picture pack added.',
+    packRemoved: 'Picture pack removed.',
+    noPacks: 'No picture packs on this device.',
   },
   es: {
     lede: 'Colorea por números, sin internet.',
@@ -181,6 +188,13 @@ const STRINGS = {
     modeMathNote: 'Cuentas con tu nivel de práctica:',
     modeEspanolNote: 'Nombres de colores en español. Toca un color para oírlo.',
     start: 'Empezar',
+    forParents: 'Para padres',
+    picturePacksHint: 'Un paquete se queda en este aparato. No forma parte del libro público.',
+    addPack: 'Añadir paquete de dibujos',
+    removePack: 'Quitar',
+    packAdded: 'Paquete añadido.',
+    packRemoved: 'Paquete quitado.',
+    noPacks: 'No hay paquetes en este aparato.',
   },
 } as const;
 
