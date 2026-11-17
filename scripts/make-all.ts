@@ -5,12 +5,55 @@ import { loadImage, resizeToLongEdge } from './image';
 import { makePuzzle, writePuzzle, writeSolutionThumb } from './make-puzzle';
 import { segmentImage } from './segment';
 
-const ART_DIRS = ['/tmp/coloring-art', '/tmp/holiday-art'];
+const ART_DIRS = ['/tmp/coloring-art', '/tmp/holiday-art', '/tmp/animal-art'];
 
-const PICTURES: { file: string; title: string; category: Category; difficulty?: Difficulty }[] = [
+const PICTURES: {
+  file: string;
+  title: string;
+  category: Category;
+  difficulty?: Difficulty;
+  size?: number;
+  colors?: number;
+  minArea?: number;
+  sameColorArea?: number;
+  maxRegions?: number;
+  outlineReach?: number;
+}[] = [
   { file: 'animals-cat-window', title: 'Cat in the Window', category: 'Animals', difficulty: 'hard' },
   { file: 'animals-fox-family', title: 'Fox Family', category: 'Animals' },
   { file: 'animals-sea-turtle', title: 'Sea Turtle', category: 'Animals', difficulty: 'hard' },
+  { file: 'animals-clownfish-reef', title: 'Clownfish Reef', category: 'Animals', difficulty: 'hard' },
+  { file: 'animals-octopus-garden', title: 'Octopus Garden', category: 'Animals', difficulty: 'easy' },
+  { file: 'animals-humpback-calf', title: 'Humpback & Calf', category: 'Animals', difficulty: 'easy' },
+  { file: 'animals-seahorse-meadow', title: 'Seahorse Meadow', category: 'Animals', difficulty: 'easy' },
+  { file: 'animals-giraffe-sunset', title: 'Giraffe Sunset', category: 'Animals', difficulty: 'hard' },
+  { file: 'animals-elephant-waterhole', title: 'Elephant Waterhole', category: 'Animals', difficulty: 'easy' },
+  {
+    file: 'animals-lion-cub',
+    title: 'Lion Cub',
+    category: 'Animals',
+    difficulty: 'medium',
+    size: 768,
+    colors: 26,
+    outlineReach: 1.05,
+    minArea: 22,
+    sameColorArea: 40,
+    maxRegions: 900,
+  },
+  { file: 'animals-toucan-macaw', title: 'Toucan & Macaw', category: 'Animals', difficulty: 'hard' },
+  { file: 'animals-tree-frog', title: 'Red-Eyed Tree Frog', category: 'Animals', difficulty: 'hard' },
+  {
+    file: 'animals-jungle-tiger',
+    title: 'Jungle Tiger',
+    category: 'Animals',
+    difficulty: 'medium',
+    size: 768,
+    colors: 26,
+    outlineReach: 1.05,
+    minArea: 22,
+    sameColorArea: 40,
+    maxRegions: 900,
+  },
   { file: 'flowers-lotus-pond', title: 'Lotus Pond', category: 'Flowers', difficulty: 'easy' },
   { file: 'flowers-cottage-garden', title: 'Cottage Garden', category: 'Flowers', difficulty: 'hard' },
   { file: 'flowers-peony-bouquet', title: 'Peony Bouquet', category: 'Flowers' },
@@ -90,6 +133,12 @@ for (const picture of PICTURES) {
     title: picture.title,
     category: picture.category,
     difficulty,
+    size: picture.size,
+    colors: picture.colors,
+    minArea: picture.minArea,
+    sameColorArea: picture.sameColorArea,
+    maxRegions: picture.maxRegions,
+    outlineReach: picture.outlineReach,
     artFile: path.join('public', 'art', `${picture.file}.jpg`),
   });
   writePuzzle(puzzle, path.join(puzzleDir, `${picture.file}.json`));

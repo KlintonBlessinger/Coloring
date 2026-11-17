@@ -138,6 +138,23 @@ test('the art manifest covers every picture and at least five mysteries', () => 
   assert.match(water?.facts.join(' ') ?? '', /Evaporation/);
   assert.match(water?.facts.join(' ') ?? '', /Condensation/);
   assert.match(water?.facts.join(' ') ?? '', /Precipitation/);
+  const habitats: Record<string, string> = {
+    'animals-clownfish-reef': 'sea-life',
+    'animals-octopus-garden': 'sea-life',
+    'animals-humpback-calf': 'sea-life',
+    'animals-seahorse-meadow': 'sea-life',
+    'animals-giraffe-sunset': 'safari',
+    'animals-elephant-waterhole': 'safari',
+    'animals-lion-cub': 'safari',
+    'animals-toucan-macaw': 'jungle',
+    'animals-tree-frog': 'jungle',
+    'animals-jungle-tiger': 'jungle',
+  };
+  for (const [id, habitat] of Object.entries(habitats)) {
+    const record = normal.find((picture) => picture.id === id);
+    assert.ok(record?.tags.setting.includes(habitat), id);
+    assert.ok((record?.tags.subject.length ?? 0) > 0, id);
+  }
   const butterfly = normal.find((picture) => picture.id === 'science-butterfly-life-cycle');
   assert.match(butterfly?.facts.join(' ') ?? '', /milkweed/);
   assert.match(butterfly?.facts.join(' ') ?? '', /chrysalis/);

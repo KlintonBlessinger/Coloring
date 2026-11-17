@@ -12,6 +12,16 @@ Effects and the background loop are original synthesis in `src/lib/audio.ts`. No
 | `content/sources/animals-cat-window.jpg` | Cat in the Window | Original project art | Original, made for Color Cozy |
 | `content/sources/animals-fox-family.jpg` | Fox Family | Original project art | Original, made for Color Cozy |
 | `content/sources/animals-sea-turtle.jpg` | Sea Turtle | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-clownfish-reef.jpg` | Clownfish Reef | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-octopus-garden.jpg` | Octopus Garden | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-humpback-calf.jpg` | Humpback & Calf | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-seahorse-meadow.jpg` | Seahorse Meadow | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-giraffe-sunset.jpg` | Giraffe Sunset | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-elephant-waterhole.jpg` | Elephant Waterhole | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-lion-cub.jpg` | Lion Cub | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-toucan-macaw.jpg` | Toucan & Macaw | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-tree-frog.jpg` | Red-Eyed Tree Frog | Original project art | Original, made for Color Cozy |
+| `content/sources/animals-jungle-tiger.jpg` | Jungle Tiger | Original project art | Original, made for Color Cozy |
 | `content/sources/flowers-lotus-pond.jpg` | Lotus Pond | Original project art | Original, made for Color Cozy |
 | `content/sources/flowers-cottage-garden.jpg` | Cottage Garden | Original project art | Original, made for Color Cozy |
 | `content/sources/flowers-peony-bouquet.jpg` | Peony Bouquet | Original project art | Original, made for Color Cozy |

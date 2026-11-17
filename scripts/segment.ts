@@ -11,6 +11,8 @@ export interface SegmentOptions {
   sameColorArea?: number;
   maxRegions: number;
   seed?: number;
+  /** How far a dark pixel can sit from a light one and still count as ink. Thick stripes need a smaller reach so their middles stay fillable. */
+  outlineReach?: number;
 }
 
 export interface Segment {
@@ -31,7 +33,7 @@ const NONE = -1;
 /** Denoise, quantize, split into tappable regions, and trace smooth outlines. */
 export function segmentImage(raster: Raster, opts: SegmentOptions): Segment {
   const { width, height } = raster;
-  const outline = outlineMask(raster.data, width, height);
+  const outline = outlineMask(raster.data, width, height, opts.outlineReach ?? 3.7);
   const denoised = flattenFills(bilateralMasked(medianMasked(raster.data, outline, width, height), outline, width, height), outline, width, height);
   const quant = quantizeMasked(denoised, outline, width, height, opts);
   const components = mergeRegions(quant.cells, width, height);
@@ -65,7 +67,7 @@ function lumaSat(src: Uint8Array, index: number): { y: number; sat: number } {
  * Dark line art is a wall between fills. Thick blobs (eyes, berries) keep a
  * fillable core; only a thin stroke has a small distance to a lighter pixel.
  */
-function outlineMask(src: Uint8Array, width: number, height: number): Uint8Array {
+function outlineMask(src: Uint8Array, width: number, height: number, reach = 3.7): Uint8Array {
   const count = width * height;
   const dark = new Uint8Array(count);
   for (let i = 0; i < count; i++) {
@@ -101,7 +103,7 @@ function outlineMask(src: Uint8Array, width: number, height: number): Uint8Array
     }
   }
   const mask = new Uint8Array(count);
-  for (let i = 0; i < count; i++) if (dark[i] && (dist[i] ?? INF) <= 3.7) mask[i] = 1;
+  for (let i = 0; i < count; i++) if (dark[i] && (dist[i] ?? INF) <= reach) mask[i] = 1;
   const grow = mask.slice();
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

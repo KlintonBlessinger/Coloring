@@ -1,7 +1,7 @@
 <script lang="ts">
   import { APP_NAME } from '../lib/brand';
   import { listPuzzles } from '../lib/catalog';
-  import { categoryLabel, t } from '../lib/i18n';
+  import { ANIMAL_HABITATS, categoryLabel, habitatLabel, t, type AnimalHabitat } from '../lib/i18n';
   import type { Settings } from '../lib/settings';
   import { drawThumbnail, filledFromSave, progressRatio } from '../lib/thumb';
   import type { ProgressSave } from '../lib/storage';
@@ -27,6 +27,7 @@
 
   let tab = $state<'all' | 'progress' | 'done'>('all');
   let category = $state<Shelf>('All');
+  let habitat = $state<'all' | AnimalHabitat>('all');
 
   const visible = $derived.by(() => {
     const items = listPuzzles().filter((puzzle) => {
@@ -35,6 +36,7 @@
       if (category !== 'All' && category !== 'Favorites' && category !== 'Mystery') {
         if (puzzle.mystery || puzzle.category !== category) return false;
       }
+      if (category === 'Animals' && habitat !== 'all' && !puzzle.tags.setting.includes(habitat)) return false;
       const ratio = ratioOf(puzzle);
       if (tab === 'progress') return ratio > 0 && ratio < 1;
       if (tab === 'done') return ratio >= 1;
@@ -107,9 +109,9 @@
   </div>
 
   <div class="chips">
-    <button type="button" class="chip" class:on={category === 'All'} data-testid="category-chip" data-category="All" onclick={() => (category = 'All')}>{t(settings.language, 'all')}</button>
-    <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => (category = 'Favorites')}>{t(settings.language, 'favorites')}</button>
-    <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => (category = 'Mystery')}>{t(settings.language, 'mystery')}</button>
+    <button type="button" class="chip" class:on={category === 'All'} data-testid="category-chip" data-category="All" onclick={() => { category = 'All'; habitat = 'all'; }}>{t(settings.language, 'all')}</button>
+    <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => { category = 'Favorites'; habitat = 'all'; }}>{t(settings.language, 'favorites')}</button>
+    <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => { category = 'Mystery'; habitat = 'all'; }}>{t(settings.language, 'mystery')}</button>
     {#each CATEGORIES as name (name)}
       <button
         type="button"
@@ -117,10 +119,25 @@
         class:on={category === name}
         data-testid="category-chip"
         data-category={name}
-        onclick={() => (category = name)}
+        onclick={() => { category = name; habitat = 'all'; }}
       >{categoryLabel(settings.language, name)}</button>
     {/each}
   </div>
+
+  {#if category === 'Animals'}
+    <div class="chips">
+      <button type="button" class="chip" class:on={habitat === 'all'} data-testid="habitat-all" onclick={() => (habitat = 'all')}>{t(settings.language, 'all')}</button>
+      {#each ANIMAL_HABITATS as name (name)}
+        <button
+          type="button"
+          class="chip"
+          class:on={habitat === name}
+          data-testid="habitat-{name}"
+          onclick={() => (habitat = name)}
+        >{habitatLabel(settings.language, name)}</button>
+      {/each}
+    </div>
+  {/if}
 
   {#snippet picture(puzzle: DecodedPuzzle)}
     {@const ratio = ratioOf(puzzle)}
@@ -175,16 +192,43 @@
   {#if tab === 'all' && category === 'All'}
     <div class="shelves">
       {#each CATEGORIES as name (name)}
-        {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === name)}
-        {#if items.length}
-          <section class="shelf" data-shelf={name}>
-            <h2 class="shelf-title">{categoryLabel(settings.language, name)}</h2>
-            <div class="shelf-row">
-              {#each items as puzzle (puzzle.id)}
-                {@render picture(puzzle)}
-              {/each}
-            </div>
-          </section>
+        {#if name === 'Animals'}
+          {#each ANIMAL_HABITATS as habitatName (habitatName)}
+            {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && puzzle.tags.setting.includes(habitatName))}
+            {#if items.length}
+              <section class="shelf" data-shelf={habitatName}>
+                <h2 class="shelf-title">{habitatLabel(settings.language, habitatName)}</h2>
+                <div class="shelf-row">
+                  {#each items as puzzle (puzzle.id)}
+                    {@render picture(puzzle)}
+                  {/each}
+                </div>
+              </section>
+            {/if}
+          {/each}
+          {@const rest = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === 'Animals' && !ANIMAL_HABITATS.some((habitatName) => puzzle.tags.setting.includes(habitatName)))}
+          {#if rest.length}
+            <section class="shelf" data-shelf="Animals">
+              <h2 class="shelf-title">{categoryLabel(settings.language, 'Animals')}</h2>
+              <div class="shelf-row">
+                {#each rest as puzzle (puzzle.id)}
+                  {@render picture(puzzle)}
+                {/each}
+              </div>
+            </section>
+          {/if}
+        {:else}
+          {@const items = visible.filter((puzzle) => !puzzle.mystery && puzzle.category === name)}
+          {#if items.length}
+            <section class="shelf" data-shelf={name}>
+              <h2 class="shelf-title">{categoryLabel(settings.language, name)}</h2>
+              <div class="shelf-row">
+                {#each items as puzzle (puzzle.id)}
+                  {@render picture(puzzle)}
+                {/each}
+              </div>
+            </section>
+          {/if}
         {/if}
       {/each}
       {#if mysteryShelf.length}
@@ -203,7 +247,7 @@
       {#if category === 'Favorites' || category === 'Mystery'}
         <h2 class="shelf-title span">{category === 'Favorites' ? t(settings.language, 'favorites') : t(settings.language, 'mystery')}</h2>
       {:else if category !== 'All'}
-        <h2 class="shelf-title span">{categoryLabel(settings.language, category)}</h2>
+        <h2 class="shelf-title span">{category === 'Animals' && habitat !== 'all' ? habitatLabel(settings.language, habitat) : categoryLabel(settings.language, category)}</h2>
       {/if}
       {#each visible as puzzle (puzzle.id)}
         {@render picture(puzzle)}

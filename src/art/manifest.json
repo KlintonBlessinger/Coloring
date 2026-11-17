@@ -131,6 +131,246 @@
       ]
     },
     {
+      "id": "animals-clownfish-reef",
+      "title": "Clownfish Reef",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["clownfish", "anemone"],
+        "setting": ["sea-life"],
+        "season": ["any"],
+        "mood": ["bright", "busy"],
+        "palette": ["orange", "pink", "blue"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      },
+      "facts": [
+        "Clownfish live in sea anemones. A coat of mucus keeps the sting from hurting them.",
+        "Every clownfish starts life as a male. One can grow up and become the female of the group."
+      ],
+      "factsEs": [
+        "El pez payaso vive en una anémona. Una capa de moco evita que el veneno le haga daño.",
+        "Todos los peces payaso nacen machos. Uno puede crecer y convertirse en la hembra del grupo."
+      ]
+    },
+    {
+      "id": "animals-octopus-garden",
+      "title": "Octopus Garden",
+      "category": "Animals",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["octopus"],
+        "setting": ["sea-life"],
+        "season": ["any"],
+        "mood": ["curious", "playful"],
+        "palette": ["purple", "blue", "green"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      },
+      "facts": [
+        "An octopus has three hearts, and its blood is blue.",
+        "An octopus can squeeze through any hole that is bigger than its beak."
+      ],
+      "factsEs": [
+        "Un pulpo tiene tres corazones y su sangre es azul.",
+        "Un pulpo puede pasar por cualquier hueco que sea más grande que su pico."
+      ]
+    },
+    {
+      "id": "animals-humpback-calf",
+      "title": "Humpback & Calf",
+      "category": "Animals",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["humpback whale", "calf"],
+        "setting": ["sea-life"],
+        "season": ["any"],
+        "mood": ["calm", "gentle"],
+        "palette": ["blue", "white", "gray"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      },
+      "facts": [
+        "A humpback calf drinks thick milk and can gain about 100 pounds in a day.",
+        "Male humpbacks in one part of the ocean often sing the same song."
+      ],
+      "factsEs": [
+        "La cría de la ballena jorobada bebe leche espesa y puede ganar unos 45 kilos en un día.",
+        "Los machos de una misma zona del océano suelen cantar la misma canción."
+      ]
+    },
+    {
+      "id": "animals-seahorse-meadow",
+      "title": "Seahorse Meadow",
+      "category": "Animals",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["seahorse"],
+        "setting": ["sea-life"],
+        "season": ["any"],
+        "mood": ["quiet", "gentle"],
+        "palette": ["yellow", "green", "blue"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      },
+      "facts": [
+        "A father seahorse carries the eggs in a pouch until the babies hatch.",
+        "Seahorses have no teeth. They suck food up through their snouts."
+      ],
+      "factsEs": [
+        "El papá caballito de mar guarda los huevos en una bolsa hasta que nacen las crías.",
+        "Los caballitos de mar no tienen dientes. Chupan la comida por el hocico."
+      ]
+    },
+    {
+      "id": "animals-giraffe-sunset",
+      "title": "Giraffe Sunset",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["giraffe"],
+        "setting": ["safari"],
+        "season": ["any"],
+        "mood": ["warm", "tall"],
+        "palette": ["orange", "yellow", "brown"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      },
+      "facts": [
+        "A giraffe has seven neck bones, the same number a person has.",
+        "A giraffe's long dark tongue can wrap around thorny acacia leaves."
+      ],
+      "factsEs": [
+        "Una jirafa tiene siete huesos en el cuello, los mismos que tiene una persona.",
+        "La lengua larga y oscura de la jirafa puede rodear las hojas con espinas de la acacia."
+      ]
+    },
+    {
+      "id": "animals-elephant-waterhole",
+      "title": "Elephant Waterhole",
+      "category": "Animals",
+      "difficulty": "easy",
+      "mystery": false,
+      "tags": {
+        "subject": ["elephant"],
+        "setting": ["safari"],
+        "season": ["any"],
+        "mood": ["calm", "warm"],
+        "palette": ["gray", "blue", "green"],
+        "style": ["storybook"],
+        "complexity": "easy"
+      },
+      "facts": [
+        "An elephant's trunk has about 40,000 muscles and no bones at all.",
+        "Elephants can hear deep rumbles through the ground with their feet."
+      ],
+      "factsEs": [
+        "La trompa de un elefante tiene unos 40.000 músculos y ningún hueso.",
+        "Los elefantes pueden oír sonidos graves a través del suelo, con las patas."
+      ]
+    },
+    {
+      "id": "animals-lion-cub",
+      "title": "Lion Cub",
+      "category": "Animals",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": ["lion", "zebra", "cub"],
+        "setting": ["safari"],
+        "season": ["any"],
+        "mood": ["sunny", "playful"],
+        "palette": ["orange", "yellow", "green"],
+        "style": ["storybook"],
+        "complexity": "medium"
+      },
+      "facts": [
+        "Lion cubs are born with faint spots that fade as they grow.",
+        "Lionesses do most of the hunting for the pride."
+      ],
+      "factsEs": [
+        "Los cachorros de león nacen con manchas suaves que se van con el tiempo.",
+        "Las leonas cazan casi toda la comida de la manada."
+      ]
+    },
+    {
+      "id": "animals-toucan-macaw",
+      "title": "Toucan & Macaw",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["toucan", "macaw"],
+        "setting": ["jungle"],
+        "season": ["any"],
+        "mood": ["bright", "noisy"],
+        "palette": ["yellow", "green", "red"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      },
+      "facts": [
+        "A toucan's bill looks heavy, but it is mostly hollow and light.",
+        "A macaw's beak is strong enough to crack a hard nut."
+      ],
+      "factsEs": [
+        "El pico del tucán parece pesado, pero es casi hueco y ligero.",
+        "El pico de un guacamayo es tan fuerte que puede romper una nuez dura."
+      ]
+    },
+    {
+      "id": "animals-tree-frog",
+      "title": "Red-Eyed Tree Frog",
+      "category": "Animals",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": ["tree frog"],
+        "setting": ["jungle"],
+        "season": ["any"],
+        "mood": ["bright", "still"],
+        "palette": ["green", "red", "blue"],
+        "style": ["storybook"],
+        "complexity": "hard"
+      },
+      "facts": [
+        "A red-eyed tree frog sleeps under a leaf with its eyes closed, so it looks like part of the leaf.",
+        "If something comes close, it flashes those red eyes to startle them."
+      ],
+      "factsEs": [
+        "La rana de ojos rojos duerme bajo una hoja con los ojos cerrados, y parece parte de la hoja.",
+        "Si algo se acerca, abre de golpe los ojos rojos para asustarlo."
+      ]
+    },
+    {
+      "id": "animals-jungle-tiger",
+      "title": "Jungle Tiger",
+      "category": "Animals",
+      "difficulty": "medium",
+      "mystery": false,
+      "tags": {
+        "subject": ["tiger"],
+        "setting": ["jungle"],
+        "season": ["any"],
+        "mood": ["quiet", "watchful"],
+        "palette": ["orange", "black", "green"],
+        "style": ["storybook"],
+        "complexity": "medium"
+      },
+      "facts": [
+        "Every tiger's stripes are different, like a fingerprint.",
+        "The skin under a tiger's fur is striped too."
+      ],
+      "factsEs": [
+        "Las rayas de cada tigre son distintas, como una huella digital.",
+        "La piel bajo el pelo del tigre también tiene rayas."
+      ]
+    },
+    {
       "id": "flowers-lotus-pond",
       "title": "Lotus Pond",
       "category": "Flowers",

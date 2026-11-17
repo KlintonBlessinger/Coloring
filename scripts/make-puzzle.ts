@@ -18,6 +18,11 @@ export interface MakeOptions {
   size?: number;
   colors?: number;
   artFile?: string;
+  /** Override the preset when thin details, such as stripes, would be merged away. */
+  minArea?: number;
+  sameColorArea?: number;
+  maxRegions?: number;
+  outlineReach?: number;
 }
 
 export function makePuzzle(opts: MakeOptions): PuzzleFile {
@@ -30,9 +35,10 @@ export function makePuzzle(opts: MakeOptions): PuzzleFile {
     colors,
     minColors: Math.min(preset.minColors, colors),
     maxColors: Math.max(preset.maxColors, colors),
-    minArea: Math.max(8, Math.round(preset.minArea * scale)),
-    sameColorArea: Math.max(12, Math.round(preset.sameColorArea * scale)),
-    maxRegions: preset.maxRegions,
+    minArea: opts.minArea ?? Math.max(8, Math.round(preset.minArea * scale)),
+    sameColorArea: opts.sameColorArea ?? Math.max(12, Math.round(preset.sameColorArea * scale)),
+    maxRegions: opts.maxRegions ?? preset.maxRegions,
+    outlineReach: opts.outlineReach,
     seed: hash(opts.id),
   });
   if (opts.artFile) writeArt(opts.image, opts.artFile);
