@@ -583,11 +583,12 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.locator('[data-testid="puzzle-card"][data-id="flowers-lotus-pond"]').click();
   await expect(page.getByTestId('mode-picker')).toBeVisible();
   await expect(page.getByTestId('mode-normal')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('mode-picker')).toContainText('Plain numbers');
+  await page.waitForTimeout(300);
+  await jpg('mode-picker.jpg');
   await page.getByTestId('mode-math').click();
   await expect(page.getByTestId('mode-math')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('mode-picker')).toContainText('To 20');
-  await page.waitForTimeout(300);
-  await jpg('mode-picker.jpg');
   await page.getByTestId('mode-start').click();
   await page.locator('[data-testid="play"][data-ready="1"]').waitFor();
   await expect(page.getByTestId('mode-chip')).toHaveAttribute('data-mode', 'math');
@@ -606,6 +607,11 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
   await page.waitForTimeout(500);
   await jpg('adding-20.jpg');
 
+  await page.getByTestId('back').click();
+  await page.locator('[data-testid="puzzle-card"][data-id="patterns-folk-art"]').click();
+  await expect(page.getByTestId('mode-picker')).toBeVisible();
+  await expect(page.getByTestId('mode-normal')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('mode-math')).toHaveAttribute('aria-pressed', 'false');
   await page.getByTestId('back').click();
   await page.getByTestId('open-settings').click();
   await page.getByTestId('number-times').click();

@@ -9,7 +9,7 @@
   import { applyPictureMode, hasFills, type PictureMode } from '../lib/picture-mode';
   import type { Settings } from '../lib/settings';
   import { speak } from '../lib/speech';
-  import { loadLastMode, loadPictureModes, loadProgress, saveLastMode, savePictureMode, type ProgressSave } from '../lib/storage';
+  import { loadPictureModes, loadProgress, saveLastMode, savePictureMode, type ProgressSave } from '../lib/storage';
 
   let {
     puzzleId,
@@ -63,15 +63,15 @@
     pickerOpen = false;
     committed = null;
     void (async () => {
-      const [save, modes, last] = await Promise.all([loadProgress(id), loadPictureModes(), loadLastMode()]);
+      const [save, modes] = await Promise.all([loadProgress(id), loadPictureModes()]);
       if (gone) return;
-      const remembered = modes[id];
-      const mode = (hasFills(save, regions) ? remembered : undefined) ?? last;
-      draft = mode;
       if (hasFills(save, regions)) {
+        const mode = modes[id] ?? 'normal';
+        draft = mode;
         committed = mode;
         pickerOpen = false;
       } else {
+        draft = 'normal';
         committed = null;
         pickerOpen = true;
       }
