@@ -1,6 +1,6 @@
 import { regionMarks, type RegionMark } from './labels';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
-import { MAX_SCALE, type DecodedPuzzle } from './types';
+import { MAX_SCALE, OUTLINE, type DecodedPuzzle } from './types';
 
 const PAPER = '#ffffff';
 const INK = '#262626';
@@ -40,6 +40,7 @@ export class Renderer {
   private readonly viewCtx: CanvasRenderingContext2D;
   private readonly paths: Path2D[];
   private readonly outer: (Path2D | undefined)[];
+  private readonly ink: HTMLCanvasElement | null;
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
   private selected = 0;
@@ -75,6 +76,7 @@ export class Renderer {
     this.viewCtx = viewCtx;
     this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
     this.outer = new Array(puzzle.paths.length);
+    this.ink = inkLayer(puzzle);
     this.artImage = new Image();
     this.artImage.onload = () => this.requestDraw();
     const base = import.meta.env.BASE_URL || '/';
@@ -233,7 +235,9 @@ export class Renderer {
     const cx = Math.floor((x - this.panX) / this.scale);
     const cy = Math.floor((y - this.panY) / this.scale);
     if (cx < 0 || cy < 0 || cx >= this.puzzle.width || cy >= this.puzzle.height) return null;
-    return this.puzzle.labels[cy * this.puzzle.width + cx] ?? 0;
+    const region = this.puzzle.labels[cy * this.puzzle.width + cx] ?? 0;
+    if (region === OUTLINE || region >= this.puzzle.regionColors.length) return null;
+    return region;
   }
 
   async renderBlob(): Promise<Blob> {
@@ -257,7 +261,12 @@ export class Renderer {
       ctx.lineWidth = 1.4;
       ctx.strokeStyle = INK;
       ctx.lineJoin = 'round';
-      for (const path of this.paths) ctx.stroke(path);
+      if (this.ink) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.ink, 0, 0);
+      } else {
+        for (const path of this.paths) ctx.stroke(path);
+      }
     }
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('Could not create image');
@@ -387,13 +396,18 @@ export class Renderer {
       ctx.fill(path, 'evenodd');
     }
     const fit = this.fitScale();
-    const outlineCss = Math.min(1.75, Math.max(1.25, 1.25 * Math.sqrt(this.scale / fit)));
-    ctx.lineWidth = outlineCss / this.scale;
-    ctx.strokeStyle = INK;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.miterLimit = 2;
-    for (const path of this.paths) ctx.stroke(path);
+    if (this.ink) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.ink, 0, 0);
+    } else {
+      const outlineCss = Math.min(1.75, Math.max(1.25, 1.25 * Math.sqrt(this.scale / fit)));
+      ctx.lineWidth = outlineCss / this.scale;
+      ctx.strokeStyle = INK;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.miterLimit = 2;
+      for (const path of this.paths) ctx.stroke(path);
+    }
     if (pulsing && this.hintIndex >= 0 && !this.isFilled(this.hintIndex)) {
       ctx.strokeStyle = NUMBER;
       ctx.lineWidth = 2.4 / this.scale;
@@ -452,6 +466,34 @@ export class Renderer {
     this.outer[index] = path;
     return path;
   }
+}
+
+function inkLayer(puzzle: DecodedPuzzle): HTMLCanvasElement | null {
+  let found = false;
+  for (let i = 0; i < puzzle.labels.length; i++) {
+    if (puzzle.labels[i] === OUTLINE) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = puzzle.width;
+  canvas.height = puzzle.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const image = ctx.createImageData(puzzle.width, puzzle.height);
+  const data = image.data;
+  for (let i = 0; i < puzzle.labels.length; i++) {
+    if (puzzle.labels[i] !== OUTLINE) continue;
+    const o = i * 4;
+    data[o] = 0x26;
+    data[o + 1] = 0x26;
+    data[o + 2] = 0x26;
+    data[o + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+  return canvas;
 }
 
 function labelPx(inr: number, scale: number, fitScale: number): number {

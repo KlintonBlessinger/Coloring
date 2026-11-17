@@ -2,6 +2,7 @@ import manifestFile from '../art/manifest.json' with { type: 'json' };
 import { decodeRLE16 } from './codec';
 import {
   CATEGORIES,
+  OUTLINE,
   type ArtRecord,
   type ArtTags,
   type Category,
@@ -39,7 +40,9 @@ function decode(file: PuzzleFile): StoredPuzzle {
     throw new Error(`Region data does not match in ${file.id}`);
   }
   for (const region of labels) {
-    if (region >= file.regionColors.length) throw new Error(`Region index out of range in ${file.id}`);
+    if (region !== OUTLINE && region >= file.regionColors.length) {
+      throw new Error(`Region index out of range in ${file.id}`);
+    }
   }
   return { ...file, labels };
 }

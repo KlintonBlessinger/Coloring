@@ -4,7 +4,8 @@ import { getPuzzle } from './catalog';
 import { nextHintRegion } from './hint';
 import { Renderer } from './renderer';
 import type { Settings } from './settings';
-import { loadProgress, saveProgress, type ProgressSave } from './storage';
+import { progressFits, regionMapKey } from './progress';
+import { clearProgress, loadProgress, saveProgress, type ProgressSave } from './storage';
 import type { DecodedPuzzle } from './types';
 
 export interface Snapshot {
@@ -280,12 +281,17 @@ export class Game {
       this.selected = this.pickStart();
       return;
     }
+    const mapKey = regionMapKey(this.puzzle.width, this.puzzle.height, this.puzzle.labels, this.filled.length);
+    if (!progressFits(save, this.filled.length, mapKey)) {
+      this.filled.fill(0);
+      this.order = [];
+      this.recompute();
+      this.selected = this.pickStart();
+      void clearProgress(this.puzzle.id);
+      return;
+    }
     try {
       const bytes = base64ToBytes(save.filled);
-      if (bytes.length !== this.filled.length) {
-        this.selected = this.pickStart();
-        return;
-      }
       for (let i = 0; i < bytes.length; i++) this.filled[i] = bytes[i] ? 1 : 0;
       this.recompute();
       const seen = new Set<number>();
@@ -308,6 +314,7 @@ export class Game {
       this.order = [];
       this.recompute();
       this.selected = this.pickStart();
+      void clearProgress(this.puzzle.id);
     }
   }
 
@@ -538,6 +545,7 @@ export class Game {
       order: encodeOrder(this.order),
       selected: this.selected,
       updatedAt: Date.now(),
+      map: regionMapKey(this.puzzle.width, this.puzzle.height, this.puzzle.labels, this.filled.length),
     };
   }
 

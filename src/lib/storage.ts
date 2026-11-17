@@ -10,6 +10,8 @@ export interface ProgressSave {
   order: string;
   selected: number;
   updatedAt: number;
+  /** Fingerprint of the region map. Absent on saves made before line-art rebuilds. */
+  map?: string;
 }
 
 export interface BackupFile {
@@ -70,6 +72,10 @@ export async function loadProgress(id: string): Promise<ProgressSave | null> {
 
 export async function saveProgress(id: string, save: ProgressSave): Promise<void> {
   await set(`progress:${id}`, save, store);
+}
+
+export async function clearProgress(id: string): Promise<void> {
+  await del(`progress:${id}`, store);
 }
 
 export async function loadAllProgress(): Promise<Record<string, ProgressSave>> {
@@ -179,6 +185,7 @@ export async function importBackup(data: BackupFile): Promise<void> {
       order: save.order,
       selected: save.selected,
       updatedAt: Number.isFinite(save.updatedAt) ? save.updatedAt : Date.now(),
+      ...(typeof save.map === 'string' ? { map: save.map } : {}),
     });
   }
   await saveSettings(normalizeSettings(data.settings));

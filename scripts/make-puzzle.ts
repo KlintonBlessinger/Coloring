@@ -7,7 +7,7 @@ import { encodeRLE } from '../src/lib/codec';
 import { hexToRgb } from '../src/lib/color';
 import { CATEGORIES, DIFFICULTY_PRESETS, type Category, type Difficulty, type PuzzleFile } from '../src/lib/types';
 import { loadImage, resizeToLongEdge, writePng, type Raster } from './image';
-import { segmentImage } from './segment';
+import { segmentImage, segmentLineArt } from './segment';
 
 export interface MakeOptions {
   image: Raster;
@@ -23,15 +23,18 @@ export interface MakeOptions {
   sameColorArea?: number;
   maxRegions?: number;
   outlineReach?: number;
+  /** The source is clean line art: bold near-black outlines and flat fills. */
+  lineArt?: boolean;
 }
 
 export function makePuzzle(opts: MakeOptions): PuzzleFile {
   const preset = DIFFICULTY_PRESETS[opts.difficulty];
   const colors = opts.colors ?? preset.colors;
-  if (colors < 8 || colors > 40) throw new Error('--colors must be between 8 and 40.');
+  const minRequested = opts.lineArt ? 2 : 8;
+  if (colors < minRequested || colors > 40) throw new Error(`--colors must be between ${minRequested} and 40.`);
   const sized = resizeToLongEdge(opts.image, opts.size ?? preset.size);
   const scale = (sized.width * sized.height) / (preset.size * preset.size);
-  const segment = segmentImage(sized, {
+  const segmentOptions = {
     colors,
     minColors: Math.min(preset.minColors, colors),
     maxColors: Math.max(preset.maxColors, colors),
@@ -40,7 +43,8 @@ export function makePuzzle(opts: MakeOptions): PuzzleFile {
     maxRegions: opts.maxRegions ?? preset.maxRegions,
     outlineReach: opts.outlineReach,
     seed: hash(opts.id),
-  });
+  };
+  const segment = opts.lineArt ? segmentLineArt(sized, segmentOptions) : segmentImage(sized, segmentOptions);
   if (opts.artFile) writeArt(opts.image, opts.artFile);
   return {
     id: opts.id,
@@ -142,6 +146,7 @@ function main(): void {
       size: { type: 'string' },
       colors: { type: 'string' },
       art: { type: 'string' },
+      'line-art': { type: 'boolean' },
     },
     strict: true,
   });
@@ -170,6 +175,7 @@ function main(): void {
     artFile: values.art || path.join('public', 'art', `${id}.jpg`),
     ...(values.size ? { size: Number(values.size) } : {}),
     ...(values.colors ? { colors: Number(values.colors) } : {}),
+    ...(values['line-art'] ? { lineArt: true } : {}),
   });
   writePuzzle(puzzle, values.out ?? '');
   writeSolutionThumb(puzzle, values.thumb ?? '');

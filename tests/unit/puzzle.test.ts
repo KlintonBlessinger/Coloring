@@ -4,9 +4,10 @@ import path from 'node:path';
 import test from 'node:test';
 import { encode } from 'jpeg-js';
 import { APP_NAME } from '../../src/lib/brand';
-import { decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
+import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
 import { hexToOklab, hexToRgb, labDist2, oklabToHex } from '../../src/lib/color';
-import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, type PuzzleFile } from '../../src/lib/types';
+import { progressFits, regionMapKey } from '../../src/lib/progress';
+import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE, type PuzzleFile } from '../../src/lib/types';
 import { loadImage, writePng } from '../../scripts/image';
 import { makePuzzle } from '../../scripts/make-puzzle';
 import { quantize } from '../../scripts/quantize';
@@ -101,6 +102,76 @@ test('a jpeg file becomes a puzzle', () => {
   } finally {
     fs.unlinkSync(file);
   }
+});
+
+test('line art keeps the ink layer and drops regions too thin to number', () => {
+  const width = 72;
+  const height = 56;
+  const data = new Uint8Array(width * height * 4);
+  const paint = (x0: number, y0: number, x1: number, y1: number, hex: string) => {
+    const [r, g, b] = hexToRgb(hex);
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const o = (y * width + x) * 4;
+        data[o] = r;
+        data[o + 1] = g;
+        data[o + 2] = b;
+        data[o + 3] = 255;
+      }
+    }
+  };
+  paint(0, 0, width, height, '#f4efe6');
+  paint(0, 0, width, 3, '#111111');
+  paint(0, height - 3, width, height, '#111111');
+  paint(0, 0, 3, height, '#111111');
+  paint(width - 3, 0, width, height, '#111111');
+  paint(34, 0, 37, height, '#111111');
+  paint(3, 3, 34, height - 3, '#e07a5f');
+  paint(37, 3, width - 3, height - 3, '#3d6ec9');
+  paint(7, 7, 12, 12, '#111111');
+  paint(8, 8, 10, 10, '#f0c43a');
+  const file = path.join(process.cwd(), 'content/sources/.line-art-test.png');
+  writePng(file, { width, height, data });
+  try {
+    const puzzle = makePuzzle({
+      image: loadImage(file),
+      id: 'line-art-test',
+      title: 'Line Art Test',
+      category: 'Patterns',
+      difficulty: 'easy',
+      size: 72,
+      colors: 10,
+      lineArt: true,
+    });
+    const labels = decodeRLE16(puzzle.labels, puzzle.width * puzzle.height);
+    let ink = 0;
+    for (const region of labels) {
+      if (region === OUTLINE) ink++;
+      else assert.ok(region < puzzle.regionColors.length);
+    }
+    assert.ok(ink > 100, `expected an ink layer, saw ${ink}`);
+    assert.equal(puzzle.regionColors.length, 2);
+    assert.equal(puzzle.paths.length, 2);
+    assert.equal(puzzle.inr.length, 2);
+    for (const radius of puzzle.inr) assert.ok(1.1 * radius * MAX_SCALE >= 10, String(radius));
+    for (const hex of puzzle.palette) {
+      const [r, g, b] = hexToRgb(hex);
+      assert.ok(Math.max(r, g, b) > 80, hex);
+    }
+  } finally {
+    fs.unlinkSync(file);
+  }
+});
+
+test('a rebuilt region map drops the old progress', () => {
+  const labels = Uint16Array.from([0, 0, 1, 1]);
+  const key = regionMapKey(2, 2, labels, 2);
+  const filled = bytesToBase64(Uint8Array.from([1, 0]));
+  assert.equal(progressFits({ filled, map: key }, 2, key), true);
+  assert.equal(progressFits({ filled, map: 'stale' }, 2, key), false);
+  assert.equal(progressFits({ filled }, 3, key), false);
+  assert.equal(progressFits({ filled }, 2, 'later-map'), true);
+  assert.notEqual(regionMapKey(2, 2, Uint16Array.from([0, 1, 1, 0]), 2), key);
 });
 
 test('starter puzzles cover every shelf', () => {

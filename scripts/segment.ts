@@ -1,5 +1,5 @@
 import { labDist2, oklabToHex, rgbToOklab, type Lab } from '../src/lib/color';
-import { MIN_INSCRIBED } from '../src/lib/types';
+import { MIN_INSCRIBED, OUTLINE } from '../src/lib/types';
 import type { Raster } from './image';
 import { traceRegions } from './paths';
 
@@ -54,6 +54,161 @@ export function segmentImage(raster: Raster, opts: SegmentOptions): Segment {
 }
 
 /**
+ * Clean line art: near-black pixels stay a non-fillable ink layer, and each
+ * enclosed flat fill becomes a region. The region's number is the clustered
+ * fill color. Regions too thin to label at max zoom merge into a neighbor.
+ */
+export function segmentLineArt(raster: Raster, opts: SegmentOptions): Segment {
+  const { width, height } = raster;
+  const ink = inkMask(raster.data, width, height);
+  const flooded = floodFills(raster.data, ink, width, height);
+  if (flooded.regions === 0) throw new Error('Line art has no fillable regions.');
+  const clustered = clusterFills(flooded.means, flooded.areas, opts);
+  const fitted = absorbNarrow(flooded.labels, clustered.colors, width, height, MIN_INSCRIBED);
+  return describe(fitted.labels, fitted.colors, clustered.palette, width, height);
+}
+
+function inkMask(src: Uint8Array, width: number, height: number): Uint8Array {
+  const count = width * height;
+  const mask = new Uint8Array(count);
+  const dark = (index: number) => {
+    const o = index * 4;
+    const r = src[o] ?? 0;
+    const g = src[o + 1] ?? 0;
+    const b = src[o + 2] ?? 0;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    return max < 85 && max - min < 36;
+  };
+  for (let i = 0; i < count; i++) if (dark(i)) mask[i] = 1;
+  const closed = mask.slice();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      if (mask[index]) continue;
+      let neighbors = 0;
+      if (x > 0 && mask[index - 1]) neighbors++;
+      if (x + 1 < width && mask[index + 1]) neighbors++;
+      if (y > 0 && mask[index - width]) neighbors++;
+      if (y + 1 < height && mask[index + width]) neighbors++;
+      const o = index * 4;
+      const max = Math.max(src[o] ?? 0, src[o + 1] ?? 0, src[o + 2] ?? 0);
+      if (neighbors >= 3 && max < 170) closed[index] = 1;
+    }
+  }
+  return closed;
+}
+
+function floodFills(
+  src: Uint8Array,
+  ink: Uint8Array,
+  width: number,
+  height: number,
+): { labels: Uint16Array; regions: number; means: Lab[]; areas: number[] } {
+  const count = width * height;
+  const labels = new Int32Array(count).fill(-1);
+  for (let i = 0; i < count; i++) if (ink[i]) labels[i] = OUTLINE;
+  const means: Lab[] = [];
+  const areas: number[] = [];
+  const queue = new Int32Array(count);
+  for (let start = 0; start < count; start++) {
+    if (labels[start] !== -1) continue;
+    const id = means.length;
+    if (id >= OUTLINE) throw new Error('Too many regions in the line art.');
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = start;
+    labels[start] = id;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let area = 0;
+    while (head < tail) {
+      const index = queue[head++] ?? 0;
+      const o = index * 4;
+      r += src[o] ?? 0;
+      g += src[o + 1] ?? 0;
+      b += src[o + 2] ?? 0;
+      area++;
+      const x = index % width;
+      const y = (index / width) | 0;
+      const push = (nx: number, ny: number) => {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) return;
+        const next = ny * width + nx;
+        if (labels[next] !== -1) return;
+        labels[next] = id;
+        queue[tail++] = next;
+      };
+      push(x - 1, y);
+      push(x + 1, y);
+      push(x, y - 1);
+      push(x, y + 1);
+    }
+    areas.push(area);
+    means.push(rgbToOklab(Math.round(r / area), Math.round(g / area), Math.round(b / area)));
+  }
+  return { labels: Uint16Array.from(labels), regions: means.length, means, areas };
+}
+
+function clusterFills(
+  means: Lab[],
+  areas: number[],
+  opts: SegmentOptions,
+): { palette: string[]; colors: Int32Array } {
+  const order = means.map((_, index) => index).sort((a, b) => (areas[b] ?? 0) - (areas[a] ?? 0));
+  const centroids: Lab[] = [];
+  const assign = new Int32Array(means.length);
+  const joinDistance = 0.05;
+  for (const index of order) {
+    let best = -1;
+    let bestDistance = joinDistance;
+    for (let color = 0; color < centroids.length; color++) {
+      const distance = Math.sqrt(labDist2(means[index]!, centroids[color]!));
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = color;
+      }
+    }
+    if (best < 0) {
+      best = centroids.length;
+      centroids.push(means[index]!.slice() as Lab);
+    }
+    assign[index] = best;
+  }
+  while (centroids.length > opts.maxColors) {
+    let pairA = 0;
+    let pairB = 1;
+    let closest = Infinity;
+    for (let a = 0; a < centroids.length; a++) {
+      for (let b = a + 1; b < centroids.length; b++) {
+        const distance = labDist2(centroids[a]!, centroids[b]!);
+        if (distance < closest) {
+          closest = distance;
+          pairA = a;
+          pairB = b;
+        }
+      }
+    }
+    const weightA = weightOf(assign, areas, pairA);
+    const weightB = weightOf(assign, areas, pairB);
+    const keep = weightA >= weightB ? pairA : pairB;
+    const drop = keep === pairA ? pairB : pairA;
+    centroids.splice(drop, 1);
+    for (let i = 0; i < assign.length; i++) {
+      if (assign[i] === drop) assign[i] = keep;
+      else if ((assign[i] ?? 0) > drop) assign[i] = (assign[i] ?? 0) - 1;
+    }
+  }
+  return { palette: centroids.map((lab) => oklabToHex(lab)), colors: assign };
+}
+
+function weightOf(assign: Int32Array, areas: number[], color: number): number {
+  let total = 0;
+  for (let i = 0; i < assign.length; i++) if (assign[i] === color) total += areas[i] ?? 0;
+  return total;
+}
+
+/**
  * Merge regions whose inscribed radius is below `minInr` so every remaining
  * region can show a number at max zoom. Same-color neighbors win the tie.
  */
@@ -73,21 +228,46 @@ export function absorbNarrow(
     for (let i = 0; i < regions; i++) if ((depth[i] ?? 0) < minInr) narrow++;
     if (!narrow) break;
     const area = new Int32Array(regions);
-    for (let i = 0; i < currentLabels.length; i++) area[currentLabels[i] ?? 0] = (area[currentLabels[i] ?? 0] ?? 0) + 1;
+    for (let i = 0; i < currentLabels.length; i++) {
+      const id = currentLabels[i] ?? 0;
+      if (id < regions) area[id] = (area[id] ?? 0) + 1;
+    }
     const parent = Array.from({ length: regions }, (_, index) => index);
     const alive = Array.from({ length: regions }, () => true);
     const adj: Map<number, number>[] = Array.from({ length: regions }, () => new Map());
     const link = (a: number, b: number) => {
-      if (a === b) return;
+      if (a < 0 || b < 0 || a === b || a >= regions || b >= regions) return;
       adj[a]!.set(b, (adj[a]!.get(b) ?? 0) + 1);
       adj[b]!.set(a, (adj[b]!.get(a) ?? 0) + 1);
     };
+    const fillAt = (x: number, y: number): number => {
+      if (x < 0 || y < 0 || x >= width || y >= height) return -1;
+      const id = currentLabels[y * width + x] ?? 0;
+      return id < regions ? id : -1;
+    };
+    const acrossInk = (x: number, y: number, dx: number, dy: number): number => {
+      for (let step = 1; step <= 6; step++) {
+        const id = fillAt(x + dx * step, y + dy * step);
+        if (id >= 0) return id;
+        const nx = x + dx * step;
+        const ny = y + dy * step;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) return -1;
+        if ((currentLabels[ny * width + nx] ?? 0) !== OUTLINE) return -1;
+      }
+      return -1;
+    };
     for (let y = 0; y < height; y++) {
-      const row = y * width;
       for (let x = 0; x < width; x++) {
-        const id = currentLabels[row + x] ?? 0;
-        if (x + 1 < width) link(id, currentLabels[row + x + 1] ?? 0);
-        if (y + 1 < height) link(id, currentLabels[row + width + x] ?? 0);
+        const id = fillAt(x, y);
+        if (id < 0) continue;
+        for (const [dx, dy] of [
+          [1, 0],
+          [0, 1],
+        ] as const) {
+          const direct = fillAt(x + dx, y + dy);
+          if (direct >= 0) link(id, direct);
+          else link(id, acrossInk(x, y, dx, dy));
+        }
       }
     }
     const root = (id: number): number => {
@@ -140,7 +320,12 @@ export function absorbNarrow(
     const next = new Uint16Array(currentLabels.length);
     const nextColors: number[] = [];
     for (let i = 0; i < currentLabels.length; i++) {
-      const id = root(currentLabels[i] ?? 0);
+      const raw = currentLabels[i] ?? 0;
+      if (raw >= regions) {
+        next[i] = OUTLINE;
+        continue;
+      }
+      const id = root(raw);
       let dense = remap.get(id);
       if (dense === undefined) {
         dense = remap.size;
@@ -699,6 +884,7 @@ function maxInscribed(labels: Uint16Array, width: number, height: number, region
   const best = new Float32Array(regions);
   for (let i = 0; i < labels.length; i++) {
     const region = labels[i] ?? 0;
+    if (region >= regions) continue;
     const depth = dist[i] ?? 0;
     if (depth > (best[region] ?? 0)) best[region] = depth;
   }
@@ -720,6 +906,7 @@ function interiorPoints(
   const y = Array.from({ length: regions }, (_, i) => (seedY[i] ?? 0) + 0.5);
   for (let i = 0; i < labels.length; i++) {
     const region = labels[i] ?? 0;
+    if (region >= regions) continue;
     const depth = dist[i] ?? 0;
     if (depth < (best[region] ?? 0)) continue;
     best[region] = depth;
@@ -751,6 +938,7 @@ function describe(
   const colorOfRaw = new Map<number, number>();
   for (let i = 0; i < count; i++) {
     const region = labels[i] ?? 0;
+    if (region >= regions) continue;
     const x = i % width;
     const y = (i / width) | 0;
     area[region] = (area[region] ?? 0) + 1;
@@ -834,6 +1022,7 @@ function measure(
   }
   for (let i = 0; i < count; i++) {
     const region = labels[i] ?? 0;
+    if (region >= regions) continue;
     const x = i % width;
     const y = (i / width) | 0;
     area[region] = (area[region] ?? 0) + 1;
