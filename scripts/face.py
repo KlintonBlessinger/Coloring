@@ -669,7 +669,19 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
     pupil_lab = np.array([12.0, 128.0, 128.0])
     catch_lab = np.array([248.0, 128.0, 128.0])
     line_lab = np.array([18.0, 128.0, 128.0])
-    profile = _species_eye(puzzle_id)
+    profile = dict(_species_eye(puzzle_id))
+    # Hammerhead eyes sit on the tips of a flat bar. They stay white circles.
+    # This does not change the shared mammal, owl, or koala eye.
+    if 'hammerhead' in (puzzle_id or '').lower():
+        profile.update({
+            'shape': 'round',
+            'hex': '#F7F7F7',
+            'pupil': 0.54,
+            'rim': 0.0,
+            'lid': 0.0,
+            'tear': False,
+            'scale': 0.86,
+        })
     if profile['hex']:
         shared_fallback = _hex_lab(profile['hex'])
     else:
@@ -757,6 +769,11 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
                 if lid_path:
                     shapes.append((0.1, _lab_hex(line_lab), lid_path))
                     _paint_poly(canvas, covered, lid_pts, line_lab)
+            if 'hammerhead' in (puzzle_id or '').lower():
+                # The white of the eye is the tip of the hammer. A thin ring on
+                # open water was being folded into the sky, so it is drawn here.
+                shapes.append((0.5, _lab_hex(shared), _ellipse_path(cx, cy, semi_a, semi_b, 0)))
+                _paint_ellipse(canvas, covered, cx, cy, semi_a, semi_b, shared)
             pupil_path = _ellipse_path(cx, cy, pupil_a, pupil_b, 0)
             catch_r = max(1.4, min(pupil_a, pupil_b) * 0.28)
             catch_path = _ellipse_path(cx - pupil_a * 0.22, cy - pupil_b * 0.28, catch_r, catch_r, 0)
