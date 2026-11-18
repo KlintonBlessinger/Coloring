@@ -9,7 +9,7 @@ const entry: GameEntry = {
   title: 'Word Search',
   tagline: 'Find the words hiding in the grid.',
   path: '/word-search/',
-  cover: 'games/word-search-cover.svg',
+  cover: 'games/word-search-cover.jpg',
   order: 1,
 };
 

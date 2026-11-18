@@ -5,7 +5,7 @@ const entry: GameEntry = {
   title: 'Little Zookeeper',
   tagline: 'Look after the little animals.',
   path: '/zoo/',
-  cover: 'thumbs/animals-lion-cub.jpg',
+  cover: 'games/zoo-cover.jpg',
   order: 2,
 };
 

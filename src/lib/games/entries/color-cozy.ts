@@ -5,7 +5,7 @@ const entry: GameEntry = {
   title: 'Color Cozy',
   tagline: 'Color by number, offline.',
   path: '/color/',
-  cover: 'thumbs/animals-cat-window.jpg',
+  cover: 'games/color-cozy-cover.jpg',
   order: 0,
   load: () => import('../../../color/ColorRoot.svelte'),
 };
