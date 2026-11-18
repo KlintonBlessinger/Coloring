@@ -1,0 +1,133 @@
+html, body, #zoo {
+  height: 100%;
+  margin: 0;
+  background: #c6a56b;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-family: Nunito, "Segoe UI", sans-serif;
+  color: #3c2f2c;
+}
+
+.zoo-root, .zoo-stage, .zoo-stage canvas, .zoo-joy {
+  touch-action: none;
+}
+
+.zoo-root {
+  position: fixed;
+  inset: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.zoo-stage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(max(10px, env(safe-area-inset-top)) + 92px);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 140px);
+}
+
+.zoo-home, .zoo-where, .zoo-note, .zoo-care, .zoo-journal, .zoo-panel, .zoo-joy {
+  position: absolute;
+  z-index: 2;
+}
+
+.zoo-home, .zoo-where, .zoo-care, .zoo-journal {
+  background: rgba(255, 250, 243, 0.94);
+  color: #3c2f2c;
+  border: 0;
+  border-radius: 999px;
+  font: 800 18px Nunito, sans-serif;
+  text-decoration: none;
+  padding: 8px 14px;
+}
+
+.zoo-home {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+}
+
+.zoo-where {
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  margin: 0;
+}
+
+.zoo-note {
+  left: max(12px, env(safe-area-inset-left));
+  right: 156px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  margin: 0;
+  text-align: left;
+  background: rgba(255, 250, 243, 0.94);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.zoo-care, .zoo-journal {
+  top: calc(max(10px, env(safe-area-inset-top)) + 48px);
+  min-height: 44px;
+}
+
+.zoo-journal { left: max(12px, env(safe-area-inset-left)); }
+.zoo-care { left: calc(max(12px, env(safe-area-inset-left)) + 108px); }
+
+.zoo-joy {
+  left: auto;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: rgba(60, 47, 44, 0.28);
+  border: 2px solid rgba(255, 250, 243, 0.75);
+}
+
+.zoo-knob {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 250, 243, 0.95);
+  left: 50%;
+  top: 50%;
+  margin-left: -26px;
+  margin-top: -26px;
+}
+
+.zoo-panel {
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-height: 58%;
+  overflow: auto;
+  background: rgba(255, 250, 243, 0.96);
+  border-radius: 18px;
+  padding: 16px;
+  touch-action: pan-y;
+  z-index: 3;
+}
+
+.zoo-panel h2 { margin: 0 0 8px; font-size: 22px; }
+.zoo-panel p { margin: 0 0 12px; font-size: 18px; }
+.zoo-panel button, .zoo-row {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 8px 0;
+  border: 0;
+  border-radius: 12px;
+  background: #efe4d4;
+  color: #3c2f2c;
+  font: 800 18px Nunito, sans-serif;
+  text-align: left;
+  padding: 10px 12px;
+}
+.zoo-close { background: #2f6a45; color: #fffaf3; text-align: center; }
+.zoo-area-label { margin: 14px 0 4px; font-size: 16px; color: #7a6a62; }
