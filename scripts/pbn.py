@@ -289,7 +289,7 @@ def skeletonize(mask: np.ndarray) -> np.ndarray:
     return skeleton > 0
 
 
-def even_ink(mask: np.ndarray) -> np.ndarray:
+def even_ink(mask: np.ndarray, diameter: int | None = None) -> np.ndarray:
     """One clean stroke width, without the specks the contour step leaves behind.
 
     The centerline is the existing ink, so faces are not resegmented. Lumps in
@@ -304,9 +304,10 @@ def even_ink(mask: np.ndarray) -> np.ndarray:
     else:
         # A raw skeleton stair-steps a smooth crease into a jagged seam.
         center = smooth_centerline(center)
-    diameter = int(round(INK_STROKE))
-    if diameter % 2 == 0:
-        diameter += 1
+    if diameter is None:
+        diameter = int(round(INK_STROKE))
+        if diameter % 2 == 0:
+            diameter += 1
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
     pen = cv2.dilate(center.astype(np.uint8), kernel)
     soft = cv2.GaussianBlur(pen.astype(np.float32), (0, 0), 0.8)
@@ -316,7 +317,9 @@ def even_ink(mask: np.ndarray) -> np.ndarray:
 
 def vectorize_ink(ink: np.ndarray, epsilon: float = 1.5, symmetry: dict | None = None) -> str:
     height, width = ink.shape
-    even = even_ink(ink)
+    # A mandala outline is a hairline. The usual pen is the lump on that stroke.
+    pen = 3 if symmetry is not None and symmetry.get('style') == 'curve' else None
+    even = even_ink(ink, pen)
     if symmetry is not None:
         even = fold_field(even, symmetry)
         even = round_ink_rings(even, symmetry)
@@ -324,7 +327,7 @@ def vectorize_ink(ink: np.ndarray, epsilon: float = 1.5, symmetry: dict | None =
     # A light blur plus a looser fit turns the even pen into a smooth outline.
     # A curved mandala wedge is blurred more so the copied stroke has no kink.
     if symmetry is not None and symmetry.get('style') == 'curve':
-        sigma = 1.8
+        sigma = 2.4
     elif symmetry is not None:
         sigma = 1.15
     else:
@@ -730,6 +733,46 @@ def seat_labels(regions: list[dict], ink_path: str, width: int, height: int, avo
                 if nudged:
                     break
         region['label'] = {'x': x, 'y': y, 'r': pole[2]}
+
+
+def fold_speck_paths(paths: list[dict], width: int, height: int) -> list[dict]:
+    """A region too small to number is a speck. It takes the color it touches.
+
+    The host outline stays. The speck's own fill is appended, so the page does
+    not grow a hole and a large petal is not retraced.
+    """
+    if not paths:
+        return paths
+    ids = np.zeros((height, width), np.int32)
+    for region in paths:
+        ids[path_mask(region['d'], width, height)] = int(region['id']) + 1
+    kernel = np.ones((3, 3), np.uint8)
+    drop: set[int] = set()
+    for region in paths:
+        if region.get('eye') or float(region['label']['r']) >= 3:
+            continue
+        rid = int(region['id']) + 1
+        mask = ids == rid
+        if not mask.any():
+            drop.add(int(region['id']))
+            continue
+        ring = cv2.dilate(mask.astype(np.uint8), kernel).astype(bool) & ~mask & (ids > 0)
+        if not ring.any():
+            continue
+        values, counts = np.unique(ids[ring], return_counts=True)
+        host = int(values[int(np.argmax(counts))])
+        host_region = next((item for item in paths if int(item['id']) + 1 == host), None)
+        if host_region is None or int(host_region['id']) in drop:
+            continue
+        host_region['d'] = host_region['d'] + region['d']
+        ids[mask] = host
+        drop.add(int(region['id']))
+    if not drop:
+        return paths
+    kept = [region for region in paths if int(region['id']) not in drop]
+    for index, region in enumerate(kept):
+        region['id'] = index
+    return kept
 
 
 def stamp_irises(regions: np.ndarray, region_cluster: np.ndarray, face: dict) -> tuple[np.ndarray, np.ndarray, dict[int, np.ndarray], list[list[int]]]:
@@ -1317,6 +1360,93 @@ def quantize_tonal_palette(
     return regions, region_cluster, region_number, palette, number_lab, peel
 
 
+def seal_stroke_gaps(labels: np.ndarray, centers: np.ndarray, gap: int = 5) -> np.ndarray:
+    """Join a 2px break in thin gold so a copied wedge is one stroke.
+
+    Every gold shade is closed together. Only pixels sitting on that break
+    are painted, so a ring that is already separated stays a ring.
+    """
+    gold = []
+    for cluster, color in enumerate(centers):
+        lightness = float(color[0]) * 100 / 255
+        a = float(color[1]) - 128
+        b = float(color[2]) - 128
+        if lightness >= 55 and b >= 18 and abs(a) <= 28:
+            gold.append(cluster)
+    if not gold:
+        return labels
+    union = np.isin(labels, np.array(gold, np.int32))
+    reach = cv2.distanceTransform(union.astype(np.uint8), cv2.DIST_L2, 3)
+    thin = (reach > 0) & (reach <= 3.2)
+    if int(thin.sum()) < 40:
+        return labels
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (gap, gap))
+    closed = cv2.morphologyEx(thin.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    added = (closed > 0) & ~union & (labels < 255)
+    best_d = np.full(labels.shape, 99, np.float32)
+    best = np.zeros(labels.shape, np.uint8)
+    for cluster in gold:
+        dist = cv2.distanceTransform((labels != cluster).astype(np.uint8), cv2.DIST_L2, 3)
+        nearer = dist < best_d
+        best_d = np.where(nearer, dist, best_d)
+        best = np.where(nearer, np.uint8(cluster), best)
+    fill = added & (best_d <= 2.4)
+    if int(fill.sum()) > int(thin.sum()) * 0.2:
+        return labels
+    out = labels.copy()
+    out[fill] = best[fill]
+    return out
+
+
+def drop_false_specks(regions: np.ndarray, region_cluster: np.ndarray, centers: np.ndarray, source_lab: np.ndarray) -> np.ndarray:
+    """A crumb whose source color is the neighbor's color is a speck, not a dot.
+
+    A real dot matches the source, so it stays. A blue crumb on a green petal does not.
+    """
+    out = regions
+    scale = np.array([100 / 255, 1, 1], np.float32)
+    kernel = np.ones((3, 3), np.uint8)
+    for region_id in np.unique(out):
+        region_id = int(region_id)
+        if region_id <= 0 or region_id >= len(region_cluster):
+            continue
+        mask = out == region_id
+        area = int(mask.sum())
+        if area < 8 or area > 140:
+            continue
+        ys, xs = np.where(mask)
+        sub = mask[int(ys.min()):int(ys.max()) + 1, int(xs.min()):int(xs.max()) + 1]
+        radius = float(cv2.distanceTransform(sub.astype(np.uint8), cv2.DIST_L2, 3).max())
+        if radius >= 3.0:
+            continue
+        own_index = int(region_cluster[region_id])
+        if own_index >= len(centers):
+            continue
+        source_med = np.median(source_lab[mask], axis=0)
+        own_d = float(np.linalg.norm((source_med - centers[own_index]) * scale))
+        if own_d < 26:
+            continue
+        ring = cv2.dilate(mask.astype(np.uint8), kernel).astype(bool) & ~mask & (out > 0)
+        if not ring.any():
+            continue
+        best = None
+        best_d = own_d - 12
+        for value in np.unique(out[ring]):
+            value = int(value)
+            if value <= 0 or value >= len(region_cluster):
+                continue
+            other_index = int(region_cluster[value])
+            if other_index >= len(centers):
+                continue
+            distance = float(np.linalg.norm((source_med - centers[other_index]) * scale))
+            if distance < best_d:
+                best_d = distance
+                best = value
+        if best is not None:
+            out[mask] = best
+    return out
+
+
 def close_symmetry_rings(labels: np.ndarray, strokes: np.ndarray, spec: dict) -> np.ndarray:
     """Fill a gold ring that already runs around the center.
 
@@ -1520,6 +1650,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         labels = fold_field(labels, symmetry)
         if symmetry.get('style') == 'curve' and thick_strokes.any():
             labels = close_symmetry_rings(labels, thick_strokes, symmetry)
+        labels = seal_stroke_gaps(labels, centers)
         ink = fold_field(ink.astype(np.uint8), symmetry).astype(bool)
         detail = fold_field(detail.astype(np.uint8), symmetry).astype(bool)
     regions = np.zeros((height, width), np.int32)
@@ -1535,6 +1666,8 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     regions = absorb_unlabeled(regions)
     protect = face_region_ids(regions, zone) | regions_covering(regions, thick_strokes)
     regions, orphan = fold_by_color(regions, region_cluster, centers, min_area, protect, merge)
+    if symmetry is not None:
+        regions = drop_false_specks(regions, region_cluster, centers, source_lab)
     if mouth_boxes and orphan.any():
         # A crumb on a lip is the dark speck. It joins the lip instead of
         # becoming a stack of pixel rectangles.
@@ -1950,6 +2083,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     ink_path = vectorize_ink(drawn_ink, ink_eps, symmetry) if mode == 'lineart' else ''
     seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height, detail)
+    if symmetry:
+        paths = fold_speck_paths(paths, width, height)
+        seal_border(paths, width, height)
+        seat_labels(paths, ink_path, width, height, detail)
     for region in paths:
         if region.get('eye'):
             region['label']['r'] = max(float(region['label']['r']), 4.0)

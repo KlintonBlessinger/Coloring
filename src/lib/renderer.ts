@@ -417,7 +417,9 @@ export class Renderer {
       ctx.lineJoin = 'round';
       ctx.stroke(path);
     }
-    this.strokeSeams(ctx, (index) => !cull || this.visible(index));
+    // A filled region already strokes in its own color. A dark seam on top of
+    // that stroke is the crackle across a finished picture.
+    this.strokeSeams(ctx, (index) => (!cull || this.visible(index)) && !this.isFilled(index));
     this.paintInk(ctx);
   }
 
