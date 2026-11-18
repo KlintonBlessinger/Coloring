@@ -22,111 +22,53 @@ import numpy as np
 from scipy import ndimage as ndi
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
-from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids, smooth_centerline
+from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids, smooth_centerline, swallow_lion_cap
 from symmetry import fold_field, refold_regions, replicate, replicate_stroke, ring_path, round_ink_rings, wedge_mask
 
 LINEART = {'k': 28, 'min_area': 60, 'merge': 6.0}
 TONAL = {'k': 36, 'min_area': 90, 'merge': 6.0}
 
-# Species eye. Each picture's own eye boxes place it; this only says how that
-# species' eye is built. Iris is one paintable color. Pupil shape is round or
-# slit. Lid is the crown thickness of an upper curve that tapers to a point.
-# Catchlight is an offset inside the pupil, as a fraction of the pupil, with
-# up and left negative.
+# Lion only, until that eye is approved. Other species keep their previous
+# eyes. Iris is one paintable color. The lid is a short upper curve, thickest
+# at the crown. Catchlight is an offset inside the pupil, up and left negative.
 EYE_TEMPLATES: dict[str, dict] = {
     'lion': {
         'shape': 'almond',
         'iris': '#E08A2C',
         'pupil': 'round',
-        'pupil_scale': 0.30,
-        'lid': 1.3,
-        'aspect': 0.66,
-        'scale': 1.45,
+        'pupil_scale': 0.28,
+        'lid': 1.2,
+        'lid_span': 0.38,
+        'aspect': 0.50,
+        'scale': 1.25,
         'place': 'box',
-        'drop': 8.0,
-        'catchlight': (-0.22, -0.30),
-        'catch_px': 1.5,
-    },
-    'tiger': {
-        'shape': 'almond',
-        'iris': '#E2A832',
-        'pupil': 'round',
-        'pupil_scale': 0.34,
-        'lid': 2.2,
-        'aspect': 0.68,
-        'scale': 0.90,
-        'catchlight': (-0.22, -0.28),
-    },
-    'cheetah': {
-        'shape': 'almond',
-        'iris': '#D08928',
-        'pupil': 'round',
-        'pupil_scale': 0.34,
-        'lid': 2.2,
-        'aspect': 0.68,
-        'scale': 0.90,
-        'catchlight': (-0.22, -0.28),
-        'tear': True,
-    },
-    'owl': {
-        'shape': 'round',
-        'iris': '#F2C414',
-        'pupil': 'round',
-        'pupil_scale': 0.50,
-        'lid': 0.0,
-        'rim': 2.0,
-        'scale': 0.96,
-        'catchlight': (-0.18, -0.22),
-    },
-    'koala': {
-        'shape': 'small',
-        'iris': '#3E2A16',
-        'pupil': 'round',
-        'pupil_scale': 0.42,
-        'lid': 1.6,
-        'aspect': 0.86,
-        'scale': 0.62,
-        'catchlight': (-0.18, -0.22),
-    },
-    'default': {
-        'shape': 'fill',
-        'iris': None,
-        'pupil': 'round',
-        'pupil_scale': 0.36,
-        'lid': 2.0,
-        'aspect': 0.72,
-        'scale': 0.92,
-        'catchlight': (-0.22, -0.28),
+        'drop': 4.0,
+        'catchlight': (-0.20, -0.24),
+        'catch_px': 1.4,
     },
 }
 
 
-def eye_template(puzzle_id: str) -> dict:
-    """The species record for this picture, ready for the eye boxes to place."""
-    name = (puzzle_id or '').lower()
-    key = 'default'
-    for species in ('owl', 'koala', 'cheetah', 'tiger', 'lion'):
-        if species in name:
-            key = species
-            break
-    spec = EYE_TEMPLATES[key]
-    pupil = spec.get('pupil', 'round')
+def eye_template(puzzle_id: str) -> dict | None:
+    """The lion record, or None for every other picture."""
+    if 'lion' not in (puzzle_id or '').lower():
+        return None
+    spec = EYE_TEMPLATES['lion']
     return {
-        'shape': spec.get('shape', 'almond'),
-        'hex': spec.get('iris'),
-        'pupil': float(spec.get('pupil_scale', 0.36)),
-        'rim': float(spec.get('rim', 0.0)),
-        'lid': float(spec.get('lid', 0.0)),
-        'tear': bool(spec.get('tear', False)),
-        'scale': float(spec.get('scale', 0.92)),
-        'slit': pupil == 'slit',
-        'aspect': float(spec.get('aspect', 0.72)),
-        'catchlight': tuple(spec.get('catchlight', (-0.22, -0.28))),
-        'catch_px': float(spec.get('catch_px', 1.6)),
-        'place': spec.get('place', 'pair'),
-        'drop': float(spec.get('drop', 0.0)),
-        'fur_rim': spec.get('fur_rim'),
-        'fur_rim_px': float(spec.get('fur_rim_px', 5.0)),
+        'shape': spec['shape'],
+        'hex': spec['iris'],
+        'pupil': float(spec['pupil_scale']),
+        'rim': 0.0,
+        'lid': float(spec['lid']),
+        'lid_span': float(spec['lid_span']),
+        'tear': False,
+        'scale': float(spec['scale']),
+        'slit': False,
+        'aspect': float(spec['aspect']),
+        'catchlight': tuple(spec['catchlight']),
+        'catch_px': float(spec['catch_px']),
+        'place': spec['place'],
+        'drop': float(spec['drop']),
     }
 
 
@@ -2944,6 +2886,8 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             '_source': image,
             '_regions': regions,
         }
+    if 'lion' in str(puzzle_id):
+        swallow_lion_cap(regions, source_lab, face.get('irises') or [])
     paths = []
     for region_id in range(region_count):
         # Large tonal areas, such as a wall, get a smoother contour. Small
