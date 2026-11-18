@@ -25,8 +25,8 @@ REPORT = ROOT / 'content' / 'reports' / 'vector-scores.json'
 
 def main() -> None:
     files = sorted(PUZZLES.glob('*.json'))
-    if len(files) < 99:
-        print(f'expected 99 puzzles, found {len(files)}', file=sys.stderr)
+    if len(files) < 79:
+        print(f'expected 79 puzzles, found {len(files)}', file=sys.stderr)
         sys.exit(1)
     scores = []
     failed = []

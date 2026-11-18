@@ -197,14 +197,16 @@ test('a label center has to fall inside its path', () => {
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
-  assert.equal(files.length, 99);
+  assert.equal(files.length, 79);
   const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as VectorPuzzle);
   for (const category of CATEGORIES) {
+    if (category === 'Grown-ups') continue;
     assert.ok(
       puzzles.some((puzzle) => puzzle.category === category),
       category,
     );
   }
+  assert.equal(puzzles.filter((puzzle) => puzzle.category === 'Grown-ups' || puzzle.id.startsWith('adult-')).length, 0);
   for (const difficulty of ['easy', 'medium', 'hard'] as const) {
     assert.ok(puzzles.some((puzzle) => puzzle.difficulty === difficulty));
   }
@@ -245,7 +247,7 @@ test('starter puzzles cover every shelf', () => {
     smallRadiusFraction: number;
     ok: boolean;
   }[];
-  assert.equal(scores.length, 99);
+  assert.equal(scores.length, 79);
   for (const score of scores) {
     assert.equal(score.ok, true, score.id);
     assert.ok(score.meanDE76 <= 6, `${score.id} deltaE ${score.meanDE76}`);

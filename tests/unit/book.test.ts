@@ -155,18 +155,8 @@ test('the art manifest covers every picture and at least five mysteries', () => 
     assert.ok(record?.tags.setting.includes(habitat), id);
     assert.ok((record?.tags.subject.length ?? 0) > 0, id);
   }
-  const grownups = normal.filter((picture) => picture.category === 'Grown-ups');
-  assert.equal(grownups.length, 20);
-  for (const record of grownups) {
-    assert.equal(record.difficulty, 'hard', record.id);
-    assert.ok(record.tags.setting.includes('grown-ups'), record.id);
-  }
-  const grownGroups: Record<string, number> = { abstract: 8, mandala: 3, floral: 4, places: 6 };
-  for (const [group, count] of Object.entries(grownGroups)) {
-    assert.equal(grownups.filter((picture) => picture.tags.subject.includes(group)).length, count, group);
-  }
-  assert.ok(grownups.find((picture) => picture.id === 'adult-cherry-blossom-garden')?.tags.subject.includes('floral'));
-  assert.ok(grownups.find((picture) => picture.id === 'adult-cherry-blossom-garden')?.tags.subject.includes('places'));
+  const grownups = normal.filter((picture) => picture.category === 'Grown-ups' || picture.id.startsWith('adult-'));
+  assert.equal(grownups.length, 0);
   const realistic = normal.filter((picture) => picture.id.startsWith('realistic-'));
   assert.equal(realistic.length, 40);
   for (const record of realistic) {

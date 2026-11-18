@@ -72,6 +72,11 @@
 
   const mysteryShelf = $derived(visible.filter((puzzle) => puzzle.mystery && !puzzle.packId));
 
+  const grownUpCount = $derived.by(() => {
+    packTick;
+    return listPuzzles().filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === 'Grown-ups').length;
+  });
+
   const packShelves = $derived.by(() => {
     const order: string[] = [];
     const groups = new Map<string, CatalogEntry[]>();
@@ -134,14 +139,16 @@
     <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => pickShelf('Favorites')}>{t(settings.language, 'favorites')}</button>
     <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => pickShelf('Mystery')}>{t(settings.language, 'mystery')}</button>
     {#each CATEGORIES as name (name)}
-      <button
-        type="button"
-        class="chip"
-        class:on={category === name}
-        data-testid="category-chip"
-        data-category={name}
-        onclick={() => pickShelf(name)}
-      >{categoryLabel(settings.language, name)}</button>
+      {#if name !== 'Grown-ups' || grownUpCount > 0}
+        <button
+          type="button"
+          class="chip"
+          class:on={category === name}
+          data-testid="category-chip"
+          data-category={name}
+          onclick={() => pickShelf(name)}
+        >{categoryLabel(settings.language, name)}</button>
+      {/if}
     {/each}
   </div>
 

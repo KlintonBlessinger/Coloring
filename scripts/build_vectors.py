@@ -103,31 +103,9 @@ REALISTIC = [
     ('realistic-jaguar', 'Jaguar by the River', 'Animals', 'medium', 96, 150),
 ]
 
-# Per-picture line-art settings from the grown-up source set. The palette is the
-# source color, unchanged. peacock-mandala has no source record; it uses the
-# other mandala cut and may land near 19 colors.
-GROWNUPS = [
-    ('adult-flowing-geometry', 'Flowing Geometry', 'Grown-ups', 'hard', 'lineart', 36, 80),
-    ('adult-jewel-swirls', 'Jewel Swirls', 'Grown-ups', 'hard', 'lineart', 36, 80),
-    ('adult-stained-glass-mosaic', 'Stained-Glass Mosaic', 'Grown-ups', 'hard', 'lineart', 36, 275),
-    ('adult-fluid-shapes', 'Fluid Shapes', 'Grown-ups', 'hard', 'lineart', 36, 160),
-    ('adult-art-deco-fan', 'Art Deco Fan', 'Grown-ups', 'hard', 'lineart', 36, 80),
-    ('adult-kaleidoscope-crystal', 'Kaleidoscope Crystal', 'Grown-ups', 'hard', 'lineart', 36, 160),
-    ('adult-wave-ribbons', 'Wave Ribbons', 'Grown-ups', 'hard', 'lineart', 36, 70),
-    ('adult-sunset-tessellation', 'Sunset Tessellation', 'Grown-ups', 'hard', 'lineart', 36, 180),
-    ('adult-lotus-mandala', 'Lotus Mandala', 'Grown-ups', 'hard', 'lineart', 36, 280),
-    ('adult-celestial-mandala', 'Celestial Mandala', 'Grown-ups', 'hard', 'lineart', 48, 280),
-    ('adult-lush-peony-garden', 'Lush Peony Garden', 'Grown-ups', 'hard', 'lineart', 36, 180),
-    ('adult-butterfly-garden', 'Butterfly Garden', 'Grown-ups', 'hard', 'lineart', 36, 140),
-    ('adult-peacock-feathers', 'Peacock Feathers', 'Grown-ups', 'hard', 'lineart', 36, 260),
-    ('adult-peacock-mandala', 'Peacock Mandala', 'Grown-ups', 'hard', 'lineart', 36, 280),
-    ('adult-santorini-village', 'Santorini Village', 'Grown-ups', 'hard', 'lineart', 36, 120),
-    ('adult-cherry-blossom-garden', 'Cherry Blossom Garden', 'Grown-ups', 'hard', 'lineart', 36, 160),
-    ('adult-coral-reef-pattern', 'Coral Reef', 'Grown-ups', 'hard', 'lineart', 36, 160),
-    ('adult-cafe-still-life', 'Café Still Life', 'Grown-ups', 'hard', 'lineart', 36, 140),
-    ('adult-hot-air-balloons', 'Hot-Air Balloons', 'Grown-ups', 'hard', 'lineart', 36, 140),
-    ('adult-northern-lights', 'Northern Lights', 'Grown-ups', 'hard', 'lineart', 36, 120),
-]
+# A later grown-up archive can append ('id', title, 'Grown-ups', 'hard', 'lineart', k, min_area).
+# The first archive was rejected and is not in this list.
+GROWNUPS: list[tuple] = []
 
 
 def write_puzzle(document: dict) -> None:
