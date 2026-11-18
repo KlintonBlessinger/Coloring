@@ -269,6 +269,8 @@ test('starter puzzles cover every shelf', () => {
       assert.ok(region.d.startsWith('M'), puzzle.id);
       assert.ok(Math.abs(region.label.x * 10 - Math.round(region.label.x * 10)) < 1e-6, puzzle.id);
       const { x, y, r } = region.label;
+      // An iris number is not drawn on the eye. The stored point sits just outside it.
+      if (region.eye) continue;
       assert.ok(pointInPath(region.d, x, y), `${puzzle.id} label ${x},${y} is outside its region`);
       // The number is about 0.9r tall, so the center has to sit far enough inside the page.
       const pad = 0.4 * r;

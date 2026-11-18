@@ -276,7 +276,7 @@
   },
   "realistic-cheetah": {
     "file": "realistic-cheetah",
-    "regions": 698,
+    "regions": 630,
     "colors": 40
   },
   "realistic-dolphins-sunset": {
@@ -346,7 +346,7 @@
   },
   "realistic-koala": {
     "file": "realistic-koala",
-    "regions": 586,
+    "regions": 569,
     "colors": 40
   },
   "realistic-komodo-dragon": {
@@ -371,7 +371,7 @@
   },
   "realistic-lion-portrait": {
     "file": "realistic-lion-portrait",
-    "regions": 700,
+    "regions": 673,
     "colors": 40
   },
   "realistic-nile-crocodile": {
@@ -416,17 +416,17 @@
   },
   "realistic-snowy-owl": {
     "file": "realistic-snowy-owl",
-    "regions": 477,
+    "regions": 433,
     "colors": 40
   },
   "realistic-tiger-river": {
     "file": "realistic-tiger-river",
-    "regions": 571,
+    "regions": 590,
     "colors": 40
   },
   "realistic-tiger-walking": {
     "file": "realistic-tiger-walking",
-    "regions": 445,
+    "regions": 434,
     "colors": 40
   },
   "realistic-whale-shark": {

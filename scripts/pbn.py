@@ -695,6 +695,26 @@ def seal_border(regions: list[dict], width: int, height: int) -> int:
     return sealed
 
 
+def park_eye_labels(regions: list[dict], width: int, height: int) -> None:
+    """The iris number sits just outside the eye. Nothing is drawn inside the pupil."""
+    eyes = [region for region in regions if region.get('eye')]
+    if not eyes:
+        return
+    mid = float(np.mean([float(region['label']['x']) for region in eyes]))
+    for region in eyes:
+        mask = path_mask(region['d'], width, height)
+        if not mask.any():
+            continue
+        ys, xs = np.where(mask)
+        cx = float(xs.mean())
+        side = -1.0 if cx < mid else 1.0
+        if len(eyes) == 1:
+            side = 0.0
+        label_x = min(width - 8, max(8, cx + side * 10))
+        label_y = min(height - 8, float(ys.max()) + 14)
+        region['label'] = {'x': round(label_x, 1), 'y': round(label_y, 1), 'r': 8.0}
+
+
 def seat_labels(regions: list[dict], ink_path: str, width: int, height: int, avoid: np.ndarray | None = None) -> None:
     """Put every number on the polylabel of its own fill, inside the canvas.
 
@@ -2340,9 +2360,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         paths = fold_speck_paths(paths, width, height)
         seal_border(paths, width, height)
         seat_labels(paths, ink_path, width, height, detail)
-    for region in paths:
-        if region.get('eye'):
-            region['label']['r'] = max(float(region['label']['r']), 4.0)
+    park_eye_labels(paths, width, height)
     eye_pad = face.get('iris_union')
     stroke_shapes = clip_shapes_outside(stroke_shapes, eye_pad, width, height)
     iris_shapes = clip_shapes_outside(iris_shapes, eye_pad, width, height)

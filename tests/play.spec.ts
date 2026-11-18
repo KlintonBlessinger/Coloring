@@ -96,8 +96,7 @@ function interiorPoints(book: Book): { x: number; y: number }[] {
   return book.cx.map((x, index) => ({ x, y: book.cy[index] ?? 0 }));
 }
 
-async function paintRegions(page: Page, book: Book, indices: number[]): Promise<void> {
-  const spots = interiorPoints(book);
+async function paintRegions(page: Page, book: Book, indices: number[], spots = interiorPoints(book)): Promise<void> {
   await page.evaluate(
     ({ colors, spots, indices }) => {
       const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
@@ -1653,7 +1652,7 @@ test('private pack labels, faces, and the PAW shelf', async ({ page }) => {
 });
 
 test('four times face zooms for the owner review', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
   const errors = watch(page);
   const jpg = async (name: string) => {
     await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
@@ -1663,9 +1662,37 @@ test('four times face zooms for the owner review', async ({ page }) => {
   };
   const show = async (id: string) => {
     await openPuzzle(page, id);
+    const book = puzzle(id);
+    const spots = interiorPoints(book);
+    // An iris number sits outside the eye, so the label is not a fill point.
+    const file = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/puzzles', `${id}.json`), 'utf8')) as {
+      regions: { id: number; eye?: boolean; d: string }[];
+    };
+    for (const region of file.regions) {
+      if (!region.eye) continue;
+      const nums = (region.d.match(/[-+]?(?:\d+\.?\d*|\.\d+)/g) ?? []).map(Number);
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        minX = Math.min(minX, nums[i]!);
+        maxX = Math.max(maxX, nums[i]!);
+        minY = Math.min(minY, nums[i + 1]!);
+        maxY = Math.max(maxY, nums[i + 1]!);
+      }
+      if (Number.isFinite(minX)) spots[region.id] = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    }
     await page.evaluate(() => {
-      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+      const canvas = document.querySelector('canvas.surface');
       if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    });
+    await paintRegions(page, book, book.regionColors.map((_, index) => index), spots);
+    await expect(page.getByTestId('complete')).toBeVisible();
+    await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="complete"]');
+      if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
       canvas.clearColor?.();
     });
     await expect(page.locator('.swatch.selected')).toHaveCount(0);
