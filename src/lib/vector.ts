@@ -36,32 +36,15 @@ export function vectorMapKey(width: number, height: number, paths: string[], ink
   return (hash >>> 0).toString(36);
 }
 
-export function measurePath(d: string): { minX: number; minY: number; maxX: number; maxY: number; area: number } {
-  const tokens = d.match(/[MQZmqz]|[-+]?(?:\d+\.?\d*|\.\d+)/g) ?? [];
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  let net = 0;
+/** Sample each subpath. Quadratic curves use the same four steps as the area measure. */
+export function pathContours(d: string): { x: number; y: number }[][] {
+  const tokens = d.match(/[MLQZmlqz]|[-+]?(?:\d+\.?\d*|\.\d+)/g) ?? [];
+  const contours: { x: number; y: number }[][] = [];
   let cursor = { x: 0, y: 0 };
   let start = { x: 0, y: 0 };
   let contour: { x: number; y: number }[] = [];
-  const consider = (x: number, y: number) => {
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-  };
   const close = () => {
-    if (contour.length >= 3) {
-      let area = 0;
-      for (let i = 0; i < contour.length; i++) {
-        const a = contour[i]!;
-        const b = contour[(i + 1) % contour.length]!;
-        area += a.x * b.y - b.x * a.y;
-      }
-      net += area / 2;
-    }
+    if (contour.length >= 3) contours.push(contour);
     contour = [];
   };
   for (let i = 0; i < tokens.length; i++) {
@@ -73,12 +56,10 @@ export function measurePath(d: string): { minX: number; minY: number; maxX: numb
       cursor = { x, y };
       start = cursor;
       contour = [{ x, y }];
-      consider(x, y);
     } else if (token === 'L' || token === 'l') {
       const x = Number(tokens[++i]);
       const y = Number(tokens[++i]);
       contour.push({ x, y });
-      consider(x, y);
       cursor = { x, y };
     } else if (token === 'Q' || token === 'q') {
       const cx = Number(tokens[++i]);
@@ -92,7 +73,6 @@ export function measurePath(d: string): { minX: number; minY: number; maxX: numb
         const px = u * u * from.x + 2 * u * t * cx + t * t * x;
         const py = u * u * from.y + 2 * u * t * cy + t * t * y;
         contour.push({ x: px, y: py });
-        consider(px, py);
       }
       cursor = { x, y };
     } else if (token === 'Z' || token === 'z') {
@@ -102,6 +82,46 @@ export function measurePath(d: string): { minX: number; minY: number; maxX: numb
     }
   }
   close();
+  return contours;
+}
+
+/** Even-odd hit test. A label center has to land in its own fill, not on the paper beside it. */
+export function pointInPath(d: string, x: number, y: number): boolean {
+  let crossings = 0;
+  for (const contour of pathContours(d)) {
+    for (let i = 0, j = contour.length - 1; i < contour.length; j = i++) {
+      const a = contour[j]!;
+      const b = contour[i]!;
+      if (a.y > y === b.y > y) continue;
+      const xCross = ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x;
+      if (x < xCross) crossings += 1;
+    }
+  }
+  return crossings % 2 === 1;
+}
+
+export function measurePath(d: string): { minX: number; minY: number; maxX: number; maxY: number; area: number } {
+  const contours = pathContours(d);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let net = 0;
+  for (const contour of contours) {
+    for (const point of contour) {
+      if (point.x < minX) minX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y > maxY) maxY = point.y;
+    }
+    let area = 0;
+    for (let i = 0; i < contour.length; i++) {
+      const a = contour[i]!;
+      const b = contour[(i + 1) % contour.length]!;
+      area += a.x * b.y - b.x * a.y;
+    }
+    net += area / 2;
+  }
   if (!Number.isFinite(minX)) return { minX: 0, minY: 0, maxX: 0, maxY: 0, area: 0 };
   return { minX, minY, maxX, maxY, area: Math.abs(net) };
 }

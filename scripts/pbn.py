@@ -4,6 +4,8 @@ Line art and tonal pictures become smoothed region paths plus one ink path.
 Defaults: line art k=28, min area 60, merge deltaE 6. Tonal k=36, min area 90.
 A per-picture ``eyes`` list of source-pixel boxes is kept out of min-area
 merging. ``protect_eyes`` is the plug for the upcoming eye-detail pass.
+Labels sit on the polylabel of their region, inside the page. Ink is redrawn
+as one even stroke, and fragments shorter than the minimum are dropped.
 """
 
 from __future__ import annotations
@@ -166,13 +168,13 @@ def quad_path(points: np.ndarray, origin: np.ndarray, width: int, height: int) -
     return ''.join(parts)
 
 
-def contours_to_path(mask: np.ndarray, scale: int, origin: np.ndarray, width: int, height: int) -> str:
+def contours_to_path(mask: np.ndarray, scale: int, origin: np.ndarray, width: int, height: int, epsilon: float = 0.8) -> str:
     cs, _hier = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     if not cs:
         return ''
     chunks = []
     for contour in cs:
-        approx = cv2.approxPolyDP(contour, 0.8, True)[:, 0, :].astype(np.float64)
+        approx = cv2.approxPolyDP(contour, epsilon, True)[:, 0, :].astype(np.float64)
         if len(approx) < 3:
             continue
         chunk = quad_path(approx / scale, origin, width, height)
@@ -226,13 +228,73 @@ def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int) -
     return contours_to_path(bw, scale, np.array([x0, y0], np.float64), width, height)
 
 
+# Specks shorter than this, and smaller than this area, are vector noise.
+INK_MIN_LENGTH = 14
+INK_MIN_AREA = 18
+# Even pen, in picture pixels. The source line art is a steady stroke about this wide.
+INK_STROKE = 3.5
+
+
+def drop_ink_fragments(mask: np.ndarray) -> np.ndarray:
+    """Drop ink bits that are both short and small. A long thin stroke stays."""
+    image = (mask > 0).astype(np.uint8)
+    count, labels, stats, _centroids = cv2.connectedComponentsWithStats(image, connectivity=8)
+    if count <= 1:
+        return image
+    kept = np.zeros_like(image)
+    for index in range(1, count):
+        area = int(stats[index, cv2.CC_STAT_AREA])
+        length = max(int(stats[index, cv2.CC_STAT_WIDTH]), int(stats[index, cv2.CC_STAT_HEIGHT]))
+        if area < INK_MIN_AREA and length < INK_MIN_LENGTH:
+            continue
+        kept[labels == index] = 1
+    return kept
+
+
+def skeletonize(mask: np.ndarray) -> np.ndarray:
+    """Morphological skeleton. The pen is rebuilt from this centerline."""
+    image = (mask > 0).astype(np.uint8) * 255
+    skeleton = np.zeros_like(image)
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    while cv2.countNonZero(image):
+        eroded = cv2.erode(image, element)
+        opened = cv2.dilate(eroded, element)
+        skeleton = cv2.bitwise_or(skeleton, cv2.subtract(image, opened))
+        image = eroded
+    return skeleton > 0
+
+
+def even_ink(mask: np.ndarray) -> np.ndarray:
+    """One clean stroke width, without the specks the contour step leaves behind.
+
+    The centerline is the existing ink, so faces are not resegmented. Lumps in
+    the old outline disappear because the pen is a disk around that line.
+    """
+    kept = drop_ink_fragments(mask)
+    if not kept.any():
+        return kept
+    center = skeletonize(kept)
+    if not center.any():
+        center = kept
+    diameter = int(round(INK_STROKE))
+    if diameter % 2 == 0:
+        diameter += 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
+    pen = cv2.dilate(center.astype(np.uint8), kernel)
+    soft = cv2.GaussianBlur(pen.astype(np.float32), (0, 0), 0.8)
+    even = (soft > 0.5).astype(np.uint8)
+    return drop_ink_fragments(even)
+
+
 def vectorize_ink(ink: np.ndarray) -> str:
     height, width = ink.shape
-    scale = 4
-    soft = cv2.GaussianBlur(ink.astype(np.float32), (0, 0), 0.9)
-    up = cv2.resize(soft, (width * scale, height * scale), interpolation=cv2.INTER_CUBIC)
-    bw = (up > 0.45).astype(np.uint8)
-    return contours_to_path(bw, scale, np.zeros(2, np.float64), width, height)
+    even = even_ink(ink)
+    scale = 2
+    # A light blur plus a looser fit turns the even pen into a smooth outline.
+    soft = cv2.GaussianBlur(even.astype(np.float32), (0, 0), 0.7)
+    up = cv2.resize(soft, (width * scale, height * scale), interpolation=cv2.INTER_LINEAR)
+    bw = (up > 0.5).astype(np.uint8)
+    return contours_to_path(bw, scale, np.zeros(2, np.float64), width, height, epsilon=1.5)
 
 
 def absorb_unlabeled(reg: np.ndarray) -> np.ndarray:
@@ -380,26 +442,59 @@ def snap_closer(reg: np.ndarray, region_cluster: np.ndarray, palette_lab: dict[i
     return reg
 
 
+def pole_of_inaccessibility(mask: np.ndarray, avoid: np.ndarray | None = None) -> tuple[float, float, float] | None:
+    """Polylabel of a region on the page: the center of the largest inscribed circle.
+
+    ``mask`` is the region inside the canvas. Padding with background makes the
+    page edge a wall, so the point cannot sit on the corner the way an unpadded
+    distance transform does. When some pixel is still 3px clear of ``avoid``
+    (the ink), that inset is the one that gets the number.
+    """
+    if mask.ndim != 2 or not mask.any():
+        return None
+    padded = np.pad(mask.astype(bool), 1, constant_values=False)
+    dist = ndi.distance_transform_edt(padded)[1:-1, 1:-1]
+    score = np.where(mask, dist, 0.0)
+    if avoid is not None and avoid.shape == mask.shape:
+        away = ndi.distance_transform_edt(~avoid.astype(bool))
+        safe = mask & (away >= 3)
+        if safe.any():
+            score = np.where(safe, dist, 0.0)
+    index = int(np.argmax(score))
+    if float(score.flat[index]) <= 0:
+        return None
+    yy, xx = np.unravel_index(index, score.shape)
+    height, width = mask.shape
+    x = float(np.clip(xx + 0.5, 0.5, width - 0.5))
+    y = float(np.clip(yy + 0.5, 0.5, height - 0.5))
+    return (round(x, 1), round(y, 1), round(float(dist[yy, xx]), 1))
+
+
+def label_pole(mask: np.ndarray, avoid: np.ndarray | None = None) -> tuple[float, float, float] | None:
+    """Deepest inset. Step off the ink when that still leaves a number-sized spot."""
+    best = pole_of_inaccessibility(mask, None)
+    if best is None or avoid is None:
+        return best
+    clear = pole_of_inaccessibility(mask, avoid)
+    if clear is not None and clear[2] >= 3 and clear[2] >= best[2] * 0.5:
+        return clear
+    return best
+
+
 def place_label(reg: np.ndarray, ink: np.ndarray, region_id: int) -> tuple[float, float, float] | None:
-    """Point farthest from the region edge, and at least 3px from ink when that still fits."""
+    """Polylabel inset of the region, clamped to the canvas and clear of ink when it fits."""
     ys, xs = np.where(reg == region_id)
     if len(ys) == 0:
         return None
-    pad = 3
-    height, width = reg.shape
-    y0 = max(int(ys.min()) - pad, 0)
-    y1 = min(int(ys.max()) + 1 + pad, height)
-    x0 = max(int(xs.min()) - pad, 0)
-    x1 = min(int(xs.max()) + 1 + pad, width)
-    sub = reg[y0:y1, x0:x1] == region_id
-    dist = ndi.distance_transform_edt(sub)
-    away = ndi.distance_transform_edt(~ink[y0:y1, x0:x1])
-    safe = sub & (away >= 3)
-    score = np.where(safe, dist, 0) if safe.any() else dist
-    index = int(np.argmax(score))
-    yy, xx = np.unravel_index(index, score.shape)
-    radius = float(dist[yy, xx])
-    return (round(x0 + xx + 0.5, 1), round(y0 + yy + 0.5, 1), round(radius, 1))
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    mask = reg[y0:y1, x0:x1] == region_id
+    # The crop is this region's box. A false frame stands in for every pixel
+    # outside it, including the part of the page the region does not cover.
+    pole = label_pole(mask, ink[y0:y1, x0:x1])
+    if pole is None:
+        return None
+    return (round(x0 + pole[0], 1), round(y0 + pole[1], 1), pole[2])
 
 
 def path_mask(path: str, width: int, height: int) -> np.ndarray:
@@ -489,39 +584,52 @@ def seal_border(regions: list[dict], width: int, height: int) -> int:
 
 
 def seat_labels(regions: list[dict], ink_path: str, width: int, height: int) -> None:
-    """Move a number onto a pixel of its own vector fill.
+    """Put every number on the polylabel of its own fill, inside the canvas.
 
-    Stored points are pixel centers. The renderer samples with floor, so a center
-    that smoothed off the fill would tap the neighbor instead.
+    The page edge counts as a wall, so a region that runs into the corner is
+    labeled in its inset instead of on the corner. Ink steals the spot only
+    when another pixel of the same region is still clear of it.
     """
     ids = np.zeros((height, width), np.int32)
     for region in regions:
         ids[path_mask(region['d'], width, height)] = int(region['id']) + 1
-    ink = path_mask(ink_path, width, height)
+    ink = path_mask(ink_path, width, height) if ink_path else np.zeros((height, width), bool)
     for region in regions:
-        label = region['label']
         rid = int(region['id']) + 1
-        x = int(np.floor(float(label['x'])))
-        y = int(np.floor(float(label['y'])))
-        if 0 <= x < width and 0 <= y < height and int(ids[y, x]) == rid:
-            continue
         ys, xs = np.where(ids == rid)
         if len(ys) == 0:
             continue
         y0, y1 = int(ys.min()), int(ys.max()) + 1
         x0, x1 = int(xs.min()), int(xs.max()) + 1
-        sub = ids[y0:y1, x0:x1] == rid
-        dist = ndi.distance_transform_edt(sub)
-        away = ndi.distance_transform_edt(~ink[y0:y1, x0:x1])
-        safe = sub & (away >= 3)
-        score = np.where(safe, dist, 0) if safe.any() else dist
-        index = int(np.argmax(score))
-        yy, xx = np.unravel_index(index, score.shape)
-        region['label'] = {
-            'x': round(x0 + xx + 0.5, 1),
-            'y': round(y0 + yy + 0.5, 1),
-            'r': round(float(dist[yy, xx]), 1),
-        }
+        pole = label_pole(ids[y0:y1, x0:x1] == rid, ink[y0:y1, x0:x1])
+        if pole is None:
+            continue
+        x = round(x0 + pole[0], 1)
+        y = round(y0 + pole[1], 1)
+        # A filled pixel can still have its center a hair outside the sampled outline.
+        if not point_in_path(region['d'], x, y):
+            for radius in range(1, 4):
+                nudged = False
+                for dy in range(-radius, radius + 1):
+                    for dx in range(-radius, radius + 1):
+                        if max(abs(dx), abs(dy)) != radius:
+                            continue
+                        nx, ny = x + dx, y + dy
+                        xi, yi = int(np.floor(nx)), int(np.floor(ny))
+                        if (
+                            0 <= xi < width
+                            and 0 <= yi < height
+                            and int(ids[yi, xi]) == rid
+                            and point_in_path(region['d'], nx, ny)
+                        ):
+                            x, y = nx, ny
+                            nudged = True
+                            break
+                    if nudged:
+                        break
+                if nudged:
+                    break
+        region['label'] = {'x': x, 'y': y, 'r': pole[2]}
 
 
 def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None) -> dict:
@@ -835,6 +943,22 @@ def parse_path(path: str) -> list[np.ndarray]:
     if len(current) >= 3:
         contours.append(np.array(current, np.float32))
     return contours
+
+
+def point_in_path(path: str, x: float, y: float) -> bool:
+    """Even-odd test on the same sampled outline the page measures."""
+    crossings = 0
+    for pts in parse_path(path):
+        count = len(pts)
+        for index in range(count):
+            ax, ay = float(pts[index][0]), float(pts[index][1])
+            nxt = pts[(index + 1) % count]
+            bx, by = float(nxt[0]), float(nxt[1])
+            if (ay > y) == (by > y):
+                continue
+            if x < (bx - ax) * (y - ay) / (by - ay) + ax:
+                crossings += 1
+    return crossings % 2 == 1
 
 
 def rasterize(document: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -484,8 +484,13 @@ export class Renderer {
         const px = 0.9 * radius * this.scale * (this.big ? 1.35 : 1);
         if (px < 8) continue;
         const room = radius * 1.8 * this.scale;
-        const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
-        const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
+        const half = px * 0.55;
+        const left = this.panX + half;
+        const top = this.panY + half;
+        const right = this.panX + this.puzzle.width * this.scale - half;
+        const bottom = this.panY + this.puzzle.height * this.scale - half;
+        const x = Math.min(Math.max(this.panX + (this.puzzle.cx[i] ?? 0) * this.scale, left), right);
+        const y = Math.min(Math.max(this.panY + (this.puzzle.cy[i] ?? 0) * this.scale, top), bottom);
         const mark = this.marks[i] ?? { kind: 'text' as const, text: String((this.puzzle.regionColors[i] ?? 0) + 1) };
         if (mark.kind === 'dots') {
           if (drawDots(ctx, mark.count, x, y, px, room)) numbers = true;

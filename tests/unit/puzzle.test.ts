@@ -8,6 +8,7 @@ import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/
 import { deltaE76, hexToOklab, hexToRgb, labDist2, oklabToHex, rgbToCielab } from '../../src/lib/color';
 import { progressFits, regionMapKey } from '../../src/lib/progress';
 import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE } from '../../src/lib/types';
+import { pointInPath } from '../../src/lib/vector';
 
 interface VectorPuzzle {
   id: string;
@@ -15,6 +16,7 @@ interface VectorPuzzle {
   difficulty: 'easy' | 'medium' | 'hard';
   mode: string;
   w: number;
+  h: number;
   palette: { n: number; hex: string }[];
   regions: { d: string; label: { x: number; y: number; r: number } }[];
 }
@@ -185,6 +187,13 @@ test('a rebuilt region map drops the old progress', () => {
   assert.notEqual(regionMapKey(2, 2, Uint16Array.from([0, 1, 1, 0]), 2), key);
 });
 
+test('a label center has to fall inside its path', () => {
+  const square = 'M0 0L10 0L10 10L0 10Z';
+  assert.equal(pointInPath(square, 5, 5), true);
+  assert.equal(pointInPath(square, -1, 5), false);
+  assert.equal(pointInPath(square, 15, 5), false);
+});
+
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
@@ -219,6 +228,11 @@ test('starter puzzles cover every shelf', () => {
     for (const region of puzzle.regions) {
       assert.ok(region.d.startsWith('M'), puzzle.id);
       assert.ok(Math.abs(region.label.x * 10 - Math.round(region.label.x * 10)) < 1e-6, puzzle.id);
+      const { x, y, r } = region.label;
+      assert.ok(pointInPath(region.d, x, y), `${puzzle.id} label ${x},${y} is outside its region`);
+      // The number is about 0.9r tall, so the center has to sit far enough inside the page.
+      const pad = 0.4 * r;
+      assert.ok(x >= pad && y >= pad && x <= puzzle.w - pad && y <= puzzle.h - pad, `${puzzle.id} label ${x},${y} r ${r} spills off the canvas`);
     }
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
   }
