@@ -88,7 +88,7 @@ REALISTIC = [
     ('realistic-cheetah-sprint', 'Cheetah Sprint', 'Animals', 'medium', 48, 90),
     ('realistic-cheetah-family', 'Cheetah Family', 'Animals', 'medium', 128, 130),
     ('realistic-great-white-shark', 'Great White Shark', 'Animals', 'medium', 36, 120),
-    ('realistic-hammerhead-school', 'Hammerhead School', 'Animals', 'medium', 96, 480),
+    ('realistic-hammerhead-school', 'Hammerhead School', 'Animals', 'medium', 48, 60),
     ('realistic-whale-shark', 'Whale Shark Over the Reef', 'Animals', 'medium', 64, 90),
     ('realistic-leopard-shark', 'Zebra Shark on the Reef', 'Animals', 'medium', 96, 150),
     ('realistic-chameleon', 'Panther Chameleon', 'Animals', 'medium', 28, 150),

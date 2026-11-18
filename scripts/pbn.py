@@ -749,6 +749,32 @@ def contrast_strokes(source_lab: np.ndarray, blocked: np.ndarray) -> tuple[np.nd
     return thin, thick
 
 
+def claim_black_ink(source_lab: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Near-black crumbs are outline, not a pile of fixed-detail shapes.
+
+    A dark fragment of the pen that was too thin to number used to become its
+    own colored detail. On a helicopter that sprinkled shapes along the rotor,
+    the skids, and the paws. Those pixels join the ink instead.
+    """
+    if not mask.any():
+        return mask, np.zeros(mask.shape, bool)
+    count, labels, stats, _centroids = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
+    ink_add = np.zeros(mask.shape, bool)
+    keep = np.zeros(mask.shape, bool)
+    for index in range(1, count):
+        component = labels == index
+        if int(stats[index, cv2.CC_STAT_AREA]) < 8:
+            continue
+        color = np.median(source_lab[component], axis=0)
+        lightness = float(color[0]) * 100 / 255
+        chroma = float(np.hypot(color[1] - 128, color[2] - 128))
+        if lightness < 34 and chroma < 24:
+            ink_add |= component
+        else:
+            keep |= component
+    return keep, ink_add
+
+
 def paint_stroke_detail(source_lab: np.ndarray, thin: np.ndarray, canvas: np.ndarray, width: int, height: int, whole: bool = False) -> tuple[list[dict], np.ndarray]:
     """Paint thin high-contrast strokes as fixed colored detail, not black ink.
 
@@ -1267,10 +1293,14 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     protect = face_region_ids(regions, zone) | regions_covering(regions, thick_strokes)
     regions, orphan = fold_by_color(regions, region_cluster, centers, min_area, protect, merge)
     if orphan.any():
-        extra, kept_detail = paint_stroke_detail(source_lab, orphan, face['bgr'], width, height)
-        stroke_shapes.extend(extra)
-        detail = detail | kept_detail
-        blocked = ink | detail
+        if mode == 'lineart':
+            orphan, ink_add = claim_black_ink(source_lab, orphan)
+            ink |= ink_add
+        if orphan.any():
+            extra, kept_detail = paint_stroke_detail(source_lab, orphan, face['bgr'], width, height)
+            stroke_shapes.extend(extra)
+            detail = detail | kept_detail
+            blocked = ink | detail
     regions, iris_shapes = peel_thin_iris(regions, face['eye_zone'], detail, source_lab, face['bgr'], detail)
     if iris_shapes:
         regions = absorb_unlabeled(regions)
@@ -1284,9 +1314,13 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         regions, region_cluster, ink | detail, centers, 3.0, roomy_face_ids(regions, zone, detail), far_detail=mode == 'tonal',
     )
     if thin_far.any():
-        extra, kept_detail = paint_stroke_detail(source_lab, thin_far, face['bgr'], width, height, whole=True)
-        stroke_shapes.extend(extra)
-        detail = detail | kept_detail
+        if mode == 'lineart':
+            thin_far, ink_add = claim_black_ink(source_lab, thin_far)
+            ink |= ink_add
+        if thin_far.any():
+            extra, kept_detail = paint_stroke_detail(source_lab, thin_far, face['bgr'], width, height, whole=True)
+            stroke_shapes.extend(extra)
+            detail = detail | kept_detail
     trace_de('absorb1', regions, region_cluster)
     region_count = len(np.unique(regions))
     used = sorted(set(int(v) for v in region_cluster.tolist()))
@@ -1313,9 +1347,13 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         regions, region_cluster, ink | detail, centers, 3.0, keep_thin, far_detail=mode == 'tonal',
     )
     if thin_far.any():
-        extra, kept_detail = paint_stroke_detail(source_lab, thin_far, face['bgr'], width, height, whole=True)
-        stroke_shapes.extend(extra)
-        detail = detail | kept_detail
+        if mode == 'lineart':
+            thin_far, ink_add = claim_black_ink(source_lab, thin_far)
+            ink |= ink_add
+        if thin_far.any():
+            extra, kept_detail = paint_stroke_detail(source_lab, thin_far, face['bgr'], width, height, whole=True)
+            stroke_shapes.extend(extra)
+            detail = detail | kept_detail
     trace_de('absorb2', regions, region_cluster)
     if mode == 'tonal':
         region_cluster = union_touching(regions, region_cluster, source_lab, merge)

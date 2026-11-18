@@ -288,6 +288,18 @@ test('starter puzzles cover every shelf', () => {
           assert.ok(pointInPath(region.d, gx, gy), `${puzzle.id} ${text} glyph corner ${gx.toFixed(1)},${gy.toFixed(1)} is outside its region`);
         }
       }
+      // At 4x the cap grows, and a big region near the edge still has to keep the whole glyph on the page.
+      const zoom = fit * 4;
+      const zoomed = fittedFontPx(r, zoom, fit, false, mark, x, y, puzzle.w, puzzle.h, (px, py) => pointInPath(region.d, px, py));
+      if (zoomed >= 8) {
+        const glyph = markGlyph(mark, zoomed);
+        const dx = glyph.w / 2 / zoom;
+        const dy = glyph.h / 2 / zoom;
+        assert.ok(
+          x - dx >= 1 && y - dy >= 1 && x + dx <= puzzle.w - 1 && y + dy <= puzzle.h - 1,
+          `${puzzle.id} ${text} glyph spills at 4x`,
+        );
+      }
     }
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
   }
