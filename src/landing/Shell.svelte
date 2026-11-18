@@ -64,7 +64,7 @@
           <img src={asset(item.cover)} alt="" width="800" height="500" />
           <span class="game-copy">
             <span class="game-title">{item.title}</span>
-            <span class="game-tag">{item.tagline}</span>
+            <span class="game-tag">{item.soon ? 'Coming soon' : item.tagline}</span>
           </span>
         </a>
       {/each}
@@ -87,7 +87,7 @@
       </div>
     </header>
     <div class="game-list">
-      <p class="game-tag">This game is almost ready.</p>
+      <p class="game-tag">{game.soon ? 'Coming soon.' : 'This game is almost ready.'}</p>
     </div>
   </div>
 {:else}

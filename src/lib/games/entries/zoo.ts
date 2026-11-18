@@ -7,6 +7,7 @@ const entry: GameEntry = {
   path: '/zoo/',
   cover: 'games/zoo-cover.jpg',
   order: 2,
+  soon: true,
 };
 
 export { entry };

@@ -24,6 +24,8 @@ export interface GameEntry {
   cover: string;
   /** Lower numbers sit higher on the shelf. Missing order sorts after these. */
   order?: number;
+  /** Shelf card says Coming soon and the path stays a short waiting note. */
+  soon?: boolean;
   /**
    * Root screen for the game. No required props.
    * Leave it off to keep the card and show a short waiting note at `path`.
