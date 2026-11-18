@@ -1,4 +1,4 @@
-import { regionMarks, type RegionMark } from './labels';
+import { fittedFontPx, markGlyph, regionMarks, type RegionMark } from './labels';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { MAX_SCALE, type DecodedPuzzle } from './types';
 
@@ -68,6 +68,8 @@ export class Renderer {
   private cacheDirty = true;
   private readonly dirtyRegions = new Set<number>();
   private lastFrameMs = 0;
+  private labelFonts: Float32Array | null = null;
+  private labelFontKey = '';
   readonly artImage: HTMLImageElement;
 
   constructor(view: HTMLCanvasElement, puzzle: DecodedPuzzle, filled: Uint8Array, bigNumbers: boolean) {
@@ -103,6 +105,7 @@ export class Renderer {
   setBigNumbers(big: boolean): void {
     if (this.big === big) return;
     this.big = big;
+    this.labelFonts = null;
     this.learningKey = this.learningKey.replace(/\|[01]$/, `|${big ? 1 : 0}`);
     this.requestDraw();
   }
@@ -112,6 +115,7 @@ export class Renderer {
     if (key === this.learningKey) return;
     this.learningKey = key;
     this.big = next.bigNumbers;
+    this.labelFonts = null;
     this.marks = regionMarks(this.puzzle, next);
     this.requestDraw();
   }
@@ -481,27 +485,73 @@ export class Renderer {
     ctx.restore();
   }
 
+  private labelFont(index: number): number {
+    const fit = this.fitScale();
+    const key = `${this.scale.toFixed(3)}|${fit.toFixed(3)}|${this.learningKey}`;
+    if (!this.labelFonts || this.labelFontKey !== key) {
+      const fonts = new Float32Array(this.paths.length);
+      this.viewCtx.setTransform(1, 0, 0, 1, 0, 0);
+      for (let i = 0; i < this.paths.length; i++) {
+        const radius = this.puzzle.inr[i] ?? 0;
+        const cx = this.puzzle.cx[i] ?? 0;
+        const cy = this.puzzle.cy[i] ?? 0;
+        const mark = this.marks[i] ?? { kind: 'text' as const, text: String((this.puzzle.regionColors[i] ?? 0) + 1) };
+        const path = this.paths[i];
+        const contains = path
+          ? (x: number, y: number) => this.viewCtx.isPointInPath(path, x, y, 'evenodd')
+          : undefined;
+        let px = fittedFontPx(radius, this.scale, fit, this.big, mark, cx, cy, this.puzzle.width, this.puzzle.height, contains);
+        if (mark.kind === 'text' && px >= 8) {
+          this.viewCtx.font = `500 ${px}px ${LABEL_FONT}`;
+          const lines = mark.text.includes(' ') && mark.text.length > 8 ? mark.text.split(' ') : [mark.text];
+          const measured = Math.max(...lines.map((line) => this.viewCtx.measureText(line).width));
+          const estimated = markGlyph(mark, px).w;
+          if (measured > estimated + 0.5 && estimated > 0) {
+            px = fittedFontPx(
+              radius,
+              this.scale,
+              fit,
+              this.big,
+              mark,
+              cx,
+              cy,
+              this.puzzle.width,
+              this.puzzle.height,
+              contains,
+              measured / estimated,
+            );
+          }
+        }
+        fonts[i] = px;
+      }
+      this.labelFonts = fonts;
+      this.labelFontKey = key;
+    }
+    return this.labelFonts[index] ?? 0;
+  }
+
   private paintNumbers(ctx: CanvasRenderingContext2D, dpr: number): void {
     let numbers = false;
     if (!this.replaying && this.artAlpha < 0.35) {
+      for (let i = 0; i < this.paths.length; i++) this.labelFont(i);
+      ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = NUMBER;
       ctx.strokeStyle = NUMBER;
+      // Nothing is allowed to paint in the margin around the picture.
+      ctx.beginPath();
+      ctx.rect(this.panX, this.panY, this.puzzle.width * this.scale, this.puzzle.height * this.scale);
+      ctx.clip();
       for (let i = 0; i < this.paths.length; i++) {
         if (this.isFilled(i)) continue;
-        const radius = this.puzzle.inr[i] ?? 0;
-        const px = 0.9 * radius * this.scale * (this.big ? 1.35 : 1);
+        const px = this.labelFont(i);
         if (px < 8) continue;
-        const room = radius * 1.8 * this.scale;
-        const half = px * 0.55;
-        const left = this.panX + half;
-        const top = this.panY + half;
-        const right = this.panX + this.puzzle.width * this.scale - half;
-        const bottom = this.panY + this.puzzle.height * this.scale - half;
-        const x = Math.min(Math.max(this.panX + (this.puzzle.cx[i] ?? 0) * this.scale, left), right);
-        const y = Math.min(Math.max(this.panY + (this.puzzle.cy[i] ?? 0) * this.scale, top), bottom);
+        const radius = this.puzzle.inr[i] ?? 0;
+        const room = Math.max(radius * 1.8 * this.scale, px * 4);
+        const x = this.panX + (this.puzzle.cx[i] ?? 0) * this.scale;
+        const y = this.panY + (this.puzzle.cy[i] ?? 0) * this.scale;
         const mark = this.marks[i] ?? { kind: 'text' as const, text: String((this.puzzle.regionColors[i] ?? 0) + 1) };
         if (mark.kind === 'dots') {
           if (drawDots(ctx, mark.count, x, y, px, room)) numbers = true;
@@ -513,6 +563,7 @@ export class Renderer {
         }
         if (drawLabel(ctx, mark.text, x, y, px, room)) numbers = true;
       }
+      ctx.restore();
     }
     this.view.dataset.numbers = numbers ? '1' : '0';
   }

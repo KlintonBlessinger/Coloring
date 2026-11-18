@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -1527,5 +1528,98 @@ test('v3 faces and the hammerhead shelf', async ({ page }) => {
   await jpg('face-cheetah-v3-zoom.jpg');
   await showFace('realistic-nile-crocodile', { x: 160, y: 730 });
   await jpg('face-crocodile-v3-zoom.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('private pack labels, faces, and the PAW shelf', async ({ page }) => {
+  const packPath = path.join(mediaDir, 'private-kids-pack.zip');
+  test.skip(!fs.existsSync(packPath), 'the private pack stays out of the checkout');
+  test.setTimeout(360_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  const packBook = (id: string): Book => {
+    const raw = execFileSync('unzip', ['-p', packPath, `puzzles/${id}.json`]);
+    const file = JSON.parse(raw.toString('utf8')) as {
+      w: number;
+      h: number;
+      palette: { n: number; hex: string }[];
+      regions: { id: number; n: number; label: { x: number; y: number; r: number } }[];
+    };
+    const palette = file.palette.slice().sort((a, b) => a.n - b.n);
+    const colorIndex = new Map(palette.map((item, index) => [item.n, index]));
+    const regions = file.regions.slice().sort((a, b) => a.id - b.id);
+    return {
+      width: file.w,
+      height: file.h,
+      palette: palette.map((item) => item.hex),
+      regionColors: regions.map((region) => colorIndex.get(region.n) ?? 0),
+      cx: regions.map((region) => region.label.x),
+      cy: regions.map((region) => region.label.y),
+      inr: regions.map((region) => region.label.r),
+      area: regions.map((region) => Math.PI * region.label.r * region.label.r),
+    };
+  };
+  const show = async (id: string, fill: boolean) => {
+    if (await page.locator('[data-testid="play"]').count()) {
+      await page.getByRole('button', { name: 'Back' }).click();
+    }
+    await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+    const card = page.locator(`[data-testid="puzzle-card"][data-id="${id}"]`);
+    await expect(card).toBeAttached();
+    await card.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await card.click();
+    await beginPicture(page);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface');
+      if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    });
+    if (fill) {
+      const book = packBook(id);
+      await paintRegions(page, book, book.regionColors.map((_, index) => index));
+      await expect(page.getByTestId('complete')).toBeVisible();
+      await page.waitForTimeout(1600);
+      await page.evaluate(() => {
+        const card = document.querySelector('[data-testid="complete"]');
+        if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+      });
+    }
+  };
+
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await page.getByTestId('open-settings').click();
+  await page.getByTestId('import-pack').setInputFiles(packPath);
+  await expect(page.getByTestId('settings-status')).toHaveText('Picture pack added.');
+  await page.getByTestId('back').click();
+
+  await show('paw-chase-lookout', false);
+  await page.waitForTimeout(300);
+  await jpg('private-chase-fit.jpg');
+
+  await show('paw-chase-lookout', true);
+  await zoomFace(page, 'paw-chase-lookout', 3.6, { x: 470, y: 370 });
+  await page.waitForTimeout(250);
+  await jpg('private-chase-face.jpg');
+
+  await show('gabby-pandy-hug', true);
+  await zoomFace(page, 'gabby-pandy-hug', 3.6, { x: 450, y: 360 });
+  await page.waitForTimeout(250);
+  await jpg('private-gabby-face.jpg');
+
+  if (await page.locator('[data-testid="play"]').count()) {
+    await page.getByRole('button', { name: 'Back' }).click();
+  }
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  const shelf = page.locator('[data-pack-shelf="PAW Patrol"]');
+  await shelf.getByRole('heading', { name: 'PAW Patrol' }).evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await expect(shelf.locator('[data-id="paw-chase-lookout"]')).toBeVisible();
+  await page.waitForTimeout(300);
+  await jpg('private-paw-shelf.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });

@@ -8,8 +8,9 @@ book. This script refuses to write the pack inside the repository.
 meta.json lists each picture, its tags, and the line-art or tonal settings
 (`pbn.mode`, `pbn.k`, `pbn.minArea`). Optional ``eyes`` and ``mouths`` lists
 are boxes in the 1024 working space. Pupils, catchlights, eyelid lines,
-nostrils, and mouth lines stay fixed detail. A line-art picture with no boxes
-still auto-detects a compact near-black pupil. A picture the source meta
+nostrils, and mouth lines stay fixed detail. Hand-set boxes turn auto-detect
+off. A line-art picture with no boxes still auto-detects a compact near-black
+pupil. A picture the source meta
 already places under the region floor, or marks with ``pbn.acceptRegions``,
 is kept when the rest of the quality gate passes.
 """
@@ -52,7 +53,15 @@ def region_exempt(picture: dict, pipeline: dict) -> bool:
 def build_one(task: dict) -> dict:
     source = task['source']
     mode = task['mode']
-    result = segment(source, mode, k=task['k'], min_area=task['minArea'], eyes=task['eyes'], mouths=task.get('mouths'))
+    result = segment(
+        source,
+        mode,
+        k=task['k'],
+        min_area=task['minArea'],
+        eyes=task['eyes'],
+        mouths=task.get('mouths'),
+        auto_eyes=task.get('autoEyes'),
+    )
     meta = {
         'id': task['id'],
         'title': task['title'],
@@ -138,6 +147,13 @@ def tasks_from(folder: Path) -> tuple[dict, list[dict]]:
         if not tags:
             shelf = picture.get('shelf') or picture.get('group')
             tags = [shelf] if shelf else []
+        eyes = picture.get('eyes', settings.get('eyes'))
+        mouths = picture.get('mouths', settings.get('mouths'))
+        # Hand-set boxes already protect the face. Guessing on top of them
+        # picks up badges, windows, and paws.
+        auto = settings.get('autoEyes')
+        if auto is None:
+            auto = mode == 'lineart' and eyes is None
         built.append({
             'source': str(source),
             'id': puzzle_id,
@@ -147,8 +163,9 @@ def tasks_from(folder: Path) -> tuple[dict, list[dict]]:
             'mode': mode,
             'k': int(settings['k']),
             'minArea': int(settings['minArea']),
-            'eyes': picture.get('eyes', settings.get('eyes')),
-            'mouths': picture.get('mouths', settings.get('mouths')),
+            'eyes': eyes,
+            'mouths': mouths,
+            'autoEyes': auto,
             'tags': [str(tag) for tag in tags],
             'facts': picture.get('facts') or [],
             'factsEs': picture.get('factsEs') or [],

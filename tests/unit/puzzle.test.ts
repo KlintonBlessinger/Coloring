@@ -8,6 +8,7 @@ import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/
 import { deltaE76, hexToOklab, hexToRgb, labDist2, oklabToHex, rgbToCielab } from '../../src/lib/color';
 import { progressFits, regionMapKey } from '../../src/lib/progress';
 import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE } from '../../src/lib/types';
+import { FIT_LABEL_CAP, fittedFontPx, markGlyph } from '../../src/lib/labels';
 import { pointInPath } from '../../src/lib/vector';
 
 interface VectorPuzzle {
@@ -18,7 +19,7 @@ interface VectorPuzzle {
   w: number;
   h: number;
   palette: { n: number; hex: string }[];
-  regions: { d: string; label: { x: number; y: number; r: number } }[];
+  regions: { n: number; d: string; label: { x: number; y: number; r: number } }[];
 }
 import { loadImage, writePng } from '../../scripts/image';
 import { makePuzzle } from '../../scripts/make-puzzle';
@@ -194,6 +195,22 @@ test('a label center has to fall inside its path', () => {
   assert.equal(pointInPath(square, 15, 5), false);
 });
 
+test('fit view caps a huge number and keeps the whole glyph on the page', () => {
+  const fit = 0.36;
+  const ten = { kind: 'text' as const, text: '10' };
+  const huge = fittedFontPx(128, fit, fit, false, ten, 512, 512, 1024, 1024);
+  const normal = fittedFontPx(30, fit, fit, false, { kind: 'text', text: '4' }, 512, 512, 1024, 1024);
+  assert.equal(huge, FIT_LABEL_CAP);
+  assert.ok(Math.abs(normal - 0.9 * 30 * fit) < 1e-6);
+  assert.ok(huge / normal < 2.2, `huge ${huge} vs normal ${normal}`);
+  const edge = fittedFontPx(40, fit, fit, false, { kind: 'text', text: '17' }, 12, 400, 1024, 1024);
+  const box = markGlyph({ kind: 'text', text: '17' }, edge);
+  assert.ok(12 * fit - box.w / 2 >= fit - 0.01, `glyph starts at ${12 * fit - box.w / 2}`);
+  const zoomed = fittedFontPx(128, fit * 4, fit, false, ten, 512, 512, 1024, 1024);
+  assert.ok(zoomed > huge, 'numbers still grow when you zoom in');
+  assert.ok(zoomed <= FIT_LABEL_CAP * 4 + 1e-6);
+});
+
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
@@ -248,6 +265,29 @@ test('starter puzzles cover every shelf', () => {
       // The number is about 0.9r tall, so the center has to sit far enough inside the page.
       const pad = 0.4 * r;
       assert.ok(x >= pad && y >= pad && x <= puzzle.w - pad && y <= puzzle.h - pad, `${puzzle.id} label ${x},${y} r ${r} spills off the canvas`);
+      // Full glyph, not just the center. 0.22 is a short phone canvas, where the fit-view cap is largest in picture pixels.
+      const fit = 0.22;
+      const text = String(region.n);
+      const mark = { kind: 'text' as const, text };
+      const font = fittedFontPx(r, fit, fit, false, mark, x, y, puzzle.w, puzzle.h, (px, py) => pointInPath(region.d, px, py));
+      if (font >= 8) {
+        const glyph = markGlyph(mark, font);
+        const dx = glyph.w / 2 / fit;
+        const dy = glyph.h / 2 / fit;
+        assert.ok(
+          x - dx >= 1 && y - dy >= 1 && x + dx <= puzzle.w - 1 && y + dy <= puzzle.h - 1,
+          `${puzzle.id} ${text} glyph spills off the picture`,
+        );
+        const corners: [number, number][] = [
+          [x - dx, y - dy],
+          [x + dx, y - dy],
+          [x - dx, y + dy],
+          [x + dx, y + dy],
+        ];
+        for (const [gx, gy] of corners) {
+          assert.ok(pointInPath(region.d, gx, gy), `${puzzle.id} ${text} glyph corner ${gx.toFixed(1)},${gy.toFixed(1)} is outside its region`);
+        }
+      }
     }
     if (fixed[puzzle.id]) assert.equal(puzzle.difficulty, fixed[puzzle.id], puzzle.id);
   }

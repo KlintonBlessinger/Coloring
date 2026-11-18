@@ -389,3 +389,95 @@ export function paletteMarks(palette: string[], settings: LabelSettings, puzzleI
 export function markText(mark: RegionMark): string {
   return mark.kind === 'text' ? mark.text : String(mark.count);
 }
+
+/**
+ * At the fit zoom, no number is drawn larger than this many CSS pixels.
+ * The smallest number that still shows is 8px, so the cap is about twice
+ * that. A background region used to draw its number about five times larger.
+ */
+export const FIT_LABEL_CAP = 16;
+
+/** One digit of Helvetica/Arial at weight 500, plus a little side bearing. */
+const DIGIT_ADVANCE = 0.62;
+
+/** Width and height of the drawn mark, in the same pixels as `fontPx`. */
+export function markGlyph(mark: RegionMark, fontPx: number, advance = 1): { w: number; h: number } {
+  if (mark.kind === 'dots') {
+    const dot = Math.min(fontPx * 0.28, 8);
+    const gap = dot * 0.7;
+    const w = mark.count * dot * 2 + Math.max(0, mark.count - 1) * gap;
+    return { w: w * advance, h: dot * 2 };
+  }
+  if (mark.kind === 'tally') {
+    const markW = Math.min(fontPx * 0.28, 10);
+    const gap = markW * 0.35;
+    const groupW = 4 * markW + 3 * gap;
+    const groups = Math.ceil(mark.count / 5);
+    const w = groups * groupW + Math.max(0, groups - 1) * markW;
+    const h = Math.min(fontPx, markW * 3.2);
+    return { w: w * advance, h };
+  }
+  const lines = mark.text.includes(' ') && mark.text.length > 8 ? mark.text.split(' ') : [mark.text];
+  const w = Math.max(...lines.map((line) => fontPx * (DIGIT_ADVANCE * Math.max(1, line.length) + 0.08)));
+  const h = fontPx * lines.length + fontPx * 0.05 * Math.max(0, lines.length - 1);
+  return { w: w * advance, h };
+}
+
+/** Font size before the page and the region shrink it. Grows as you zoom. */
+export function cappedFontPx(radius: number, scale: number, fitScale: number, big: boolean): number {
+  const boost = big ? 1.35 : 1;
+  const natural = 0.9 * radius * scale * boost;
+  const cap = FIT_LABEL_CAP * boost * (scale / Math.max(fitScale, 1e-3));
+  return Math.min(natural, cap);
+}
+
+/**
+ * The font that keeps the whole glyph inside the picture and inside the
+ * region's inscribed circle. `contains` also rejects a glyph whose corners
+ * fall outside the region path. `advance` widens the estimate when the real
+ * font measures wider than the digit table.
+ */
+export function fittedFontPx(
+  radius: number,
+  scale: number,
+  fitScale: number,
+  big: boolean,
+  mark: RegionMark,
+  cx: number,
+  cy: number,
+  pictureW: number,
+  pictureH: number,
+  contains?: (x: number, y: number) => boolean,
+  advance = 1,
+): number {
+  const font = cappedFontPx(radius, scale, fitScale, big);
+  if (!(font > 0) || !(scale > 0)) return 0;
+  const fits = (size: number) => {
+    const { w, h } = markGlyph(mark, size, advance);
+    const hw = w / 2;
+    const hh = h / 2;
+    const sx = cx * scale;
+    const sy = cy * scale;
+    const inset = scale;
+    if (sx - hw < inset || sy - hh < inset || sx + hw > pictureW * scale - inset || sy + hh > pictureH * scale - inset) return false;
+    if (Math.hypot(hw, hh) / scale > radius + 0.05) return false;
+    if (!contains) return true;
+    const dx = hw / scale;
+    const dy = hh / scale;
+    return (
+      contains(cx - dx, cy - dy) &&
+      contains(cx + dx, cy - dy) &&
+      contains(cx - dx, cy + dy) &&
+      contains(cx + dx, cy + dy)
+    );
+  };
+  if (fits(font)) return font;
+  let lo = 0;
+  let hi = font;
+  for (let step = 0; step < 12; step++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
