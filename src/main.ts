@@ -7,6 +7,8 @@ import App from './App.svelte';
 import './app.css';
 import { installAudio } from './lib/audio';
 import { APP_NAME } from './lib/brand';
+import { load as loadWordSearch } from './lib/games/entries/word-search';
+import { isWordSearchPath } from './lib/games/word-search/route';
 import { loadSettings } from './lib/storage';
 
 document.title = APP_NAME;
@@ -18,4 +20,9 @@ const initialSettings = await loadSettings();
 const target = document.getElementById('app');
 if (!target) throw new Error('Missing app root');
 
-mount(App, { target, props: { initialSettings } });
+if (isWordSearchPath(window.location.pathname, import.meta.env.BASE_URL)) {
+  const { default: WordSearch } = await loadWordSearch();
+  mount(WordSearch, { target, props: { initialSettings } });
+} else {
+  mount(App, { target, props: { initialSettings } });
+}
