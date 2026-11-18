@@ -393,5 +393,100 @@
     "file": "realistic-jaguar",
     "regions": 547,
     "colors": 35
+  },
+  "adult-flowing-geometry": {
+    "file": "adult-flowing-geometry",
+    "regions": 257,
+    "colors": 11
+  },
+  "adult-jewel-swirls": {
+    "file": "adult-jewel-swirls",
+    "regions": 482,
+    "colors": 21
+  },
+  "adult-stained-glass-mosaic": {
+    "file": "adult-stained-glass-mosaic",
+    "regions": 574,
+    "colors": 24
+  },
+  "adult-fluid-shapes": {
+    "file": "adult-fluid-shapes",
+    "regions": 259,
+    "colors": 18
+  },
+  "adult-art-deco-fan": {
+    "file": "adult-art-deco-fan",
+    "regions": 599,
+    "colors": 15
+  },
+  "adult-kaleidoscope-crystal": {
+    "file": "adult-kaleidoscope-crystal",
+    "regions": 1026,
+    "colors": 33
+  },
+  "adult-wave-ribbons": {
+    "file": "adult-wave-ribbons",
+    "regions": 346,
+    "colors": 8
+  },
+  "adult-sunset-tessellation": {
+    "file": "adult-sunset-tessellation",
+    "regions": 492,
+    "colors": 25
+  },
+  "adult-lotus-mandala": {
+    "file": "adult-lotus-mandala",
+    "regions": 2037,
+    "colors": 34
+  },
+  "adult-peacock-mandala": {
+    "file": "adult-peacock-mandala",
+    "regions": 1642,
+    "colors": 22
+  },
+  "adult-lush-peony-garden": {
+    "file": "adult-lush-peony-garden",
+    "regions": 1626,
+    "colors": 40
+  },
+  "adult-butterfly-garden": {
+    "file": "adult-butterfly-garden",
+    "regions": 2107,
+    "colors": 40
+  },
+  "adult-peacock-feathers": {
+    "file": "adult-peacock-feathers",
+    "regions": 1390,
+    "colors": 40
+  },
+  "adult-santorini-village": {
+    "file": "adult-santorini-village",
+    "regions": 651,
+    "colors": 40
+  },
+  "adult-cherry-blossom-garden": {
+    "file": "adult-cherry-blossom-garden",
+    "regions": 3502,
+    "colors": 40
+  },
+  "adult-coral-reef-pattern": {
+    "file": "adult-coral-reef-pattern",
+    "regions": 831,
+    "colors": 40
+  },
+  "adult-cafe-still-life": {
+    "file": "adult-cafe-still-life",
+    "regions": 459,
+    "colors": 40
+  },
+  "adult-hot-air-balloons": {
+    "file": "adult-hot-air-balloons",
+    "regions": 464,
+    "colors": 40
+  },
+  "adult-northern-lights": {
+    "file": "adult-northern-lights",
+    "regions": 485,
+    "colors": 40
   }
 }

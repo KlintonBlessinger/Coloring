@@ -104,9 +104,30 @@ REALISTIC = [
     ('realistic-jaguar', 'Jaguar by the River', 'Animals', 'medium', 96, 150),
 ]
 
-# A later grown-up archive can append ('id', title, 'Grown-ups', 'hard', 'lineart', k, min_area).
-# The first archive was rejected and is not in this list.
-GROWNUPS: list[tuple] = []
+# v2 replaces the rejected blurry set. Celestial Mandala stayed over deltaE 8
+# and is not in this list. Each tuple carries its mode so a k/minArea pair is
+# not mistaken for a tonal picture.
+GROWNUPS: list[tuple] = [
+    ('adult-flowing-geometry', 'Flowing Geometry', 'Grown-ups', 'hard', 'lineart', 48, 55),
+    ('adult-jewel-swirls', 'Jewel Swirls', 'Grown-ups', 'hard', 'lineart', 48, 80),
+    ('adult-stained-glass-mosaic', 'Stained-Glass Mosaic', 'Grown-ups', 'hard', 'lineart', 36, 160),
+    ('adult-fluid-shapes', 'Fluid Shapes', 'Grown-ups', 'hard', 'lineart', 48, 100),
+    ('adult-art-deco-fan', 'Art Deco Fan', 'Grown-ups', 'hard', 'lineart', 48, 120),
+    ('adult-kaleidoscope-crystal', 'Kaleidoscope Crystal', 'Grown-ups', 'hard', 'lineart', 48, 80),
+    ('adult-wave-ribbons', 'Wave Ribbons', 'Grown-ups', 'hard', 'lineart', 36, 80),
+    ('adult-sunset-tessellation', 'Sunset Tessellation', 'Grown-ups', 'hard', 'lineart', 36, 180),
+    ('adult-lotus-mandala', 'Lotus Mandala', 'Grown-ups', 'hard', 'lineart', 64, 50),
+    ('adult-peacock-mandala', 'Peacock Mandala', 'Grown-ups', 'hard', 'lineart', 64, 80),
+    ('adult-lush-peony-garden', 'Lush Peony Garden', 'Grown-ups', 'hard', 'tonal', 160, 160),
+    ('adult-butterfly-garden', 'Butterfly Garden', 'Grown-ups', 'hard', 'tonal', 96, 40),
+    ('adult-peacock-feathers', 'Peacock Feathers', 'Grown-ups', 'hard', 'tonal', 80, 100),
+    ('adult-santorini-village', 'Santorini Village', 'Grown-ups', 'hard', 'tonal', 36, 130),
+    ('adult-cherry-blossom-garden', 'Cherry Blossom Garden', 'Grown-ups', 'hard', 'tonal', 160, 30),
+    ('adult-coral-reef-pattern', 'Coral Reef', 'Grown-ups', 'hard', 'tonal', 64, 100),
+    ('adult-cafe-still-life', 'Café Still Life', 'Grown-ups', 'hard', 'tonal', 48, 100),
+    ('adult-hot-air-balloons', 'Hot-Air Balloons', 'Grown-ups', 'hard', 'tonal', 36, 100),
+    ('adult-northern-lights', 'Northern Lights', 'Grown-ups', 'hard', 'tonal', 36, 120),
+]
 
 
 def write_puzzle(document: dict) -> None:

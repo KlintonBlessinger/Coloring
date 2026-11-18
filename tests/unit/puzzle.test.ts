@@ -197,7 +197,7 @@ test('a label center has to fall inside its path', () => {
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
-  assert.equal(files.length, 79);
+  assert.equal(files.length, 98);
   const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as VectorPuzzle);
   for (const category of CATEGORIES) {
     if (category === 'Grown-ups') continue;
@@ -206,7 +206,7 @@ test('starter puzzles cover every shelf', () => {
       category,
     );
   }
-  assert.equal(puzzles.filter((puzzle) => puzzle.category === 'Grown-ups' || puzzle.id.startsWith('adult-')).length, 0);
+  assert.equal(puzzles.filter((puzzle) => puzzle.category === 'Grown-ups' || puzzle.id.startsWith('adult-')).length, 19);
   for (const difficulty of ['easy', 'medium', 'hard'] as const) {
     assert.ok(puzzles.some((puzzle) => puzzle.difficulty === difficulty));
   }
@@ -221,7 +221,20 @@ test('starter puzzles cover every shelf', () => {
     'animals-cat-window': 'hard',
   };
   for (const puzzle of puzzles) {
-    assert.equal(puzzle.mode, puzzle.id.startsWith('realistic-') ? 'tonal' : 'lineart');
+    const tonal =
+      puzzle.id.startsWith('realistic-') ||
+      [
+        'adult-lush-peony-garden',
+        'adult-butterfly-garden',
+        'adult-peacock-feathers',
+        'adult-santorini-village',
+        'adult-cherry-blossom-garden',
+        'adult-coral-reef-pattern',
+        'adult-cafe-still-life',
+        'adult-hot-air-balloons',
+        'adult-northern-lights',
+      ].includes(puzzle.id);
+    assert.equal(puzzle.mode, tonal ? 'tonal' : 'lineart');
     assert.equal(puzzle.w, 1024);
     assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 40, `${puzzle.id} ${puzzle.palette.length} colors`);
     assert.ok(puzzle.regions.length >= 30, puzzle.id);
@@ -247,7 +260,7 @@ test('starter puzzles cover every shelf', () => {
     smallRadiusFraction: number;
     ok: boolean;
   }[];
-  assert.equal(scores.length, 79);
+  assert.equal(scores.length, 98);
   for (const score of scores) {
     assert.equal(score.ok, true, score.id);
     assert.ok(score.meanDE76 <= 6, `${score.id} deltaE ${score.meanDE76}`);

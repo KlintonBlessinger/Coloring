@@ -1882,5 +1882,157 @@
         59
       ]
     ]
+  },
+  "adult-flowing-geometry": {
+    "k": 48,
+    "minArea": 55,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-jewel-swirls": {
+    "k": 48,
+    "minArea": 80,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-stained-glass-mosaic": {
+    "k": 36,
+    "minArea": 160,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-fluid-shapes": {
+    "k": 48,
+    "minArea": 100,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-art-deco-fan": {
+    "k": 48,
+    "minArea": 120,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-kaleidoscope-crystal": {
+    "k": 48,
+    "minArea": 80,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-wave-ribbons": {
+    "k": 36,
+    "minArea": 80,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-sunset-tessellation": {
+    "k": 36,
+    "minArea": 180,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-lotus-mandala": {
+    "k": 64,
+    "minArea": 50,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-peacock-mandala": {
+    "k": 64,
+    "minArea": 80,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-lush-peony-garden": {
+    "k": 160,
+    "minArea": 160,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-butterfly-garden": {
+    "k": 96,
+    "minArea": 40,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-peacock-feathers": {
+    "k": 80,
+    "minArea": 100,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-santorini-village": {
+    "k": 36,
+    "minArea": 130,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-cherry-blossom-garden": {
+    "k": 160,
+    "minArea": 30,
+    "eyes": [
+      [
+        278,
+        848,
+        52,
+        48
+      ],
+      [
+        528,
+        818,
+        52,
+        48
+      ],
+      [
+        816,
+        832,
+        52,
+        48
+      ]
+    ],
+    "mouths": []
+  },
+  "adult-coral-reef-pattern": {
+    "k": 64,
+    "minArea": 100,
+    "eyes": [
+      [
+        424,
+        308,
+        64,
+        58
+      ],
+      [
+        584,
+        518,
+        46,
+        46
+      ],
+      [
+        860,
+        600,
+        50,
+        46
+      ]
+    ],
+    "mouths": []
+  },
+  "adult-cafe-still-life": {
+    "k": 48,
+    "minArea": 100,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-hot-air-balloons": {
+    "k": 36,
+    "minArea": 100,
+    "eyes": [],
+    "mouths": []
+  },
+  "adult-northern-lights": {
+    "k": 36,
+    "minArea": 120,
+    "eyes": [],
+    "mouths": []
   }
 }

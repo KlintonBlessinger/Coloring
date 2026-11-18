@@ -171,7 +171,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(84);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(104);
   await page.locator('[data-category="Animals"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(53);
   await page.getByTestId('habitat-sea-life').click();
@@ -1260,14 +1260,29 @@ test('an imported pack gets a shelf for each tag and survives a reload', async (
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('for grown-ups stays hidden while the shelf is empty', async ({ page }) => {
+test('for grown-ups shelf shows the four groups', async ({ page }) => {
   const errors = watch(page);
   await page.goto('/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
-  await expect(page.locator('[data-category="Grown-ups"]')).toHaveCount(0);
-  await expect(page.locator('[data-shelf="grown-ups"]')).toHaveCount(0);
-  await expect(page.locator('[data-id^="adult-"]')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'For Grown-ups' })).toHaveCount(0);
+  const shelf = page.locator('[data-shelf="grown-ups"]');
+  await shelf.scrollIntoViewIfNeeded();
+  await expect(shelf.getByRole('heading', { name: 'For Grown-ups' })).toBeVisible();
+  await expect(shelf.locator('[data-group="abstract"]')).toBeVisible();
+  await expect(shelf.locator('[data-group="mandala"]')).toBeVisible();
+  await expect(shelf.locator('[data-group="floral"]')).toBeVisible();
+  await expect(shelf.locator('[data-group="places"]')).toBeVisible();
+  await expect(page.locator('[data-category="Grown-ups"]')).toHaveCount(1);
+  await page.locator('[data-category="Grown-ups"]').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(19);
+  await page.getByTestId('grownup-abstract').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(8);
+  await page.getByTestId('grownup-mandala').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(2);
+  await page.getByTestId('grownup-floral').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(4);
+  await page.getByTestId('grownup-places').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(6);
+  await expect(page.locator('[data-id="adult-cherry-blossom-garden"]')).toBeVisible();
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -1371,5 +1386,81 @@ test('face detail on lion, fox, owl, koala, clownfish, and turkey', async ({ pag
 
   await showVector('thanksgiving-turkey', false);
   await jpg('face-turkey-fit.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  const shelf = page.locator('[data-shelf="grown-ups"]');
+  await shelf.getByRole('heading', { name: 'For Grown-ups' }).evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await expect(shelf.getByRole('heading', { name: 'For Grown-ups' })).toBeVisible();
+  await expect(shelf.locator('[data-group="abstract"]')).toBeVisible();
+  await page.waitForTimeout(300);
+  await jpg('vector-grownups-shelf.jpg');
+
+  await openPuzzle(page, 'adult-lotus-mandala');
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface');
+    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+  });
+  const canvas = page.locator('canvas.surface');
+  const fitted = Number(await canvas.getAttribute('data-scale'));
+  await page.evaluate(() => {
+    const surface = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = surface.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      surface.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1,
+        clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+      }));
+    };
+    const start = 28;
+    const end = 84;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeGreaterThan(2.4);
+  await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeLessThan(3.8);
+  await page.waitForTimeout(300);
+  await jpg('vector-lotus-mandala-zoom.jpg');
+
+  const book = puzzle('adult-cherry-blossom-garden');
+  // Cherry sits on both the places and floral rows, so the gallery has two cards.
+  await page.goto(`/?open=adult-cherry-blossom-garden&t=${Date.now()}`);
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await page.locator('[data-testid="puzzle-card"][data-id="adult-cherry-blossom-garden"]').first().click();
+  await beginPicture(page);
+  await page.evaluate(() => {
+    const surface = document.querySelector('canvas.surface');
+    if (surface instanceof HTMLElement) surface.dataset.hideArt = '1';
+  });
+  await paintRegions(page, book, book.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="complete"]');
+    if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+  });
+  await page.waitForTimeout(200);
+  await jpg('vector-cherry-koi-fit.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });
