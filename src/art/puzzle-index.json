@@ -1,7 +1,7 @@
 {
   "adult-art-deco-fan": {
     "file": "adult-art-deco-fan",
-    "regions": 465,
+    "regions": 467,
     "colors": 14
   },
   "adult-butterfly-garden": {
@@ -16,8 +16,8 @@
   },
   "adult-celestial-mandala": {
     "file": "adult-celestial-mandala",
-    "regions": 1235,
-    "colors": 18
+    "regions": 1048,
+    "colors": 20
   },
   "adult-cherry-blossom-garden": {
     "file": "adult-cherry-blossom-garden",
@@ -51,13 +51,13 @@
   },
   "adult-kaleidoscope-crystal": {
     "file": "adult-kaleidoscope-crystal",
-    "regions": 726,
+    "regions": 714,
     "colors": 29
   },
   "adult-lotus-mandala": {
     "file": "adult-lotus-mandala",
-    "regions": 1136,
-    "colors": 31
+    "regions": 1173,
+    "colors": 26
   },
   "adult-lush-peony-garden": {
     "file": "adult-lush-peony-garden",
@@ -76,8 +76,8 @@
   },
   "adult-peacock-mandala": {
     "file": "adult-peacock-mandala",
-    "regions": 1166,
-    "colors": 24
+    "regions": 1153,
+    "colors": 22
   },
   "adult-santorini-village": {
     "file": "adult-santorini-village",

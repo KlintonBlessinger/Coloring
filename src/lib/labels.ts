@@ -423,6 +423,35 @@ export function markGlyph(mark: RegionMark, fontPx: number, advance = 1): { w: n
   return { w: w * advance, h };
 }
 
+/**
+ * The radius of the numbers sitting next to this one.
+ * A large center uses that, so it cannot outgrow the ring around it.
+ */
+export function neighborLabelRadius(
+  index: number,
+  cx: ArrayLike<number>,
+  cy: ArrayLike<number>,
+  radii: ArrayLike<number>,
+): number {
+  const x = cx[index] ?? 0;
+  const y = cy[index] ?? 0;
+  const radius = radii[index] ?? 0;
+  const reach = Math.max(56, radius * 2.4);
+  const near: number[] = [];
+  for (let other = 0; other < radii.length; other++) {
+    if (other === index) continue;
+    const otherRadius = radii[other] ?? 0;
+    if (otherRadius < 3) continue;
+    const dx = (cx[other] ?? 0) - x;
+    const dy = (cy[other] ?? 0) - y;
+    if (dx * dx + dy * dy > reach * reach) continue;
+    near.push(otherRadius);
+  }
+  if (near.length < 4) return radius;
+  near.sort((left, right) => left - right);
+  return near[Math.floor(near.length * 0.5)];
+}
+
 /** The radius most numbered regions use, so a huge area cannot outgrow its neighbors. */
 export function typicalLabelRadius(radii: ArrayLike<number>): number {
   const values: number[] = [];

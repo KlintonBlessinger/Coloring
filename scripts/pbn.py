@@ -319,8 +319,13 @@ def vectorize_ink(ink: np.ndarray, epsilon: float = 1.5, symmetry: dict | None =
         even = round_ink_rings(even, symmetry)
     scale = 2
     # A light blur plus a looser fit turns the even pen into a smooth outline.
-    # A mandala wedge is blurred a little more so the copied stroke has no kink.
-    sigma = 1.15 if symmetry is not None else 0.7
+    # A curved mandala wedge is blurred more so the copied stroke has no kink.
+    if symmetry is not None and symmetry.get('style') == 'curve':
+        sigma = 1.8
+    elif symmetry is not None:
+        sigma = 1.15
+    else:
+        sigma = 0.7
     soft = cv2.GaussianBlur(even.astype(np.float32), (0, 0), sigma)
     up = cv2.resize(soft, (width * scale, height * scale), interpolation=cv2.INTER_LINEAR)
     bw = (up > 0.5).astype(np.uint8)
@@ -1309,6 +1314,46 @@ def quantize_tonal_palette(
     return regions, region_cluster, region_number, palette, number_lab, peel
 
 
+def close_symmetry_rings(labels: np.ndarray, strokes: np.ndarray, spec: dict) -> np.ndarray:
+    """Fill a gold ring that already runs around the center.
+
+    The source ring is a broken circle. One solid band, on the wedge's color,
+    is what gets copied to every petal.
+    """
+    if not strokes.any():
+        return labels
+    band = fold_field(strokes.astype(np.uint8), spec) > 0
+    height, width = labels.shape
+    cx, cy = spec['center']
+    yy, xx = np.ogrid[:height, :width]
+    rad = np.hypot(xx - cx, yy - cy)
+    ang = np.arctan2(yy - cy, xx - cx)
+    protect = float(spec.get('protect') or 0)
+    max_radius = 260
+    ink_counts = np.bincount(np.clip(rad[band].astype(np.int32), 0, max_radius - 1), minlength=max_radius)
+    smooth = np.convolve(ink_counts.astype(np.float32), np.ones(5) / 5, mode='same')
+    out = labels.copy()
+    for radius in range(int(protect) + 8, max_radius - 4):
+        if smooth[radius] < smooth[radius - 1] or smooth[radius] < smooth[radius + 1]:
+            continue
+        if smooth[radius] < 2 * np.pi * radius * 0.72:
+            continue
+        ring = np.abs(rad - radius) <= 2.2
+        present = ring & band
+        if int(present.sum()) < 20:
+            continue
+        sectors = np.floor((ang[present] + np.pi) / (2 * np.pi) * 36).astype(np.int32) % 36
+        if len(np.unique(sectors)) < 32:
+            continue
+        ids = out[present]
+        ids = ids[ids < 255]
+        if ids.size < 20:
+            continue
+        gold = int(np.bincount(ids.astype(np.int32)).argmax())
+        out[ring] = gold
+    return out
+
+
 def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None, mouths=None, auto_eyes: bool | None = None, symmetry: dict | None = None, puzzle_id: str = '', join_colors: bool = True, region_limit: int | None = None) -> dict:
     preset = defaults(mode)
     k = int(preset['k'] if k is None else k)
@@ -1318,6 +1363,9 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     mouth_boxes = [[box['x'], box['y'], box['w'], box['h']] for box in normalize_eyes(mouths)]
     if auto_eyes is None:
         auto_eyes = mode == 'lineart'
+    # A mandala's dots are not pupils. Guessing eyes plants black lumps on the petals.
+    if symmetry is not None and not eye_boxes:
+        auto_eyes = False
     started = time.time()
     image = cv2.imread(src)
     if image is None:
@@ -1368,7 +1416,9 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         thin_strokes = thin_found & yellow
         thick_strokes = thick_found & yellow
         stroke_share = float((thin_found | thick_found).mean())
-        if thin_strokes.any():
+        if thin_strokes.any() and not symmetry:
+            # A mandala keeps this gold inside the wedge regions. Painting each
+            # dash as its own pixel run is the broken piping.
             stroke_shapes, thin_kept = paint_stroke_detail(source_lab, thin_strokes, face['bgr'], width, height)
             thin_strokes = thin_kept
             detail = detail | thin_strokes
@@ -1465,6 +1515,8 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         k = len(centers)
     if symmetry:
         labels = fold_field(labels, symmetry)
+        if symmetry.get('style') == 'curve' and thick_strokes.any():
+            labels = close_symmetry_rings(labels, thick_strokes, symmetry)
         ink = fold_field(ink.astype(np.uint8), symmetry).astype(bool)
         detail = fold_field(detail.astype(np.uint8), symmetry).astype(bool)
     regions = np.zeros((height, width), np.int32)
@@ -1484,11 +1536,13 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         if mode == 'lineart':
             orphan, ink_add = claim_black_ink(source_lab, orphan)
             ink |= ink_add
-        if orphan.any():
+        if orphan.any() and not symmetry:
             extra, kept_detail = paint_stroke_detail(source_lab, orphan, face['bgr'], width, height)
             stroke_shapes.extend(extra)
             detail = detail | kept_detail
             blocked = ink | detail
+        # A symmetric picture already absorbed these specks into the neighbor.
+        # Drawing them again is the red crumbs on the inner ring.
     # Animal pictures used to drop every speck under the minimum area. A speck
     # that is a different color from its neighbor still cannot hold a number,
     # and leaving it in pushes a portrait past the region band. Grown-up
@@ -1813,7 +1867,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         elif symmetry and symmetry.get('style') == 'curve':
             # A wider blur and a looser fit knock the lumps out of a petal
             # without pulling the fill off the flat color underneath.
-            path = vectorize_region(regions, region_id, height, width, 1.6, 1.5)
+            path = vectorize_region(regions, region_id, height, width, 2.2, 2.6)
         else:
             path = vectorize_region(regions, region_id, height, width, 1.2, 0.8)
         if symmetry:
@@ -1861,7 +1915,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     # Ids are the compact raster ids. Renumber to the path list so hit tests stay dense.
     for index, region in enumerate(paths):
         region['id'] = index
-    ink_eps = 2.2 if symmetry and symmetry.get('style') == 'curve' else 1.5
+    ink_eps = 3.0 if symmetry and symmetry.get('style') == 'curve' else (1.8 if symmetry else 1.5)
     ink_path = vectorize_ink(ink, ink_eps, symmetry) if mode == 'lineart' else ''
     seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height, detail)

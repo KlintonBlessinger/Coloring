@@ -1,4 +1,4 @@
-import { fittedFontPx, markGlyph, regionMarks, typicalLabelRadius, type RegionMark } from './labels';
+import { fittedFontPx, markGlyph, neighborLabelRadius, regionMarks, typicalLabelRadius, type RegionMark } from './labels';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { MAX_SCALE, type DecodedPuzzle } from './types';
 
@@ -508,7 +508,9 @@ export class Renderer {
         const contains = path
           ? (x: number, y: number) => this.viewCtx.isPointInPath(path, x, y, 'evenodd')
           : undefined;
-        let px = fittedFontPx(radius, this.scale, fit, this.big, mark, cx, cy, this.puzzle.width, this.puzzle.height, contains, 1, this.typical);
+        const beside = neighborLabelRadius(i, this.puzzle.cx, this.puzzle.cy, this.puzzle.inr);
+        const cap = Math.min(this.typical, beside);
+        let px = fittedFontPx(radius, this.scale, fit, this.big, mark, cx, cy, this.puzzle.width, this.puzzle.height, contains, 1, cap);
         if (mark.kind === 'text' && px >= 8) {
           this.viewCtx.font = `500 ${px}px ${LABEL_FONT}`;
           const lines = mark.text.includes(' ') && mark.text.length > 8 ? mark.text.split(' ') : [mark.text];
@@ -527,7 +529,7 @@ export class Renderer {
               this.puzzle.height,
               contains,
               measured / estimated,
-              this.typical,
+              cap,
             );
           }
         }

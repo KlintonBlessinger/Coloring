@@ -8,7 +8,7 @@ import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/
 import { deltaE76, hexToOklab, hexToRgb, labDist2, oklabToHex, rgbToCielab } from '../../src/lib/color';
 import { progressFits, regionMapKey } from '../../src/lib/progress';
 import { CATEGORIES, DIFFICULTY_PRESETS, MAX_SCALE, OUTLINE } from '../../src/lib/types';
-import { FIT_LABEL_CAP, fittedFontPx, markGlyph } from '../../src/lib/labels';
+import { FIT_LABEL_CAP, fittedFontPx, markGlyph, neighborLabelRadius } from '../../src/lib/labels';
 import { pointInPath } from '../../src/lib/vector';
 
 interface VectorPuzzle {
@@ -210,6 +210,13 @@ test('fit view caps a huge number and keeps the whole glyph on the page', () => 
   assert.ok(zoomed > huge, 'numbers still grow when you zoom in');
   // A giant region stays with its neighbors. It does not grow to the old 4× cap.
   assert.ok(Math.abs(zoomed - 0.9 * 22 * fit * 4) < 1e-6, `zoomed ${zoomed}`);
+  const radii = [21, 5, 5, 5, 5, 5.2, 4.8, 6];
+  const xs = [100, 80, 120, 100, 70, 130, 100, 100];
+  const ys = [100, 100, 100, 80, 120, 120, 130, 70];
+  const beside = neighborLabelRadius(0, xs, ys, radii);
+  const center = fittedFontPx(21, fit * 3, fit, false, { kind: 'text', text: '30' }, 100, 100, 1024, 1024, undefined, 1, beside);
+  const neighbor = fittedFontPx(5, fit * 3, fit, false, { kind: 'text', text: '5' }, 80, 100, 1024, 1024, undefined, 1, beside);
+  assert.ok(Math.abs(center - neighbor) < 0.5, `center ${center} vs neighbor ${neighbor}`);
 });
 
 test('starter puzzles cover every shelf', () => {
