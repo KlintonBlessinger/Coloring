@@ -103,6 +103,32 @@ REALISTIC = [
     ('realistic-jaguar', 'Jaguar by the River', 'Animals', 'medium', 96, 150),
 ]
 
+# Per-picture line-art settings from the grown-up source set. The palette is the
+# source color, unchanged. peacock-mandala has no source record; it uses the
+# other mandala cut and may land near 19 colors.
+GROWNUPS = [
+    ('adult-flowing-geometry', 'Flowing Geometry', 'Grown-ups', 'hard', 'lineart', 36, 80),
+    ('adult-jewel-swirls', 'Jewel Swirls', 'Grown-ups', 'hard', 'lineart', 36, 80),
+    ('adult-stained-glass-mosaic', 'Stained-Glass Mosaic', 'Grown-ups', 'hard', 'lineart', 36, 275),
+    ('adult-fluid-shapes', 'Fluid Shapes', 'Grown-ups', 'hard', 'lineart', 36, 160),
+    ('adult-art-deco-fan', 'Art Deco Fan', 'Grown-ups', 'hard', 'lineart', 36, 80),
+    ('adult-kaleidoscope-crystal', 'Kaleidoscope Crystal', 'Grown-ups', 'hard', 'lineart', 36, 160),
+    ('adult-wave-ribbons', 'Wave Ribbons', 'Grown-ups', 'hard', 'lineart', 36, 70),
+    ('adult-sunset-tessellation', 'Sunset Tessellation', 'Grown-ups', 'hard', 'lineart', 36, 180),
+    ('adult-lotus-mandala', 'Lotus Mandala', 'Grown-ups', 'hard', 'lineart', 36, 280),
+    ('adult-celestial-mandala', 'Celestial Mandala', 'Grown-ups', 'hard', 'lineart', 48, 280),
+    ('adult-lush-peony-garden', 'Lush Peony Garden', 'Grown-ups', 'hard', 'lineart', 36, 180),
+    ('adult-butterfly-garden', 'Butterfly Garden', 'Grown-ups', 'hard', 'lineart', 36, 140),
+    ('adult-peacock-feathers', 'Peacock Feathers', 'Grown-ups', 'hard', 'lineart', 36, 260),
+    ('adult-peacock-mandala', 'Peacock Mandala', 'Grown-ups', 'hard', 'lineart', 36, 280),
+    ('adult-santorini-village', 'Santorini Village', 'Grown-ups', 'hard', 'lineart', 36, 120),
+    ('adult-cherry-blossom-garden', 'Cherry Blossom Garden', 'Grown-ups', 'hard', 'lineart', 36, 160),
+    ('adult-coral-reef-pattern', 'Coral Reef', 'Grown-ups', 'hard', 'lineart', 36, 160),
+    ('adult-cafe-still-life', 'Café Still Life', 'Grown-ups', 'hard', 'lineart', 36, 140),
+    ('adult-hot-air-balloons', 'Hot-Air Balloons', 'Grown-ups', 'hard', 'lineart', 36, 140),
+    ('adult-northern-lights', 'Northern Lights', 'Grown-ups', 'hard', 'lineart', 36, 120),
+]
+
 
 def write_puzzle(document: dict) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
@@ -131,11 +157,16 @@ def build_one(picture: tuple) -> dict:
     if not source.exists():
         raise FileNotFoundError(source)
     eyes = picture_eyes(picture)
+    kind = next((item for item in picture[4:] if item in ('lineart', 'tonal')), None)
     numbers = [item for item in picture[4:] if isinstance(item, (int, float))]
-    if len(numbers) >= 2:
+    if kind == 'tonal' or (kind is None and len(numbers) >= 2):
         _k, min_area = numbers[0], numbers[1]
         result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes)
         mode = 'tonal'
+    elif kind == 'lineart' and len(numbers) >= 2:
+        # Use the picture's own k and min area. Do not search, and do not shift the palette.
+        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes)
+        mode = 'lineart'
     else:
         # k=28 is the line-art default. Busy pictures try a larger palette and
         # keep the closest match that still stays at or under 40 colors.
@@ -170,7 +201,7 @@ def build_one(picture: tuple) -> dict:
 
 def main() -> None:
     wanted = set(sys.argv[1:])
-    pictures = [picture for picture in PICTURES + REALISTIC if not wanted or picture[0] in wanted]
+    pictures = [picture for picture in PICTURES + REALISTIC + GROWNUPS if not wanted or picture[0] in wanted]
     index = {}
     if INDEX.exists() and wanted:
         index = json.loads(INDEX.read_text())
@@ -180,7 +211,7 @@ def main() -> None:
         INDEX.write_text(json.dumps(index, indent=2) + '\n')
     if not wanted:
         # Drop entries for pictures no longer built.
-        keep = [picture[0] for picture in PICTURES + REALISTIC]
+        keep = [picture[0] for picture in PICTURES + REALISTIC + GROWNUPS]
         index = {puzzle_id: index[puzzle_id] for puzzle_id in keep if puzzle_id in index}
     INDEX.write_text(json.dumps(index, indent=2) + '\n')
 

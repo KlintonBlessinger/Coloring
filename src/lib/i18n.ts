@@ -210,6 +210,7 @@ const CATEGORY_NAMES: Record<Language, Record<Category, string>> = {
     Fantasy: 'Fantasy',
     Patterns: 'Patterns',
     Science: 'Science',
+    'Grown-ups': 'For Grown-ups',
   },
   es: {
     Thanksgiving: 'Acción de Gracias',
@@ -220,6 +221,7 @@ const CATEGORY_NAMES: Record<Language, Record<Category, string>> = {
     Fantasy: 'Fantasía',
     Patterns: 'Patrones',
     Science: 'Ciencia',
+    'Grown-ups': 'Para adultos',
   },
 };
 
@@ -257,4 +259,16 @@ const REALISTIC_GROUP_NAMES: Record<Language, Record<RealisticGroup, string>> = 
 
 export function realisticGroupLabel(language: Language, group: RealisticGroup): string {
   return REALISTIC_GROUP_NAMES[language][group];
+}
+
+export const GROWNUP_GROUPS = ['abstract', 'mandala', 'floral', 'places'] as const;
+export type GrownupGroup = (typeof GROWNUP_GROUPS)[number];
+
+const GROWNUP_GROUP_NAMES: Record<Language, Record<GrownupGroup, string>> = {
+  en: { abstract: 'Abstract', mandala: 'Mandala', floral: 'Floral', places: 'Places' },
+  es: { abstract: 'Abstracto', mandala: 'Mandala', floral: 'Floral', places: 'Lugares' },
+};
+
+export function grownupGroupLabel(language: Language, group: GrownupGroup): string {
+  return GROWNUP_GROUP_NAMES[language][group];
 }

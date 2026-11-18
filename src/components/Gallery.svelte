@@ -1,7 +1,7 @@
 <script lang="ts">
   import { APP_NAME } from '../lib/brand';
   import { listPuzzles, type CatalogEntry } from '../lib/catalog';
-  import { ANIMAL_HABITATS, REALISTIC_GROUPS, categoryLabel, habitatLabel, realisticGroupLabel, t, type AnimalHabitat } from '../lib/i18n';
+  import { ANIMAL_HABITATS, GROWNUP_GROUPS, REALISTIC_GROUPS, categoryLabel, grownupGroupLabel, habitatLabel, realisticGroupLabel, t, type AnimalHabitat, type GrownupGroup } from '../lib/i18n';
   import type { Settings } from '../lib/settings';
   import { asset } from '../lib/vector';
   import { saveRatio } from '../lib/thumb';
@@ -32,6 +32,13 @@
   let tab = $state<'all' | 'progress' | 'done'>('all');
   let category = $state<Shelf>('All');
   let habitat = $state<'all' | AnimalHabitat>('all');
+  let grownGroup = $state<'all' | GrownupGroup>('all');
+
+  function pickShelf(next: Shelf) {
+    category = next;
+    habitat = 'all';
+    grownGroup = 'all';
+  }
 
   const visible = $derived.by(() => {
     packTick;
@@ -42,6 +49,7 @@
         if (puzzle.packId || puzzle.mystery || puzzle.category !== category) return false;
       }
       if (category === 'Animals' && habitat !== 'all' && !puzzle.tags.setting.includes(habitat)) return false;
+      if (category === 'Grown-ups' && grownGroup !== 'all' && !puzzle.tags.subject.includes(grownGroup)) return false;
       const ratio = ratioOf(puzzle);
       if (tab === 'progress') return ratio > 0 && ratio < 1;
       if (tab === 'done') return ratio >= 1;
@@ -122,9 +130,9 @@
   </div>
 
   <div class="chips">
-    <button type="button" class="chip" class:on={category === 'All'} data-testid="category-chip" data-category="All" onclick={() => { category = 'All'; habitat = 'all'; }}>{t(settings.language, 'all')}</button>
-    <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => { category = 'Favorites'; habitat = 'all'; }}>{t(settings.language, 'favorites')}</button>
-    <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => { category = 'Mystery'; habitat = 'all'; }}>{t(settings.language, 'mystery')}</button>
+    <button type="button" class="chip" class:on={category === 'All'} data-testid="category-chip" data-category="All" onclick={() => pickShelf('All')}>{t(settings.language, 'all')}</button>
+    <button type="button" class="chip" class:on={category === 'Favorites'} data-testid="category-chip" data-category="Favorites" onclick={() => pickShelf('Favorites')}>{t(settings.language, 'favorites')}</button>
+    <button type="button" class="chip" class:on={category === 'Mystery'} data-testid="category-chip" data-category="Mystery" onclick={() => pickShelf('Mystery')}>{t(settings.language, 'mystery')}</button>
     {#each CATEGORIES as name (name)}
       <button
         type="button"
@@ -132,7 +140,7 @@
         class:on={category === name}
         data-testid="category-chip"
         data-category={name}
-        onclick={() => { category = name; habitat = 'all'; }}
+        onclick={() => pickShelf(name)}
       >{categoryLabel(settings.language, name)}</button>
     {/each}
   </div>
@@ -148,6 +156,21 @@
           data-testid="habitat-{name}"
           onclick={() => (habitat = name)}
         >{habitatLabel(settings.language, name)}</button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if category === 'Grown-ups'}
+    <div class="chips">
+      <button type="button" class="chip" class:on={grownGroup === 'all'} data-testid="grownup-all" onclick={() => (grownGroup = 'all')}>{t(settings.language, 'all')}</button>
+      {#each GROWNUP_GROUPS as name (name)}
+        <button
+          type="button"
+          class="chip"
+          class:on={grownGroup === name}
+          data-testid="grownup-{name}"
+          onclick={() => (grownGroup = name)}
+        >{grownupGroupLabel(settings.language, name)}</button>
       {/each}
     </div>
   {/if}
@@ -259,6 +282,24 @@
               </div>
             </section>
           {/if}
+        {:else if name === 'Grown-ups'}
+          {@const grownItems = visible.filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === 'Grown-ups')}
+          {#if grownItems.length}
+            <section class="shelf" data-shelf="grown-ups">
+              <h2 class="shelf-title">{categoryLabel(settings.language, 'Grown-ups')}</h2>
+              {#each GROWNUP_GROUPS as groupName (groupName)}
+                {@const items = grownItems.filter((puzzle) => puzzle.tags.subject.includes(groupName))}
+                {#if items.length}
+                  <h3 class="shelf-sub" data-group={groupName}>{grownupGroupLabel(settings.language, groupName)}</h3>
+                  <div class="shelf-row" data-shelf={groupName}>
+                    {#each items as puzzle (`${groupName}-${puzzle.id}`)}
+                      {@render picture(puzzle)}
+                    {/each}
+                  </div>
+                {/if}
+              {/each}
+            </section>
+          {/if}
         {:else}
           {@const items = visible.filter((puzzle) => !puzzle.packId && !puzzle.mystery && puzzle.category === name)}
           {#if items.length}
@@ -298,6 +339,8 @@
     <div class="grid">
       {#if category === 'Favorites' || category === 'Mystery'}
         <h2 class="shelf-title span">{category === 'Favorites' ? t(settings.language, 'favorites') : t(settings.language, 'mystery')}</h2>
+      {:else if category === 'Grown-ups' && grownGroup !== 'all'}
+        <h2 class="shelf-title span">{grownupGroupLabel(settings.language, grownGroup)}</h2>
       {:else if category !== 'All'}
         <h2 class="shelf-title span">{category === 'Animals' && habitat !== 'all' ? habitatLabel(settings.language, habitat) : categoryLabel(settings.language, category)}</h2>
       {/if}

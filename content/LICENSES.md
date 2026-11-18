@@ -95,3 +95,23 @@ npm run make-puzzle -- --input photo.jpg --title "Sunday" --category Food --diff
 | `content/sources/realistic-leopard-tree.jpg` | Leopard in a Tree | Original project art | Original, made for Color Cozy |
 | `content/sources/realistic-snow-leopard.jpg` | Snow Leopard | Original project art | Original, made for Color Cozy |
 | `content/sources/realistic-jaguar.jpg` | Jaguar by the River | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-flowing-geometry.jpg` | Flowing Geometry | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-jewel-swirls.jpg` | Jewel Swirls | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-stained-glass-mosaic.jpg` | Stained-Glass Mosaic | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-fluid-shapes.jpg` | Fluid Shapes | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-art-deco-fan.jpg` | Art Deco Fan | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-kaleidoscope-crystal.jpg` | Kaleidoscope Crystal | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-wave-ribbons.jpg` | Wave Ribbons | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-sunset-tessellation.jpg` | Sunset Tessellation | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-lotus-mandala.jpg` | Lotus Mandala | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-celestial-mandala.jpg` | Celestial Mandala | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-lush-peony-garden.jpg` | Lush Peony Garden | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-butterfly-garden.jpg` | Butterfly Garden | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-peacock-feathers.jpg` | Peacock Feathers | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-santorini-village.jpg` | Santorini Village | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-cherry-blossom-garden.jpg` | Cherry Blossom Garden | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-coral-reef-pattern.jpg` | Coral Reef | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-cafe-still-life.jpg` | Café Still Life | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-hot-air-balloons.jpg` | Hot-Air Balloons | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-northern-lights.jpg` | Northern Lights | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-peacock-mandala.jpg` | Peacock Mandala | Original project art | Original, made for Color Cozy |

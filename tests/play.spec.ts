@@ -171,7 +171,7 @@ test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const book = puzzle('food-ice-cream-sundae');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(84);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(105);
   await page.locator('[data-category="Animals"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(53);
   await page.getByTestId('habitat-sea-life').click();
@@ -1257,5 +1257,73 @@ test('an imported pack gets a shelf for each tag and survives a reload', async (
   await page.getByTestId('back').click();
   await expect(page.locator('[data-pack-shelf="Blue House"]')).toHaveCount(0);
   fs.unlinkSync(file);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('grown-ups shelf and lotus mandala zoom', async ({ page }) => {
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  const shelf = page.locator('[data-shelf="grown-ups"]');
+  await shelf.locator('h2').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await expect(shelf.getByRole('heading', { name: 'For Grown-ups' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Abstract' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mandala' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Floral' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Places' })).toBeVisible();
+  await expect(page.locator('[data-shelf="mandala"] [data-id="adult-lotus-mandala"]')).toBeAttached();
+  await expect(page.locator('[data-shelf="floral"] [data-id="adult-cherry-blossom-garden"]')).toBeAttached();
+  await expect(page.locator('[data-shelf="places"] [data-id="adult-cherry-blossom-garden"]')).toBeAttached();
+  await page.waitForTimeout(400);
+  await jpg('vector-grownups-shelf.jpg');
+
+  await page.locator('[data-category="Grown-ups"]').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(20);
+  await page.getByTestId('grownup-mandala').click();
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
+  await expect(page.locator('[data-id="adult-lotus-mandala"]')).toBeVisible();
+  await expect(page.locator('[data-id="adult-peacock-mandala"]')).toBeVisible();
+
+  await openPuzzle(page, 'adult-lotus-mandala');
+  await expect(page.locator('canvas.surface')).toHaveAttribute('data-ghost', '0');
+  const fitted = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1,
+        clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+      }));
+    };
+    const start = 28;
+    const end = 90;
+    fire('pointerdown', 1, cx - start, cy);
+    fire('pointerdown', 2, cx + start, cy);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, cx - reach, cy);
+      fire('pointermove', 2, cx + reach, cy);
+    }
+    fire('pointerup', 1, cx - end, cy);
+    fire('pointerup', 2, cx + end, cy);
+  });
+  await expect.poll(async () => {
+    const scale = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+    return scale / fitted;
+  }).toBeGreaterThan(2.6);
+  const zoomed = Number(await page.locator('canvas.surface').getAttribute('data-scale'));
+  expect(zoomed / fitted).toBeLessThan(3.8);
+  await page.waitForTimeout(300);
+  await jpg('vector-lotus-mandala-zoom.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });

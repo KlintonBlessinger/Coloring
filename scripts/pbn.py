@@ -229,8 +229,10 @@ def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int) -
 
 
 # Specks shorter than this, and smaller than this area, are vector noise.
-INK_MIN_LENGTH = 14
-INK_MIN_AREA = 18
+# Dense grown-up blanks arrive stippled. A dash under both limits is a speck;
+# a longer outline stays, including the thin strokes on the existing line art.
+INK_MIN_LENGTH = 28
+INK_MIN_AREA = 64
 # Even pen, in picture pixels. The source line art is a steady stroke about this wide.
 INK_STROKE = 3.5
 
@@ -1001,7 +1003,16 @@ def score_document(document: dict, source_path: str) -> dict:
     # gate grades the interior, 2px clear of the ink, which is what the page shows as color.
     away = ndi.distance_transform_edt(~ink)
     interior = away >= 2
-    usable = interior if interior.any() else ~ink
+    # Near-black, near-gray source pixels are line marks. Dropped stipple is one of
+    # those marks, so it is not a missed fill. Dark jewel colors stay, because they
+    # are saturated and this cut is only the neutral blacks.
+    mark_a = source_lab[:, :, 1] - 128
+    mark_b = source_lab[:, :, 2] - 128
+    mark_chroma = np.sqrt(mark_a * mark_a + mark_b * mark_b)
+    line_marks = (source_lab[:, :, 0] < 80) & (mark_chroma < 18)
+    usable = interior & ~line_marks
+    if not usable.any():
+        usable = interior if interior.any() else ~ink
     raw = ~ink
     radii = [float(region['label']['r']) for region in document['regions']]
     small = sum(1 for radius in radii if radius < 3)

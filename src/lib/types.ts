@@ -1,4 +1,4 @@
-export const CATEGORIES = ['Thanksgiving', 'Christmas', 'Animals', 'Flowers', 'Food', 'Fantasy', 'Patterns', 'Science'] as const;
+export const CATEGORIES = ['Thanksgiving', 'Christmas', 'Animals', 'Flowers', 'Food', 'Fantasy', 'Patterns', 'Science', 'Grown-ups'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;

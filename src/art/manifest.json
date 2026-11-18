@@ -3246,6 +3246,787 @@
           "A los jaguares les encanta el agua y son excelentes nadadores.",
           "El jaguar es el felino salvaje más grande de América."
         ]
+      },
+      {
+        "id": "adult-flowing-geometry",
+        "title": "Flowing Geometry",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel blue",
+            "gold",
+            "teal"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Geometric flow fields like this are cousins of the patterns that appear in Islamic girih tiles and in modern generative art.",
+          "Girih tiles fit stars and polygons edge to edge, so the pattern can continue without a gap."
+        ],
+        "factsEs": [
+          "Los campos de flujo geométrico como este son parientes de los patrones de los mosaicos girih islámicos y del arte generativo moderno.",
+          "Las teselas girih encajan estrellas y polígonos de lado a lado, de modo que el dibujo puede seguir sin dejar un hueco."
+        ]
+      },
+      {
+        "id": "adult-jewel-swirls",
+        "title": "Jewel Swirls",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel",
+            "magenta",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "A swirl of saturated jewel tones, as if precious stones had been melted and stirred into marbleized silk.",
+          "Marbleized paper is made by floating color on a bath and laying a sheet on top to lift the swirl."
+        ],
+        "factsEs": [
+          "Un remolino de tonos joya saturados, como si piedras preciosas se hubieran fundido y mezclado en seda jaspeada.",
+          "El papel jaspeado se hace flotando color sobre un baño y posando una hoja encima para recoger el remolino."
+        ]
+      },
+      {
+        "id": "adult-stained-glass-mosaic",
+        "title": "Stained-Glass Mosaic",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel",
+            "red",
+            "blue"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Medieval rose windows sometimes used more than a hundred individually leaded panes of colored glass in a single circle.",
+          "A rose window is round, and the stone or lead bars that hold the glass are called the tracery."
+        ],
+        "factsEs": [
+          "Algunos rosetones medievales usaban más de cien piezas de vidrio de color, unidas con plomo, en un solo círculo.",
+          "Un rosetón es redondo, y las barras de piedra o de plomo que sostienen el vidrio se llaman tracería."
+        ]
+      },
+      {
+        "id": "adult-fluid-shapes",
+        "title": "Fluid Shapes",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel",
+            "teal",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Color-field artists of the 20th century laid down large, closed shapes of flat, brilliant color much like a coloring-page palette.",
+          "Flat areas of one color, with a clean edge between them, are what a coloring page asks you to fill."
+        ],
+        "factsEs": [
+          "Los artistas del campo de color del siglo XX extendían grandes formas cerradas de color plano y brillante, muy parecidas a la paleta de una página para colorear.",
+          "Las zonas planas de un solo color, con un borde limpio entre ellas, son lo que una página para colorear pide rellenar."
+        ]
+      },
+      {
+        "id": "adult-art-deco-fan",
+        "title": "Art Deco Fan",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "gold",
+            "black",
+            "teal"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Art Deco sunburst fans, popular in the 1920s, echoed both Egyptian lotus motifs and the geometry of machine-age design.",
+          "A sunburst is a fan of rays from one point, a shape Art Deco used on buildings and on radios."
+        ],
+        "factsEs": [
+          "Los abanicos en rayos de sol del Art Decó, de moda en los años 1920, evocaban tanto el loto egipcio como la geometría del diseño de la era de las máquinas.",
+          "Un rayo de sol es un abanico de rayos que salen de un solo punto, una forma que el Art Decó usó en edificios y en radios."
+        ]
+      },
+      {
+        "id": "adult-kaleidoscope-crystal",
+        "title": "Kaleidoscope Crystal",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel",
+            "purple",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "The first kaleidoscope, invented by Sir David Brewster in 1816, used loose chips of colored glass and a triangular mirror tube.",
+          "The mirror tube repeats one cluster of glass chips into a circle by bouncing it between angled mirrors."
+        ],
+        "factsEs": [
+          "El primer caleidoscopio, inventado por Sir David Brewster en 1816, usaba trocitos sueltos de vidrio de color y un tubo de espejos triangular.",
+          "El tubo de espejos repite un grupo de vidrios en un círculo al rebotarlo entre espejos en ángulo."
+        ]
+      },
+      {
+        "id": "adult-wave-ribbons",
+        "title": "Wave Ribbons",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "teal",
+            "gold",
+            "blue"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Long, overlapping color ribbons are a staple of both Japanese wave patterns (seigaiha) and 1960s psychedelic poster art.",
+          "Seigaiha is a Japanese pattern of overlapping half-circles that reads as a field of waves."
+        ],
+        "factsEs": [
+          "Las cintas largas de color que se solapan son un recurso tanto de los patrones de olas japoneses (seigaiha) como del cartel psicodélico de los años 1960.",
+          "El seigaiha es un patrón japonés de semicírculos superpuestos que se lee como un campo de olas."
+        ]
+      },
+      {
+        "id": "adult-sunset-tessellation",
+        "title": "Sunset Tessellation",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "abstract"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "gold",
+            "orange",
+            "purple"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "A tessellation tiles a plane with no gaps or overlaps — here the sky itself is cut into glowing sunset shards.",
+          "Escher's prints often lock birds or lizards so the same shape is both the figure and the ground."
+        ],
+        "factsEs": [
+          "Una teselación cubre un plano sin huecos ni solapes: aquí el propio cielo está cortado en fragmentos de atardecer.",
+          "Los grabados de Escher suelen encajar aves o lagartos de modo que la misma forma es a la vez la figura y el fondo."
+        ]
+      },
+      {
+        "id": "adult-lotus-mandala",
+        "title": "Lotus Mandala",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "mandala"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "pink",
+            "gold",
+            "green"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "In many Asian traditions the lotus is a map of unfolding awareness, which is why it so often sits at the heart of a mandala.",
+          "A mandala is drawn around one center, and each ring repeats the same motif at an even angle."
+        ],
+        "factsEs": [
+          "En muchas tradiciones de Asia el loto es un mapa del despertar, y por eso suele ocupar el centro de un mandala.",
+          "Un mandala se dibuja alrededor de un centro, y cada anillo repite el mismo motivo con el mismo ángulo."
+        ]
+      },
+      {
+        "id": "adult-celestial-mandala",
+        "title": "Celestial Mandala",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "mandala"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "gold",
+            "blue",
+            "purple"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Mandalas of stars, moons, and suns appear in Tibetan thangkas and in medieval European 'sky maps' alike.",
+          "A thangka is a painted or embroidered scroll, and many place a circle of figures inside a square palace."
+        ],
+        "factsEs": [
+          "Los mandalas de estrellas, lunas y soles aparecen tanto en los thangkas tibetanos como en los mapas del cielo de la Europa medieval.",
+          "Un thangka es un rollo pintado o bordado, y muchos colocan un círculo de figuras dentro de un palacio cuadrado."
+        ]
+      },
+      {
+        "id": "adult-lush-peony-garden",
+        "title": "Lush Peony Garden",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "floral"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "pink",
+            "green",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Peonies have been cultivated in China for more than 1,500 years and were once so prized that a single plant could cost as much as a house.",
+          "A peony bloom is a tight ball of petals, and some garden varieties open as wide as a dinner plate."
+        ],
+        "factsEs": [
+          "Las peonías se cultivan en China desde hace más de 1.500 años y llegaron a valer tanto que una sola planta podía costar como una casa.",
+          "La flor de la peonía es una bola apretada de pétalos, y algunas variedades de jardín se abren tanto como un plato."
+        ]
+      },
+      {
+        "id": "adult-butterfly-garden",
+        "title": "Butterfly Garden",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "floral"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel",
+            "blue",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "A butterfly's wing scales are tiny overlapping plates of chitin; the brilliant blues are often structural color, not pigment.",
+          "Structural color stays bright because it comes from the way the scales bounce light, not from a dye that fades."
+        ],
+        "factsEs": [
+          "Las escamas del ala de una mariposa son placas diminutas de quitina que se solapan; los azules brillantes suelen ser color estructural, no pigmento.",
+          "El color estructural se mantiene vivo porque nace de cómo las escamas rebotan la luz, no de un tinte que pueda apagarse."
+        ]
+      },
+      {
+        "id": "adult-peacock-feathers",
+        "title": "Peacock Feathers",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "floral"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "teal",
+            "gold",
+            "blue"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "The 'eyes' of a peacock's train are photonic crystals: microscopic structures that throw off green, blue, and gold by interference.",
+          "Only the male peafowl grows the long train, and he fans it during a courtship display."
+        ],
+        "factsEs": [
+          "Los ojos de la cola del pavo real son cristales fotónicos: estructuras microscópicas que lanzan verde, azul y oro por interferencia.",
+          "Solo el pavo real macho desarrolla la cola larga, y la abre en abanico durante el cortejo."
+        ]
+      },
+      {
+        "id": "adult-santorini-village",
+        "title": "Santorini Village",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "places"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "blue",
+            "white",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Santorini's blue-domed churches and whitewashed houses sit on the rim of a flooded volcanic caldera in the Aegean Sea.",
+          "The whitewash reflects the Aegean sun, and many of the blue domes are church roofs."
+        ],
+        "factsEs": [
+          "Las iglesias de cúpula azul y las casas encaladas de Santorini se asientan en el borde de una caldera volcánica inundada, en el mar Egeo.",
+          "La cal refleja el sol del Egeo, y muchas de las cúpulas azules son el techo de una iglesia."
+        ]
+      },
+      {
+        "id": "adult-cherry-blossom-garden",
+        "title": "Cherry Blossom Garden",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "places",
+            "floral"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "pink",
+            "green",
+            "blue"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Hanami, the Japanese custom of gathering to view cherry blossoms, has been celebrated for over a thousand years.",
+          "A cherry blossom usually has five petals, and the bloom lasts only a few days before the petals fall."
+        ],
+        "factsEs": [
+          "El hanami, la costumbre japonesa de reunirse para ver los cerezos en flor, se celebra desde hace más de mil años.",
+          "Una flor de cerezo suele tener cinco pétalos, y la floración dura solo unos días antes de que caigan."
+        ]
+      },
+      {
+        "id": "adult-coral-reef-pattern",
+        "title": "Coral Reef",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "places"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "teal",
+            "coral",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Coral reefs occupy less than 1% of the ocean floor but shelter about a quarter of all known marine species.",
+          "The hard part of a reef is the skeleton left by tiny coral animals, built up year after year."
+        ],
+        "factsEs": [
+          "Los arrecifes de coral ocupan menos del 1 % del fondo del océano, pero albergan cerca de una cuarta parte de todas las especies marinas conocidas.",
+          "La parte dura del arrecife es el esqueleto que dejan animales diminutos, acumulado año tras año."
+        ]
+      },
+      {
+        "id": "adult-cafe-still-life",
+        "title": "Café Still Life",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "places"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "gold",
+            "cream",
+            "green"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "The café still life — coffee, pastry, flowers, evening window — is a modern descendant of 17th-century Dutch breakfast paintings.",
+          "A still life is a picture of objects arranged to stay still: a cup, a pastry, a flower, a window."
+        ],
+        "factsEs": [
+          "El bodegón de café — café, pastel, flores, ventana al anochecer — es un descendiente moderno de los desayunos pintados en la Holanda del siglo XVII.",
+          "Un bodegón es un cuadro de objetos puestos para quedarse quietos: una taza, un pastel, una flor, una ventana."
+        ]
+      },
+      {
+        "id": "adult-hot-air-balloons",
+        "title": "Hot-Air Balloons",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "places"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "jewel",
+            "blue",
+            "gold"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "The first untethered manned hot-air balloon flight, by the Montgolfier brothers, rose over Paris in 1783.",
+          "A balloon rises because the air heated inside the envelope is lighter than the cooler air around it."
+        ],
+        "factsEs": [
+          "El primer vuelo libre y tripulado en globo de aire caliente, de los hermanos Montgolfier, se elevó sobre París en 1783.",
+          "Un globo sube porque el aire calentado dentro de la envoltura pesa menos que el aire frío de alrededor."
+        ]
+      },
+      {
+        "id": "adult-northern-lights",
+        "title": "Northern Lights",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "places"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "green",
+            "magenta",
+            "blue"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "The aurora is caused by charged solar particles colliding with gases in Earth's upper atmosphere, painting the sky in greens and magentas.",
+          "The same glow around the south pole is the southern lights, or aurora australis."
+        ],
+        "factsEs": [
+          "La aurora se produce cuando partículas solares cargadas chocan con los gases de la atmósfera alta de la Tierra y pintan el cielo de verdes y magentas.",
+          "El mismo resplandor alrededor del polo sur son las auroras australes."
+        ]
+      },
+      {
+        "id": "adult-peacock-mandala",
+        "title": "Peacock Mandala",
+        "category": "Grown-ups",
+        "difficulty": "hard",
+        "mystery": false,
+        "tags": {
+          "subject": [
+            "mandala"
+          ],
+          "setting": [
+            "grown-ups"
+          ],
+          "season": [
+            "any"
+          ],
+          "mood": [
+            "calm",
+            "intricate"
+          ],
+          "palette": [
+            "blue",
+            "gold",
+            "green"
+          ],
+          "style": [
+            "line-art"
+          ],
+          "complexity": "hard"
+        },
+        "facts": [
+          "Each eyespot on a peacock's train is called an ocellus, and the color comes from microscopic structures that throw off blue and gold.",
+          "The long train is a fan of feathers that grows above the true tail, and the male spreads it in a circle."
+        ],
+        "factsEs": [
+          "Cada ocelo de la cola del pavo real es una mancha cuyo color nace de estructuras microscópicas que lanzan azul y oro.",
+          "La cola larga es un abanico de plumas que crece por encima de la cola verdadera, y el macho la abre en círculo."
+        ]
       }
   ]
 }
