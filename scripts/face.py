@@ -1052,7 +1052,12 @@ def clear_lion_cheek_lines(regions: np.ndarray, detail: np.ndarray, stroke_shape
     from pbn import path_mask
     height, width = regions.shape
     corridor = np.zeros((height, width), bool)
+    # Under the left eye, and the rest of the muzzle. The drawn tear is a face
+    # shape, so it is not in this stroke list. The mouth boxes stay.
     corridor[360:560, 260:450] = True
+    corridor[480:760, 240:620] = True
+    corridor[467:571, 279:418] = False
+    corridor[556:626, 304:502] = False
     drop = np.zeros((height, width), bool)
     kept: list[dict] = []
     for shape in stroke_shapes:
