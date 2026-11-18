@@ -96,7 +96,7 @@ npm run make-puzzle -- --input photo.jpg --title "Sunday" --category Food --diff
 | `content/sources/realistic-snow-leopard.jpg` | Snow Leopard | Original project art | Original, made for Color Cozy |
 | `content/sources/realistic-jaguar.jpg` | Jaguar by the River | Original project art | Original, made for Color Cozy |
 
-The For Grown-ups pictures are original illustrations made for this project. The rejected blurry set was not shipped. Celestial Mandala was left out because it stayed above deltaE 8.
+The For Grown-ups pictures are original illustrations made for this project. The rejected blurry set was not shipped. Celestial Mandala is included: its stars and moons are one wedge repeated around the sun.
 
 | `content/sources/adult-flowing-geometry.jpg` | Flowing Geometry | Original project art | Original, made for Color Cozy |
 | `content/sources/adult-jewel-swirls.jpg` | Jewel Swirls | Original project art | Original, made for Color Cozy |
@@ -108,6 +108,7 @@ The For Grown-ups pictures are original illustrations made for this project. The
 | `content/sources/adult-sunset-tessellation.jpg` | Sunset Tessellation | Original project art | Original, made for Color Cozy |
 | `content/sources/adult-lotus-mandala.jpg` | Lotus Mandala | Original project art | Original, made for Color Cozy |
 | `content/sources/adult-peacock-mandala.jpg` | Peacock Mandala | Original project art | Original, made for Color Cozy |
+| `content/sources/adult-celestial-mandala.jpg` | Celestial Mandala | Original project art | Original, made for Color Cozy |
 | `content/sources/adult-lush-peony-garden.jpg` | Lush Peony Garden | Original project art | Original, made for Color Cozy |
 | `content/sources/adult-butterfly-garden.jpg` | Butterfly Garden | Original project art | Original, made for Color Cozy |
 | `content/sources/adult-peacock-feathers.jpg` | Peacock Feathers | Original project art | Original, made for Color Cozy |

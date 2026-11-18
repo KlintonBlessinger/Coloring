@@ -9,7 +9,8 @@ from pathlib import Path
 
 import cv2
 
-from pbn import puzzle_document, segment, thumbnail
+from pbn import puzzle_document, rasterize, segment, thumbnail
+from symmetry import symmetry_for
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ROOT / 'content' / 'sources'
@@ -104,9 +105,9 @@ REALISTIC = [
     ('realistic-jaguar', 'Jaguar by the River', 'Animals', 'medium', 96, 150),
 ]
 
-# v2 replaces the rejected blurry set. Celestial Mandala stayed over deltaE 8
-# and is not in this list. Each tuple carries its mode so a k/minArea pair is
-# not mistaken for a tonal picture.
+# v2 replaces the rejected blurry set. Celestial Mandala is back in this list:
+# its petals are one wedge spun around the sun, and the face stays put.
+# Each tuple carries its mode so a k/minArea pair is not mistaken for a tonal picture.
 GROWNUPS: list[tuple] = [
     ('adult-flowing-geometry', 'Flowing Geometry', 'Grown-ups', 'hard', 'lineart', 48, 55),
     ('adult-jewel-swirls', 'Jewel Swirls', 'Grown-ups', 'hard', 'lineart', 48, 80),
@@ -118,6 +119,7 @@ GROWNUPS: list[tuple] = [
     ('adult-sunset-tessellation', 'Sunset Tessellation', 'Grown-ups', 'hard', 'lineart', 36, 180),
     ('adult-lotus-mandala', 'Lotus Mandala', 'Grown-ups', 'hard', 'lineart', 64, 50),
     ('adult-peacock-mandala', 'Peacock Mandala', 'Grown-ups', 'hard', 'lineart', 64, 80),
+    ('adult-celestial-mandala', 'Celestial Mandala', 'Grown-ups', 'hard', 'lineart', 48, 80),
     ('adult-lush-peony-garden', 'Lush Peony Garden', 'Grown-ups', 'hard', 'tonal', 160, 160),
     ('adult-butterfly-garden', 'Butterfly Garden', 'Grown-ups', 'hard', 'tonal', 96, 40),
     ('adult-peacock-feathers', 'Peacock Feathers', 'Grown-ups', 'hard', 'tonal', 80, 100),
@@ -167,31 +169,40 @@ def build_one(picture: tuple) -> dict:
     mouths = spec.get('mouths')
     kind = next((item for item in picture[4:] if item in ('lineart', 'tonal')), None)
     numbers = [item for item in picture[4:] if isinstance(item, (int, float))]
+    spun = symmetry_for(puzzle_id)
     if 'k' in spec and 'minArea' in spec:
         mode = 'tonal' if kind == 'tonal' or (kind is None and len(numbers) >= 2) else 'lineart'
-        result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths)
+        result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths, symmetry=spun)
     elif kind == 'tonal' or (kind is None and len(numbers) >= 2):
         _k, min_area = numbers[0], numbers[1]
-        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes, mouths=mouths)
+        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes, mouths=mouths, symmetry=spun)
         mode = 'tonal'
     elif kind == 'lineart' and len(numbers) >= 2:
         # Use the picture's own k and min area. Do not search, and do not shift the palette.
-        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes, mouths=mouths)
+        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes, mouths=mouths, symmetry=spun)
         mode = 'lineart'
     else:
         # k=28 is the line-art default. Busy pictures try a larger palette and
         # keep the closest match that still stays at or under 40 colors.
-        result = segment(str(source), 'lineart', k=28, eyes=eyes, mouths=mouths)
+        result = segment(str(source), 'lineart', k=28, eyes=eyes, mouths=mouths, symmetry=spun)
         for k in (36, 44):
             stats = result['stats']
             if stats['meanDE76'] <= 4.6 and stats['smallRadiusFraction'] <= 0.03 and stats['colors'] <= 40:
                 break
-            nxt = segment(str(source), 'lineart', k=k, eyes=eyes, mouths=mouths)
+            nxt = segment(str(source), 'lineart', k=k, eyes=eyes, mouths=mouths, symmetry=spun)
             if nxt['stats']['meanDE76'] < result['stats']['meanDE76']:
                 result = nxt
         mode = 'lineart'
     meta = {'id': puzzle_id, 'title': title, 'category': category, 'difficulty': difficulty, 'mode': mode}
     document = puzzle_document(result, meta)
+    if spun is not None:
+        # The saved art is the symmetric vector picture, which is what the page paints.
+        art, _ink, _covered = rasterize(document)
+        # Quality 96 keeps a thin face line inside the color gate after JPEG.
+        cv2.imwrite(str(source), art, [int(cv2.IMWRITE_JPEG_QUALITY), 96])
+        public_art = ROOT / 'public' / 'art'
+        public_art.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(public_art / f'{puzzle_id}.jpg'), art, [int(cv2.IMWRITE_JPEG_QUALITY), 96])
     write_puzzle(document)
     THUMBS.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(THUMBS / f'{puzzle_id}.jpg'), thumbnail(result), [int(cv2.IMWRITE_JPEG_QUALITY), 82])

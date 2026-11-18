@@ -214,7 +214,7 @@ test('fit view caps a huge number and keeps the whole glyph on the page', () => 
 test('starter puzzles cover every shelf', () => {
   const dir = path.join(process.cwd(), 'public/puzzles');
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.json.gz'));
-  assert.equal(files.length, 98);
+  assert.equal(files.length, 99);
   const puzzles = files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as VectorPuzzle);
   for (const category of CATEGORIES) {
     if (category === 'Grown-ups') continue;
@@ -223,7 +223,7 @@ test('starter puzzles cover every shelf', () => {
       category,
     );
   }
-  assert.equal(puzzles.filter((puzzle) => puzzle.category === 'Grown-ups' || puzzle.id.startsWith('adult-')).length, 19);
+  assert.equal(puzzles.filter((puzzle) => puzzle.category === 'Grown-ups' || puzzle.id.startsWith('adult-')).length, 20);
   for (const difficulty of ['easy', 'medium', 'hard'] as const) {
     assert.ok(puzzles.some((puzzle) => puzzle.difficulty === difficulty));
   }
@@ -300,7 +300,7 @@ test('starter puzzles cover every shelf', () => {
     smallRadiusFraction: number;
     ok: boolean;
   }[];
-  assert.equal(scores.length, 98);
+  assert.equal(scores.length, 99);
   for (const score of scores) {
     assert.equal(score.ok, true, score.id);
     assert.ok(score.meanDE76 <= 6, `${score.id} deltaE ${score.meanDE76}`);

@@ -3777,6 +3777,44 @@
       ]
     },
     {
+      "id": "adult-celestial-mandala",
+      "title": "Celestial Mandala",
+      "category": "Grown-ups",
+      "difficulty": "hard",
+      "mystery": false,
+      "tags": {
+        "subject": [
+          "mandala"
+        ],
+        "setting": [
+          "decorative"
+        ],
+        "season": [
+          "any"
+        ],
+        "mood": [
+          "meditative",
+          "vivid"
+        ],
+        "palette": [
+          "jewel tones",
+          "gold"
+        ],
+        "style": [
+          "pattern"
+        ],
+        "complexity": "hard"
+      },
+      "facts": [
+        "A sun with a face sits at the center of this mandala, and every star and moon around it is the same wedge turned again.",
+        "Closed eyes and a small smile stay drawn in, the way a pupil does, so the face does not become a pile of tiny regions."
+      ],
+      "factsEs": [
+        "Un sol con rostro ocupa el centro de este mandala, y cada estrella y cada luna a su alrededor es el mismo gajo girado otra vez.",
+        "Los ojos cerrados y la sonrisa pequeña quedan dibujados, como una pupila, para que el rostro no se parta en regiones diminutas."
+      ]
+    },
+    {
       "id": "adult-lush-peony-garden",
       "title": "Lush Peony Garden",
       "category": "Grown-ups",

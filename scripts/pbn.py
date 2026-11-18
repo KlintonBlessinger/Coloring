@@ -22,6 +22,7 @@ from scipy import ndimage as ndi
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids
+from symmetry import fold_field, refold_regions, replicate, ring_path, round_ink_rings
 
 LINEART = {'k': 28, 'min_area': 60, 'merge': 6.0}
 TONAL = {'k': 36, 'min_area': 90, 'merge': 6.0}
@@ -118,7 +119,7 @@ def pin_border(x: float, y: float, width: int, height: int) -> tuple[float, floa
     return x, y, pinned
 
 
-def quad_path(points: np.ndarray, origin: np.ndarray, width: int, height: int) -> str:
+def quad_path(points: np.ndarray, origin: np.ndarray, width: int, height: int, straight: bool = False) -> str:
     """Smooth a closed polyline. Vertices on the paper edge stay pinned so the fill reaches the canvas."""
     raw = points.astype(np.float64) + origin
     if len(raw) < 3:
@@ -130,6 +131,12 @@ def quad_path(points: np.ndarray, origin: np.ndarray, width: int, height: int) -
         pinned.append((px, py))
         on_edge.append(flag)
     pts = np.array(pinned, np.float64)
+    if straight:
+        parts = [f'M{pts[0, 0]:.1f} {pts[0, 1]:.1f}']
+        for x, y in pts[1:]:
+            parts.append(f'L{x:.1f} {y:.1f}')
+        parts.append('Z')
+        return ''.join(parts)
     mids = (pts + np.roll(pts, -1, 0)) / 2
     parts = [f'M{mids[-1, 0]:.1f} {mids[-1, 1]:.1f}']
     count = len(pts)
@@ -143,7 +150,7 @@ def quad_path(points: np.ndarray, origin: np.ndarray, width: int, height: int) -
     return ''.join(parts)
 
 
-def contours_to_path(mask: np.ndarray, scale: int, origin: np.ndarray, width: int, height: int, epsilon: float = 0.8) -> str:
+def contours_to_path(mask: np.ndarray, scale: int, origin: np.ndarray, width: int, height: int, epsilon: float = 0.8, straight: bool = False) -> str:
     cs, _hier = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     if not cs:
         return ''
@@ -152,7 +159,7 @@ def contours_to_path(mask: np.ndarray, scale: int, origin: np.ndarray, width: in
         approx = cv2.approxPolyDP(contour, epsilon, True)[:, 0, :].astype(np.float64)
         if len(approx) < 3:
             continue
-        chunk = quad_path(approx / scale, origin, width, height)
+        chunk = quad_path(approx / scale, origin, width, height, straight)
         if chunk:
             chunks.append(chunk)
     return ''.join(chunks)
@@ -192,7 +199,7 @@ def region_runs_path(reg: np.ndarray, region_id: int) -> str:
     return ''.join(parts)
 
 
-def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int, edge_sigma: float = 1.2, epsilon: float = 0.8) -> str:
+def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int, edge_sigma: float = 1.2, epsilon: float = 0.8, straight: bool = False) -> str:
     ys, xs = np.where(reg == region_id)
     if len(ys) == 0:
         return ''
@@ -214,7 +221,7 @@ def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int, e
         bw = (up > 0.5).astype(np.uint8)
         if edge_sigma >= 0.05:
             bw = cv2.dilate(bw, np.ones((3, 3), np.uint8))
-        return contours_to_path(bw, scale, np.array([-extra, -extra], np.float64), width, height, epsilon)
+        return contours_to_path(bw, scale, np.array([-extra, -extra], np.float64), width, height, epsilon, straight)
     pad = 8
     y0 = max(int(ys.min()) - 3, 0)
     y1 = min(int(ys.max()) + 4, height)
@@ -243,7 +250,7 @@ def vectorize_region(reg: np.ndarray, region_id: int, height: int, width: int, e
     # Pixel-tight tonal contours skip it; the grow was the band of pixels painted the wrong color.
     if edge_sigma >= 0.05:
         bw = cv2.dilate(bw, np.ones((3, 3), np.uint8))
-    return contours_to_path(bw, scale, np.array([x0, y0], np.float64), width, height, epsilon)
+    return contours_to_path(bw, scale, np.array([x0, y0], np.float64), width, height, epsilon, straight)
 
 
 # Specks shorter than this, and smaller than this area, are vector noise.
@@ -304,15 +311,20 @@ def even_ink(mask: np.ndarray) -> np.ndarray:
     return drop_ink_fragments(even)
 
 
-def vectorize_ink(ink: np.ndarray) -> str:
+def vectorize_ink(ink: np.ndarray, epsilon: float = 1.5, symmetry: dict | None = None) -> str:
     height, width = ink.shape
     even = even_ink(ink)
+    if symmetry is not None:
+        even = fold_field(even, symmetry)
+        even = round_ink_rings(even, symmetry)
     scale = 2
     # A light blur plus a looser fit turns the even pen into a smooth outline.
-    soft = cv2.GaussianBlur(even.astype(np.float32), (0, 0), 0.7)
+    # A mandala wedge is blurred a little more so the copied stroke has no kink.
+    sigma = 1.15 if symmetry is not None else 0.7
+    soft = cv2.GaussianBlur(even.astype(np.float32), (0, 0), sigma)
     up = cv2.resize(soft, (width * scale, height * scale), interpolation=cv2.INTER_LINEAR)
     bw = (up > 0.5).astype(np.uint8)
-    return contours_to_path(bw, scale, np.zeros(2, np.float64), width, height, epsilon=1.5)
+    return contours_to_path(bw, scale, np.zeros(2, np.float64), width, height, epsilon=epsilon)
 
 
 def absorb_unlabeled(reg: np.ndarray) -> np.ndarray:
@@ -1099,7 +1111,7 @@ def quantize_tonal_palette(
     return regions, region_cluster, region_number, palette, number_lab, peel
 
 
-def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None, mouths=None, auto_eyes: bool | None = None) -> dict:
+def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None, mouths=None, auto_eyes: bool | None = None, symmetry: dict | None = None) -> dict:
     preset = defaults(mode)
     k = int(preset['k'] if k is None else k)
     min_area = int(preset['min_area'] if min_area is None else min_area)
@@ -1113,6 +1125,9 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     if image is None:
         raise FileNotFoundError(src)
     image = cv2.resize(image, (1024, 1024), interpolation=cv2.INTER_AREA)
+    # The photo stays as it was drawn. Tiling it first turns every edge into a
+    # stair the palette cannot match. The wedge is cut from the finished
+    # regions below, and the saved art is the flat copy of that wedge.
     height, width = image.shape[:2]
     if mode == 'lineart':
         smooth = cv2.bilateralFilter(image, 7, 30, 7)
@@ -1234,6 +1249,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     if thick_strokes.any():
         labels, centers, piping_ids = stamp_piping(labels, thick_strokes, source_lab, centers, merge)
         k = len(centers)
+    if symmetry:
+        labels = fold_field(labels, symmetry)
+        ink = fold_field(ink.astype(np.uint8), symmetry).astype(bool)
+        detail = fold_field(detail.astype(np.uint8), symmetry).astype(bool)
     regions = np.zeros((height, width), np.int32)
     count = 0
     region_cluster = [0]
@@ -1283,7 +1302,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             palette_lab[cluster] = centers[cluster]
         else:
             palette_lab[cluster] = np.array([128, 128, 128], np.float32)
-    regions = snap_closer(regions, region_cluster, palette_lab, source_lab, ink | detail, zone)
+    # Snapping follows the photo, which is not symmetric, so it would pull one
+    # petal off its copies. The wedge fold already decided the color.
+    if not symmetry:
+        regions = snap_closer(regions, region_cluster, palette_lab, source_lab, ink | detail, zone)
     # Snapping steals edge pixels and can leave a region too thin to number.
     # Face regions stay out of that fold.
     keep_thin = roomy_face_ids(regions, zone, detail)
@@ -1450,6 +1472,13 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             f'over8k {int((areas >= 8000).sum())} over20k {int((areas >= 20000).sum())} over50k {int((areas >= 50000).sum())}',
             flush=True,
         )
+    if symmetry:
+        # One wedge, then drop the seam slivers so they never become a number.
+        regions, region_cluster = refold_regions(regions, region_cluster, symmetry)
+        regions, region_cluster, _seam = absorb_thin(
+            regions, region_cluster, ink | detail, centers, 4.0, roomy_face_ids(regions, zone, detail), far_detail=False,
+        )
+        region_count = int(regions.max()) + 1 if regions.size else 0
     if os.environ.get('PBN_SKIP_PATHS') == '1':
         return {
             'w': width,
@@ -1479,8 +1508,18 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             path = vectorize_region(regions, region_id, height, width, 2.2, 2.4)
         elif mode == 'tonal':
             path = region_runs_path(regions, region_id)
+        elif symmetry and symmetry.get('style') == 'straight':
+            path = vectorize_region(regions, region_id, height, width, 0.9, 2.4, straight=True)
+        elif symmetry and symmetry.get('style') == 'curve':
+            # A wider blur and a looser fit knock the lumps out of a petal
+            # without pulling the fill off the flat color underneath.
+            path = vectorize_region(regions, region_id, height, width, 1.6, 1.5)
         else:
             path = vectorize_region(regions, region_id, height, width, 1.2, 0.8)
+        if symmetry:
+            ring = ring_path(regions == region_id, symmetry)
+            if ring:
+                path = ring
         if not path:
             continue
         label = place_label(regions, ink | detail, region_id)
@@ -1497,11 +1536,20 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             'n': number,
             'd': path,
             'label': {'x': label[0], 'y': label[1], 'r': label[2]},
+            'ring': bool(symmetry and path and ring_path(regions == region_id, symmetry)),
         })
+    if symmetry:
+        replicate(paths, regions, symmetry)
+        for region in paths:
+            region.pop('ring', None)
+    else:
+        for region in paths:
+            region.pop('ring', None)
     # Ids are the compact raster ids. Renumber to the path list so hit tests stay dense.
     for index, region in enumerate(paths):
         region['id'] = index
-    ink_path = vectorize_ink(ink) if mode == 'lineart' else ''
+    ink_eps = 2.2 if symmetry and symmetry.get('style') == 'curve' else 1.5
+    ink_path = vectorize_ink(ink, ink_eps, symmetry) if mode == 'lineart' else ''
     seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height, detail)
     detail_shapes = iris_shapes + face['shapes'] + stroke_shapes
@@ -1510,7 +1558,8 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         if region_number is not None:
             number = int(region_number[region_id]) if region_id < len(region_number) else 0
         else:
-            number = int(number_of[int(region_cluster[region_id])])
+            cluster = int(region_cluster[region_id]) if region_id < len(region_cluster) else -1
+            number = int(number_of.get(cluster, 0))
         if number in number_lab:
             flat[regions == region_id] = number_lab[number]
     if detail.any():
@@ -1556,7 +1605,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         '_ink': ink,
         '_detail': detail,
         '_detail_bgr': face['bgr'],
-        '_source': image,
+        '_source': cv2.cvtColor(np.clip(np.round(flat), 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR) if symmetry else image,
         '_regions': regions,
     }
 

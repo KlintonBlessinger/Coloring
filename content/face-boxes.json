@@ -1968,7 +1968,7 @@
   },
   "adult-lotus-mandala": {
     "k": 64,
-    "minArea": 50,
+    "minArea": 60,
     "eyes": [],
     "mouths": []
   },
@@ -1977,6 +1977,12 @@
     "minArea": 80,
     "eyes": [],
     "mouths": []
+  },
+  "adult-celestial-mandala": {
+    "k": 48,
+    "minArea": 80,
+    "eyes": [[448, 458, 62, 32], [522, 458, 62, 32]],
+    "mouths": [[478, 524, 68, 28]]
   },
   "adult-lush-peony-garden": {
     "k": 160,

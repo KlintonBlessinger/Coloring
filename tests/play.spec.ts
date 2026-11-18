@@ -1274,11 +1274,11 @@ test('for grown-ups shelf shows the four groups', async ({ page }) => {
   await expect(shelf.locator('[data-group="places"]')).toBeVisible();
   await expect(page.locator('[data-category="Grown-ups"]')).toHaveCount(1);
   await page.locator('[data-category="Grown-ups"]').click();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(19);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(20);
   await page.getByTestId('grownup-abstract').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(8);
   await page.getByTestId('grownup-mandala').click();
-  await expect(page.getByTestId('puzzle-card')).toHaveCount(2);
+  await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
   await page.getByTestId('grownup-floral').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(4);
   await page.getByTestId('grownup-places').click();
@@ -1409,7 +1409,7 @@ test('face detail on lion, fox, owl, koala, clownfish, and turkey', async ({ pag
 });
 
 test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(280_000);
   const errors = watch(page);
   const jpg = async (name: string) => {
     await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
@@ -1461,6 +1461,30 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeLessThan(3.8);
   await page.waitForTimeout(300);
   await jpg('vector-lotus-mandala-zoom.jpg');
+
+  await openPuzzle(page, 'adult-peacock-mandala');
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface');
+    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+  });
+  await page.waitForTimeout(300);
+  await jpg('vector-peacock-mandala-fit.jpg');
+
+  const fan = puzzle('adult-jewel-swirls');
+  await openPuzzle(page, 'adult-jewel-swirls');
+  await page.evaluate(() => {
+    const surface = document.querySelector('canvas.surface');
+    if (surface instanceof HTMLElement) surface.dataset.hideArt = '1';
+  });
+  await paintRegions(page, fan, fan.regionColors.map((_, index) => index));
+  await expect(page.getByTestId('complete')).toBeVisible();
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="complete"]');
+    if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+  });
+  await page.waitForTimeout(200);
+  await jpg('vector-jewel-swirls-fit.jpg');
 
   const book = puzzle('adult-cherry-blossom-garden');
   // Cherry sits on both the places and floral rows, so the gallery has two cards.
