@@ -1219,6 +1219,8 @@ def fold_by_color(
     min_area: int,
     protect: set[int],
     merge: float,
+    color_limit: float | None = None,
+    keep_thin: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Fold speckle into a neighbor of the same paint.
 
@@ -1268,13 +1270,16 @@ def fold_by_color(
                 other = int(region_cluster[neighbor])
                 if other >= len(centers):
                     continue
-                if lab_dist(own, centers[other]) >= max(merge, 12):
+                limit = color_limit if color_limit is not None else max(merge, 12)
+                if lab_dist(own, centers[other]) >= limit:
                     continue
                 if count > best_count:
                     best_host = neighbor
                     best_count = count
             if best_host is not None:
                 absorb[region_id] = best_host
+                continue
+            if keep_thin:
                 continue
             if int(areas[region_id]) < 24:
                 drop.append(region_id)
@@ -1788,6 +1793,91 @@ def close_symmetry_rings(labels: np.ndarray, strokes: np.ndarray, spec: dict) ->
     return out
 
 
+def match_palette(regions: np.ndarray, source_lab: np.ndarray, blocked: np.ndarray, limit: int = 40):
+    """Give each region the painting's color there, then keep at most 40 paints."""
+    ids = [int(region_id) for region_id in np.unique(regions) if int(region_id) > 0]
+    colors = []
+    areas = []
+    keep_ids = []
+    for region_id in ids:
+        member = (regions == region_id) & ~blocked
+        if int(member.sum()) < 8:
+            member = regions == region_id
+        if not member.any():
+            continue
+        colors.append(np.median(source_lab[member], axis=0))
+        areas.append(float((regions == region_id).sum()))
+        keep_ids.append(region_id)
+    colors = np.stack(colors).astype(np.float32)
+    areas = np.asarray(areas, np.float64)
+    k = min(limit, len(keep_ids))
+    weight = np.maximum(1, np.round(areas / max(float(areas.max()), 1.0) * 24)).astype(np.int32)
+    samples = np.repeat(colors, weight, axis=0)
+    model = MiniBatchKMeans(k, random_state=0, batch_size=512, n_init=3).fit(samples)
+    pred = model.predict(colors)
+    centers = np.zeros((k, 3), np.float32)
+    for index in range(k):
+        chosen = pred == index
+        if not chosen.any():
+            continue
+        centers[index] = np.average(colors[chosen], axis=0, weights=areas[chosen])
+    palette = []
+    number_lab = {}
+    number_of = np.zeros(k, np.int32)
+    number = 1
+    for index in range(k):
+        if not (pred == index).any():
+            continue
+        number_of[index] = number
+        number_lab[number] = centers[index]
+        palette.append({'n': number, 'hex': lab_to_hex(centers[index])})
+        number += 1
+    region_number = np.zeros(int(regions.max()) + 1, np.int32)
+    for region_id, group in zip(keep_ids, pred):
+        region_number[region_id] = int(number_of[int(group)])
+    return palette, number_lab, region_number
+
+
+def paint_kept_color(mask: np.ndarray, source_lab: np.ndarray, shapes: list[dict], detail: np.ndarray, width: int, height: int) -> np.ndarray:
+    """Draw thin pieces in their own paint, as a few fills, not a dashed stroke.
+
+    A gold line that cannot hold a number stays gold. Folding it into the
+    petal beside it is the miss against the painting.
+    """
+    if not mask.any():
+        return detail
+    samples = source_lab[mask]
+    groups = 1 if int(mask.sum()) < 800 else min(4, max(1, int(mask.sum()) // 4000))
+    if groups == 1:
+        parts = [(mask, np.median(samples, axis=0))]
+    else:
+        model = MiniBatchKMeans(groups, random_state=0, batch_size=2048, n_init=1).fit(samples[::2] if len(samples) > 8 else samples)
+        pred = np.zeros(mask.shape, np.int32)
+        pred[mask] = model.predict(samples)
+        parts = []
+        for index in range(groups):
+            part = pred == index
+            if part.any():
+                parts.append((part, np.median(source_lab[part], axis=0)))
+    for part, color in parts:
+        soft = cv2.GaussianBlur(part.astype(np.float32), (0, 0), 0.5)
+        up = cv2.resize(soft, (width * 2, height * 2), interpolation=cv2.INTER_LINEAR)
+        path = contours_to_path((up > 0.45).astype(np.uint8), 2, np.zeros(2), width, height, epsilon=1.0)
+        if path:
+            shapes.append({'d': path, 'hex': lab_to_hex(color)})
+        detail = detail | part
+    return detail
+
+
+# Scored against the v2 painting, not against a folded wedge of it. Celestial
+# stays out of the book until that score is 6 or under. Art Deco already is.
+MATCH_PAINTING = {
+    'adult-lotus-mandala',
+    'adult-peacock-mandala',
+    'adult-kaleidoscope-crystal',
+}
+
+
 def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None, mouths=None, auto_eyes: bool | None = None, symmetry: dict | None = None, puzzle_id: str = '', join_colors: bool = True, region_limit: int | None = None) -> dict:
     preset = defaults(mode)
     k = int(preset['k'] if k is None else k)
@@ -1800,6 +1890,11 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     # A mandala's dots are not pupils. Guessing eyes plants black lumps on the petals.
     if symmetry is not None and not eye_boxes:
         auto_eyes = False
+    # These three are scored against the painting itself. A blur or a folded
+    # wedge paints a petal a color the painting does not have there.
+    match_painting = puzzle_id in MATCH_PAINTING
+    if match_painting:
+        auto_eyes = False
     started = time.time()
     image = cv2.imread(src)
     if image is None:
@@ -1809,7 +1904,9 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     # stair the palette cannot match. The wedge is cut from the finished
     # regions below, and the saved art is the flat copy of that wedge.
     height, width = image.shape[:2]
-    if mode == 'lineart':
+    if match_painting:
+        smooth = image.copy()
+    elif mode == 'lineart':
         smooth = cv2.bilateralFilter(image, 7, 30, 7)
         smooth = cv2.medianBlur(smooth, 5)
     else:
@@ -1858,7 +1955,12 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
                 thin_strokes = np.zeros_like(thin_strokes)
                 ink = ink & ~cv2.dilate(gold.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
         stroke_share = float((thin_found | thick_found).mean())
-        if thin_strokes.any() and not symmetry:
+        if match_painting:
+            # Gold stays a region of the painting. A dashed detail stroke, or a
+            # circle taken from a wedge, sits beside the real stroke.
+            thin_strokes = np.zeros_like(thin_strokes)
+            thick_strokes = np.zeros_like(thick_strokes)
+        elif thin_strokes.any() and not symmetry:
             # A mandala keeps this gold inside the wedge regions. Painting each
             # dash as its own pixel run is the broken piping.
             stroke_shapes, thin_kept = paint_stroke_detail(source_lab, thin_strokes, face['bgr'], width, height)
@@ -1893,7 +1995,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     # petal and a dark one as one color. Animal fur does join centers that
     # stay within deltaE, before the regions are cut, so the same paint does
     # not come out as a pile of speckles.
-    if join_colors and (mode != 'tonal' or not str(puzzle_id).startswith('adult-')):
+    if join_colors and not match_painting and (mode != 'tonal' or not str(puzzle_id).startswith('adult-')):
         cluster_map = link_centers(centers, merge)
     # 255 is "not a cluster" (ink, the pupil stroke, or a dark pixel held out
     # of the palette). Mapping it through the table would paint it as the last color.
@@ -1938,7 +2040,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     # Those pictures get one narrow pass. Large line-art shapes keep the wider
     # cleanup that removes speckle. Piping pictures skip it: the median would
     # replace the gold with whichever neighbor id happens to be in the window.
-    if mode == 'lineart' and stroke_share > 0.015:
+    if match_painting or (mode == 'lineart' and stroke_share > 0.015):
         pass
     elif mode == 'tonal':
         # Cluster ids are not ordered by color, so a median swaps one band for
@@ -1980,7 +2082,13 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     region_cluster = np.array(region_cluster)
     regions = absorb_unlabeled(regions)
     protect = face_region_ids(regions, zone) | regions_covering(regions, thick_strokes)
-    regions, orphan = fold_by_color(regions, region_cluster, centers, min_area, protect, merge)
+    # A loose join paints a red petal with the pink beside it and the score
+    # against the painting misses 6. Only the same paint absorbs a speck.
+    regions, orphan = fold_by_color(
+        regions, region_cluster, centers, min_area, protect, merge,
+        color_limit=5.0 if match_painting else None,
+        keep_thin=match_painting,
+    )
     if symmetry is not None:
         regions = drop_false_specks(regions, region_cluster, centers, source_lab)
     if mouth_boxes and orphan.any():
@@ -2162,8 +2270,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
                     reps.append(cluster)
                     number_of[cluster] = len(reps)
                 continue
-            if mode == 'tonal':
+            if mode == 'tonal' or match_painting:
                 # Neighbor deltaE already decided which bands share a color.
+                # Joining these paints before the 40-color cap shifts a petal
+                # off the painting.
                 reps.append(cluster)
                 number_of[cluster] = len(reps)
                 group_members[cluster] = [cluster]
@@ -2248,6 +2358,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         palette = [{'n': number_of[rep], 'hex': lab_to_hex(palette_lab[rep])} for rep in reps]
         palette.sort(key=lambda item: item['n'])
         number_lab = {int(number_of[rep]): palette_lab[rep] for rep in reps}
+    if match_painting:
+        # One cluster color is shared by petals the painting paints differently.
+        # Each region's own color, folded down to 40, is what the gate measures.
+        palette, number_lab, region_number = match_palette(regions, source_lab, ink | detail, 40)
     shared = np.zeros_like(source_lab)
     for region_id in range(region_count):
         if region_number is not None:
@@ -2342,6 +2456,9 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             # A wider blur and a looser fit knock the lumps out of a petal
             # without pulling the fill off the flat color underneath.
             path = vectorize_region(regions, region_id, height, width, 2.2, 2.6)
+        elif match_painting:
+            # A loose contour sits beside the ink and reads as a second line.
+            path = vectorize_region(regions, region_id, height, width, 0.8, 0.6)
         else:
             path = vectorize_region(regions, region_id, height, width, 1.2, 0.8)
         if symmetry:
@@ -2687,19 +2804,10 @@ def contact_sheet(source_path: str, document: dict, dest: str) -> None:
 
 def gate_reasons(score: dict) -> list[str]:
     reasons = []
-    # The five symmetric grown-ups are scored against the v2 painting. A wedge
-    # posterization does not reach deltaE 6 against that painting, and the
-    # painting is not replaced with the render to make the number smaller.
-    # Celestial Mandala is not in the book until it scores 6 or under
-    # against the v2 painting. The other four are still scored against that
-    # painting, and a wedge posterization does not reach 6.
-    painting_source = {
-        'adult-lotus-mandala',
-        'adult-peacock-mandala',
-        'adult-kaleidoscope-crystal',
-        'adult-art-deco-fan',
-    }
-    if score['meanDE76'] > 6 and score.get('id') not in painting_source:
+    # Every picture in the book, including Lotus, Peacock, and Kaleidoscope,
+    # is scored against the v2 painting. Celestial stays out of the book
+    # until that score is 6 or under.
+    if score['meanDE76'] > 6:
         reasons.append(f"mean deltaE {score['meanDE76']:.2f} > 6")
     if score['smallRadiusFraction'] > 0.03:
         reasons.append(f"small-label fraction {score['smallRadiusFraction']:.1%} > 3%")

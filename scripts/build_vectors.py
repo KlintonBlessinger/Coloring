@@ -9,7 +9,7 @@ from pathlib import Path
 
 import cv2
 
-from pbn import puzzle_document, rasterize, segment, thumbnail
+from pbn import MATCH_PAINTING, puzzle_document, rasterize, segment, thumbnail
 from symmetry import symmetry_for
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,7 +168,9 @@ def build_one(picture: tuple) -> dict:
     mouths = spec.get('mouths')
     kind = next((item for item in picture[4:] if item in ('lineart', 'tonal')), None)
     numbers = [item for item in picture[4:] if isinstance(item, (int, float))]
-    spun = symmetry_for(puzzle_id)
+    # Lotus, Peacock, and Kaleidoscope are colored from the painting. Folding
+    # one wedge onto the others misses the paint that is actually there.
+    spun = None if puzzle_id in MATCH_PAINTING else symmetry_for(puzzle_id)
     if 'k' in spec and 'minArea' in spec:
         mode = 'tonal' if kind == 'tonal' or (kind is None and len(numbers) >= 2) else 'lineart'
         result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
@@ -194,11 +196,11 @@ def build_one(picture: tuple) -> dict:
         mode = 'lineart'
     meta = {'id': puzzle_id, 'title': title, 'category': category, 'difficulty': difficulty, 'mode': mode}
     document = puzzle_document(result, meta)
-    if spun is not None:
-        # The saved art is the symmetric vector picture, which is what the page paints.
+    if spun is not None or puzzle_id in MATCH_PAINTING:
+        # The gallery art is the vector picture the page paints. The v2 painting
+        # in content/sources stays the source. Scoring a recut against this
+        # render would hide the distance from that painting.
         art, _ink, _covered = rasterize(document)
-        # The v2 painting in content/sources stays the source. Scoring a recut
-        # against this render would hide the distance from that painting.
         public_art = ROOT / 'public' / 'art'
         public_art.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(public_art / f'{puzzle_id}.jpg'), art, [int(cv2.IMWRITE_JPEG_QUALITY), 96])
