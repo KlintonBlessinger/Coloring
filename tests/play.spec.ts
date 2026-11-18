@@ -1460,6 +1460,13 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
   });
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeGreaterThan(2.4);
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeLessThan(3.8);
+  // The pinch can land on a region and select its color. The review shot is a blank page.
+  await page.evaluate(() => {
+    const surface = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+    surface.dataset.hideArt = '1';
+    surface.clearColor?.();
+  });
+  await expect(page.locator('.swatch.selected')).toHaveCount(0);
   await page.waitForTimeout(300);
   await jpg('vector-lotus-mandala-zoom.jpg');
 

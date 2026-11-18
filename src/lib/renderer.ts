@@ -424,6 +424,7 @@ export class Renderer {
   }
 
   private strokeSeams(ctx: CanvasRenderingContext2D, keep: (index: number) => boolean): void {
+    if (!this.puzzle.seams) return;
     ctx.strokeStyle = SEAM;
     ctx.lineWidth = 0.55;
     ctx.lineJoin = 'round';

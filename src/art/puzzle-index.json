@@ -46,13 +46,13 @@
   },
   "adult-kaleidoscope-crystal": {
     "file": "adult-kaleidoscope-crystal",
-    "regions": 714,
-    "colors": 29
+    "regions": 911,
+    "colors": 40
   },
   "adult-lotus-mandala": {
     "file": "adult-lotus-mandala",
-    "regions": 1125,
-    "colors": 34
+    "regions": 1310,
+    "colors": 40
   },
   "adult-lush-peony-garden": {
     "file": "adult-lush-peony-garden",
@@ -71,8 +71,8 @@
   },
   "adult-peacock-mandala": {
     "file": "adult-peacock-mandala",
-    "regions": 993,
-    "colors": 22
+    "regions": 831,
+    "colors": 40
   },
   "adult-santorini-village": {
     "file": "adult-santorini-village",

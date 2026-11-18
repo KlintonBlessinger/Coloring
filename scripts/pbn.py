@@ -12,6 +12,7 @@ redrawn as one even stroke, and fragments shorter than the minimum are dropped.
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 from pathlib import Path
@@ -175,6 +176,79 @@ def extend_past_border(mask: np.ndarray, extra: int = 8) -> np.ndarray:
     canvas[:, :extra] = canvas[:, extra:extra + 1]
     canvas[:, extra + width:] = canvas[:, extra + width - 1:extra + width]
     return canvas
+
+
+def region_outline_path(reg: np.ndarray, region_id: int) -> str:
+    """Pixel-edge outline. The fill matches the mask, and a stroke is the boundary.
+
+    Scanline rectangles fill the same pixels, but stroking each one-pixel run
+    draws a line through the middle of the petal. The outline is only the edge.
+    """
+    ys, xs = np.where(reg == region_id)
+    if len(ys) == 0:
+        return ''
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    sub = np.pad(reg[y0:y1, x0:x1] == region_id, 1)
+    starts: dict[tuple[int, int], list[tuple[int, int]]] = {}
+
+    def add(a: tuple[int, int], b: tuple[int, int]) -> None:
+        starts.setdefault(a, []).append(b)
+
+    yy, xx = np.where(sub)
+    for y, x in zip(yy.tolist(), xx.tolist()):
+        px = x0 - 1 + int(x)
+        py = y0 - 1 + int(y)
+        if not sub[y - 1, x]:
+            add((px, py), (px + 1, py))
+        if not sub[y + 1, x]:
+            add((px + 1, py + 1), (px, py + 1))
+        if not sub[y, x - 1]:
+            add((px, py + 1), (px, py))
+        if not sub[y, x + 1]:
+            add((px + 1, py), (px + 1, py + 1))
+    used: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    parts: list[str] = []
+    for start, ends in starts.items():
+        for end in ends:
+            if (start, end) in used:
+                continue
+            loop = [start]
+            cur, nxt = start, end
+            guard = 0
+            while guard < 1000000:
+                guard += 1
+                used.add((cur, nxt))
+                loop.append(nxt)
+                if nxt == start:
+                    break
+                options = [cand for cand in starts.get(nxt, []) if (nxt, cand) not in used]
+                if not options:
+                    break
+                ix, iy = nxt[0] - cur[0], nxt[1] - cur[1]
+
+                def rank(cand: tuple[int, int], ix: int = ix, iy: int = iy, nxt: tuple[int, int] = nxt) -> tuple[int, int]:
+                    ox, oy = cand[0] - nxt[0], cand[1] - nxt[1]
+                    return (ix * oy - iy * ox, -(ix * ox + iy * oy))
+
+                options.sort(key=rank)
+                cur, nxt = nxt, options[0]
+            if len(loop) < 4 or loop[0] != loop[-1]:
+                continue
+            simple = [loop[0]]
+            for point in loop[1:]:
+                if len(simple) >= 2:
+                    a, b = simple[-2], simple[-1]
+                    if (b[0] - a[0]) * (point[1] - b[1]) == (b[1] - a[1]) * (point[0] - b[0]):
+                        simple[-1] = point
+                        continue
+                simple.append(point)
+            segs = [f'M{simple[0][0]}.0 {simple[0][1]}.0']
+            for point in simple[1:]:
+                segs.append(f'L{point[0]}.0 {point[1]}.0')
+            segs.append('Z')
+            parts.append(''.join(segs))
+    return ''.join(parts)
 
 
 def region_runs_path(reg: np.ndarray, region_id: int) -> str:
@@ -613,23 +687,121 @@ def clip_shapes_outside(shapes: list[dict], avoid: np.ndarray | None, width: int
     return kept
 
 
+def _axis_aligned_rects(path: str) -> list[tuple[float, float, float, float]] | None:
+    """Each M/L/L/L/Z box, or None when the path is not only those boxes.
+
+    Exact region runs are one rectangle per horizontal span. Painting them as
+    polygons allocates a full frame per span, which stalls a mandala.
+    """
+    rects: list[tuple[float, float, float, float]] = []
+    i = 0
+    n = len(path)
+
+    def number(pos: int) -> tuple[int, float] | None:
+        while pos < n and path[pos] in ' ,\n\t':
+            pos += 1
+        if pos >= n:
+            return None
+        start = pos
+        if path[pos] in '+-':
+            pos += 1
+        saw = False
+        while pos < n and (path[pos].isdigit() or path[pos] == '.'):
+            saw = True
+            pos += 1
+        if not saw:
+            return None
+        return pos, float(path[start:pos])
+
+    while i < n:
+        if path[i] in ' \n\t':
+            i += 1
+            continue
+        if path[i] != 'M':
+            return None
+        got = number(i + 1)
+        if got is None:
+            return None
+        i, x = got
+        got = number(i)
+        if got is None:
+            return None
+        i, y = got
+        xs = [x]
+        ys = [y]
+        while i < n and path[i] == 'L':
+            got = number(i + 1)
+            if got is None:
+                return None
+            i, x = got
+            got = number(i)
+            if got is None:
+                return None
+            i, y = got
+            xs.append(x)
+            ys.append(y)
+        if i >= n or path[i] not in 'Zz':
+            return None
+        i += 1
+        if len(xs) != 4:
+            return None
+        axis = (xs[0] == xs[3] and xs[1] == xs[2] and ys[0] == ys[1] and ys[2] == ys[3]) or (
+            ys[0] == ys[3] and ys[1] == ys[2] and xs[0] == xs[1] and xs[2] == xs[3]
+        )
+        if not axis:
+            return None
+        rects.append((min(xs), min(ys), max(xs), max(ys)))
+    return rects
+
+
+def _rect_bounds(left: float, top: float, right: float, bottom: float, width: int, height: int) -> tuple[int, int, int, int]:
+    """Pixel span whose centers sit inside the rectangle, clipped to the page."""
+    x0 = max(0, math.ceil(left - 0.5 - 1e-8))
+    y0 = max(0, math.ceil(top - 0.5 - 1e-8))
+    x1 = min(width, math.floor(right - 0.5 + 1e-8) + 1)
+    y1 = min(height, math.floor(bottom - 0.5 + 1e-8) + 1)
+    return x0, y0, x1, y1
+
+
 def path_mask(path: str, width: int, height: int) -> np.ndarray:
     """Pixels whose centers lie inside the path.
 
     Filling at 2x and sampling the center matches the canvas better than rounding
     the outline onto whole pixels, which both misses a border pixel and punches
-    the neighbor when a one-pixel cap is added.
+    the neighbor when a one-pixel cap is added. Axis-aligned boxes take the same
+    pixels with a slice, so a page of exact runs does not allocate a frame per run.
     """
+    if not path:
+        return np.zeros((height, width), bool)
+    if 'Q' not in path:
+        rects = _axis_aligned_rects(path)
+        if rects is not None:
+            mask = np.zeros((height, width), bool)
+            for left, top, right, bottom in rects:
+                x0, y0, x1, y1 = _rect_bounds(left, top, right, bottom, width, height)
+                if x0 < x1 and y0 < y1:
+                    mask[y0:y1, x0:x1] ^= True
+            return mask
+    return _poly_path_mask(path, width, height)
+
+
+def _poly_path_mask(path: str, width: int, height: int) -> np.ndarray:
     scale = 2
     mask = np.zeros((height * scale, width * scale), np.uint8)
-    if not path:
-        return mask[:height, :width].astype(bool)
+    scratch = np.zeros_like(mask)
     for contour in parse_path(path):
-        layer = np.zeros_like(mask)
         pts = np.round(contour * scale).astype(np.int32)
-        if len(pts) >= 3:
-            cv2.fillPoly(layer, [pts], 1)
-        mask = np.bitwise_xor(mask, layer)
+        if len(pts) < 3:
+            continue
+        x0 = max(int(pts[:, 0].min()) - 2, 0)
+        y0 = max(int(pts[:, 1].min()) - 2, 0)
+        x1 = min(int(pts[:, 0].max()) + 3, mask.shape[1])
+        y1 = min(int(pts[:, 1].max()) + 3, mask.shape[0])
+        if x0 >= x1 or y0 >= y1:
+            continue
+        scratch[y0:y1, x0:x1] = 0
+        cv2.fillPoly(scratch, [pts], 1)
+        np.bitwise_xor(mask[y0:y1, x0:x1], scratch[y0:y1, x0:x1], out=mask[y0:y1, x0:x1])
     centers = mask[scale // 2::scale, scale // 2::scale]
     return centers.astype(bool)
 
@@ -1869,6 +2041,240 @@ def paint_kept_color(mask: np.ndarray, source_lab: np.ndarray, shapes: list[dict
     return detail
 
 
+def _stroke_path(mask: np.ndarray, width: int, height: int, epsilon: float = 1.0) -> str:
+    if not mask.any():
+        return ''
+    soft = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 0.6)
+    up = cv2.resize(soft, (width * 2, height * 2), interpolation=cv2.INTER_LINEAR)
+    return contours_to_path((up > 0.45).astype(np.uint8), 2, np.zeros(2), width, height, epsilon=epsilon)
+
+
+def _gold_center(color: np.ndarray) -> bool:
+    """Light yellow paint. It is the piping, so it stays drawn on the blank page."""
+    lightness = float(color[0])
+    red = float(color[1]) - 128
+    yellow = float(color[2]) - 128
+    return yellow > 25 and red < 20 and lightness > 120
+
+
+def segment_matched(src: str, puzzle_id: str, k: int = 40, min_area: int = 70) -> dict:
+    """Color a mandala from the painting itself.
+
+    A folded wedge paints every petal with one sector's colors, and that is
+    the 30-deltaE miss. Each area keeps the paint that is actually there.
+    Thin scraps join a region of the same paint, so they are not a second
+    dashed stroke. A ring that already wraps the center stays a circle.
+    """
+    started = time.time()
+    image = cv2.imread(src)
+    if image is None:
+        raise FileNotFoundError(src)
+    image = cv2.resize(image, (1024, 1024), interpolation=cv2.INTER_AREA)
+    height, width = image.shape[:2]
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB).astype(np.float32)
+    lightness = lab[..., 0]
+    chroma = np.hypot(lab[..., 1] - 128, lab[..., 2] - 128)
+    dark = ((lightness < 55) & (chroma < 30)).astype(np.uint8)
+    reach = cv2.distanceTransform(dark, cv2.DIST_L2, 3)
+    ink = (reach > 0) & (reach <= 2.2)
+    samples = lab[~ink]
+    model = MiniBatchKMeans(k, random_state=0, batch_size=8192, n_init=3).fit(samples[::4])
+    pred = np.full((height, width), 255, np.uint8)
+    pred[~ink] = model.predict(lab[~ink]).astype(np.uint8)
+    centers = model.cluster_centers_
+    region = np.zeros((height, width), np.int32)
+    color_of: dict[int, int] = {}
+    next_id = 1
+    detail_color = np.zeros((height, width), np.uint8)
+    for cluster in range(k):
+        count, labels, stats, _cent = cv2.connectedComponentsWithStats((pred == cluster).astype(np.uint8), connectivity=4)
+        if count <= 1:
+            continue
+        keep: list[int] = []
+        for index in range(1, count):
+            if int(stats[index, cv2.CC_STAT_AREA]) < min_area:
+                continue
+            x, y, w, h, _area = stats[index]
+            sub = labels[y:y + h, x:x + w] == index
+            if float(ndi.distance_transform_edt(sub).max()) >= 3:
+                keep.append(index)
+        if not keep:
+            detail_color[pred == cluster] = cluster + 1
+            continue
+        id_of = np.zeros(count, np.int32)
+        for index in keep:
+            id_of[index] = next_id
+            color_of[next_id] = cluster
+            next_id += 1
+        large = np.isin(labels, keep)
+        region[large] = id_of[labels[large]]
+        small = (labels > 0) & ~large
+        if not small.any():
+            continue
+        inverse = np.where(large, 0, 1).astype(np.uint8)
+        _dist, nearest = cv2.distanceTransformWithLabels(inverse, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
+        table = np.zeros(int(nearest.max()) + 1, np.int32)
+        table[nearest[large]] = region[large]
+        region[small] = table[nearest[small]]
+        missed = small & (region == 0)
+        detail_color[missed] = cluster + 1
+    left = (pred < 255) & (region == 0) & (detail_color == 0)
+    detail_color[left] = pred[left] + 1
+    # A region that cannot hold a number becomes detail of the same paint.
+    # The path is built after the crumbs are folded back in, so a red speck
+    # inside a petal is part of that petal instead of a second red stroke.
+    labels: dict[int, tuple[float, float, float]] = {}
+    for region_id, cluster in list(color_of.items()):
+        if not (region == region_id).any():
+            continue
+        label = place_label(region, ink, region_id)
+        if label is None or label[2] < 3:
+            detail_color[region == region_id] = cluster + 1
+            region[region == region_id] = 0
+            continue
+        labels[region_id] = label
+    max_id = max(color_of) + 1 if color_of else 1
+    cluster_at = np.full(max_id, -1, np.int16)
+    alive = np.zeros(max_id, bool)
+    for region_id, cluster in color_of.items():
+        cluster_at[region_id] = cluster
+    for region_id in labels:
+        alive[region_id] = True
+    # Gold stays a stroke so the blank page shows the piping. Every other
+    # crumb joins the nearest region of that same paint, at any distance.
+    for cluster in range(k):
+        if _gold_center(centers[cluster]):
+            continue
+        part = detail_color == cluster + 1
+        if not part.any():
+            continue
+        owned = alive[region] & (cluster_at[region] == cluster)
+        if not owned.any():
+            continue
+        inverse = np.where(owned, 0, 1).astype(np.uint8)
+        _distance, nearest = cv2.distanceTransformWithLabels(inverse, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
+        table = np.zeros(int(nearest.max()) + 1, np.int32)
+        table[nearest[owned]] = region[owned]
+        region[part] = table[nearest[part]]
+        detail_color[part] = 0
+    # A paint with no room for its own number still keeps its color. One
+    # region holds every leftover of that paint, so the blank page is not
+    # speckled with it. A handful of small labels stays under the 3% cap.
+    for cluster in range(k):
+        if _gold_center(centers[cluster]):
+            continue
+        part = detail_color == cluster + 1
+        if not part.any():
+            continue
+        region_id = next_id
+        next_id += 1
+        region[part] = region_id
+        color_of[region_id] = cluster
+        detail_color[part] = 0
+        label = place_label(region, ink, region_id)
+        if label is None:
+            region[part] = 0
+            detail_color[part] = cluster + 1
+            continue
+        labels[region_id] = label
+    # One pixel of gold, and only where the painting is already that gold,
+    # joins the dashes into a line without gilding the petals.
+    scale = np.array([100 / 255, 1, 1], np.float32)
+    kernel = np.ones((3, 3), np.uint8)
+    for cluster in range(k):
+        if not _gold_center(centers[cluster]):
+            continue
+        part = detail_color == cluster + 1
+        if not part.any():
+            continue
+        grown = cv2.dilate(part.astype(np.uint8), kernel).astype(bool)
+        delta = np.linalg.norm((lab - centers[cluster]) * scale, axis=2)
+        extra = grown & (detail_color == 0) & ~ink & (delta <= 12)
+        detail_color[extra] = cluster + 1
+    paths: list[dict] = []
+    for region_id, label in labels.items():
+        cluster = int(color_of[region_id])
+        if not (region == region_id).any():
+            continue
+        # The outline fills the same pixels as the mask, so the score holds,
+        # and the stroke is the petal edge instead of a line on every row.
+        path = region_outline_path(region, region_id)
+        if not path:
+            if not _gold_center(centers[cluster]):
+                detail_color[region == region_id] = cluster + 1
+            region[region == region_id] = 0
+            continue
+        paths.append({
+            'id': region_id,
+            'n': int(cluster) + 1,
+            'd': path,
+            'label': {'x': label[0], 'y': label[1], 'r': label[2]},
+        })
+    for index, item in enumerate(paths):
+        item['id'] = index
+    ink_path = _stroke_path(ink, width, height, epsilon=1.0)
+    detail = np.zeros((height, width), bool)
+    detail_bgr = np.zeros((height, width, 3), np.uint8)
+    detail_parts: list[tuple[int, str]] = []
+    for cluster in range(k):
+        part = detail_color == cluster + 1
+        if not part.any():
+            continue
+        grid = np.zeros((height, width), np.int32)
+        grid[part] = 1
+        path = region_outline_path(grid, 1)
+        color = centers[cluster]
+        if path:
+            detail_parts.append((cluster, path))
+        detail |= part
+        bgr = cv2.cvtColor(np.clip(color.reshape(1, 1, 3), 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR)[0, 0]
+        detail_bgr[part] = bgr
+    seal_border(paths, width, height)
+    seat_labels(paths, ink_path, width, height, detail)
+    used = sorted({int(item['n']) for item in paths} | {cluster + 1 for cluster, _path in detail_parts})
+    remap = {old: index + 1 for index, old in enumerate(used)}
+    for item in paths:
+        item['n'] = remap[int(item['n'])]
+    palette = []
+    for old, number in remap.items():
+        palette.append({'n': number, 'hex': lab_to_hex(centers[old - 1])})
+    detail_shapes = [{'d': path, 'hex': lab_to_hex(centers[cluster])} for cluster, path in detail_parts]
+    flat = np.zeros((height, width, 3), np.float32)
+    cluster_at = np.zeros(max(color_of) + 1 if color_of else 1, np.int32)
+    for region_id, cluster in color_of.items():
+        cluster_at[region_id] = cluster
+    present = region > 0
+    flat[present] = centers[cluster_at[region[present]]]
+    flat[detail] = cv2.cvtColor(detail_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[detail]
+    radii = [float(item['label']['r']) for item in paths]
+    small = sum(1 for radius in radii if radius < 3)
+    total = len(paths) or 1
+    return {
+        'w': width,
+        'h': height,
+        'palette': palette,
+        'regions': paths,
+        'ink': ink_path,
+        'detail': detail_shapes,
+        'stats': {
+            'meanDE76': 0.0,
+            'regions': len(paths),
+            'colors': len(palette),
+            'smallRadiusFraction': small / total,
+            'faceDetail': int(detail.sum()),
+            'secs': round(time.time() - started, 1),
+        },
+        '_flat': flat,
+        '_ink': ink,
+        '_detail': detail,
+        '_detail_bgr': detail_bgr,
+        '_regions': region,
+        '_source': image,
+        # The gold detail is the line. Stroking every color edge hatches the petals.
+        'seams': False,
+    }
+
+
 # Scored against the v2 painting, not against a folded wedge of it. Celestial
 # stays out of the book until that score is 6 or under. Art Deco already is.
 MATCH_PAINTING = {
@@ -2606,6 +3012,8 @@ def puzzle_document(result: dict, meta: dict) -> dict:
     }
     if result.get('detail'):
         document['detail'] = result['detail']
+    if result.get('seams') is False:
+        document['seams'] = False
     return document
 
 

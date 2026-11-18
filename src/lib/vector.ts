@@ -23,6 +23,8 @@ export interface VectorFile {
   ink: string;
   /** Fixed face detail, painted above the ink and left out of hit testing. */
   detail?: { hex: string; d: string }[];
+  /** When false, region edges are not stroked. Gold detail is the line instead. */
+  seams?: boolean;
   art: string;
 }
 
@@ -168,6 +170,7 @@ export function decodeVector(file: VectorFile, record?: ArtRecord): DecodedPuzzl
     paths,
     ink: file.ink,
     detail: file.detail ?? [],
+    seams: file.seams !== false,
     cx,
     cy,
     inr,

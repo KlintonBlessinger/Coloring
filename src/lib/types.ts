@@ -98,6 +98,8 @@ export interface DecodedPuzzle {
   ink: string;
   /** Pupils, catchlights, and mouth lines. Drawn above the fills, not paintable. */
   detail: { hex: string; d: string }[];
+  /** Region edges are stroked unless this is false. */
+  seams: boolean;
   cx: number[];
   cy: number[];
   /** Inscribed radius at the label point, in picture pixels. */
