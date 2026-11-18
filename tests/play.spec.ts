@@ -1270,3 +1270,106 @@ test('for grown-ups stays hidden while the shelf is empty', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'For Grown-ups' })).toHaveCount(0);
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+function facePoint(id: string): { x: number; y: number } {
+  const boxes = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'content/face-boxes.json'), 'utf8')) as Record<string, { eyes: number[][]; mouths: number[][] }>;
+  const spec = boxes[id];
+  const used = spec?.eyes?.length ? spec.eyes : spec?.mouths ?? [];
+  if (!used.length) return { x: 512, y: 420 };
+  let sx = 0;
+  let sy = 0;
+  for (const box of used) {
+    sx += (box[0] ?? 0) + (box[2] ?? 0) / 2;
+    sy += (box[1] ?? 0) + (box[3] ?? 0) / 2;
+  }
+  return { x: sx / used.length, y: sy / used.length };
+}
+
+async function zoomFace(page: Page, id: string, ratio: number): Promise<void> {
+  const point = facePoint(id);
+  const canvas = page.locator('canvas.surface');
+  const fitted = Number(await canvas.getAttribute('data-scale'));
+  const panX = Number(await canvas.getAttribute('data-pan-x'));
+  const panY = Number(await canvas.getAttribute('data-pan-y'));
+  const rect = await canvas.boundingBox();
+  if (!rect) throw new Error('canvas is not on screen');
+  const midX = rect.x + panX + point.x * fitted;
+  const midY = rect.y + panY + point.y * fitted;
+  await page.evaluate(({ midX, midY }) => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
+    const fire = (type: string, id: number, x: number, y: number) => {
+      canvas.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1,
+        clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+      }));
+    };
+    const start = 18;
+    const end = start * 4;
+    fire('pointerdown', 1, midX - start, midY);
+    fire('pointerdown', 2, midX + start, midY);
+    for (let step = 1; step <= 8; step++) {
+      const reach = start + ((end - start) * step) / 8;
+      fire('pointermove', 1, midX - reach, midY);
+      fire('pointermove', 2, midX + reach, midY);
+    }
+    fire('pointerup', 1, midX - end, midY);
+    fire('pointerup', 2, midX + end, midY);
+  }, { midX, midY });
+  await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeGreaterThan(ratio - 0.6);
+}
+
+test('face detail on lion, fox, owl, koala, clownfish, and turkey', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  const showVector = async (id: string, fill: boolean) => {
+    const book = puzzle(id);
+    await openPuzzle(page, id);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface');
+      if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    });
+    if (fill) {
+      await paintRegions(page, book, book.regionColors.map((_, index) => index));
+      await expect(page.getByTestId('complete')).toBeVisible();
+      await page.waitForTimeout(1600);
+      await page.evaluate(() => {
+        const card = document.querySelector('[data-testid="complete"]');
+        if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+      });
+    }
+  };
+
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await showVector('realistic-lion-portrait', true);
+  await zoomFace(page, 'realistic-lion-portrait', 3.6);
+  await page.waitForTimeout(250);
+  await jpg('face-lion-zoom.jpg');
+
+  await showVector('realistic-red-fox-snow', true);
+  await zoomFace(page, 'realistic-red-fox-snow', 3.6);
+  await page.waitForTimeout(250);
+  await jpg('face-fox-zoom.jpg');
+
+  await showVector('realistic-snowy-owl', true);
+  await zoomFace(page, 'realistic-snowy-owl', 3.6);
+  await page.waitForTimeout(250);
+  await jpg('face-owl-zoom.jpg');
+
+  await showVector('realistic-koala', false);
+  await zoomFace(page, 'realistic-koala', 3.6);
+  await page.waitForTimeout(250);
+  await jpg('face-koala-blank.jpg');
+
+  await showVector('animals-clownfish-reef', false);
+  await jpg('face-clownfish-fit.jpg');
+
+  await showVector('thanksgiving-turkey', false);
+  await jpg('face-turkey-fit.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});

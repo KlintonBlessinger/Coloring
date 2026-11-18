@@ -96,6 +96,8 @@ export interface DecodedPuzzle {
   regionColors: number[];
   paths: string[];
   ink: string;
+  /** Pupils, catchlights, and mouth lines. Drawn above the fills, not paintable. */
+  detail: { hex: string; d: string }[];
   cx: number[];
   cy: number[];
   /** Inscribed radius at the label point, in picture pixels. */

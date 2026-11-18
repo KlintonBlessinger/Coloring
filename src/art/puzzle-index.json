@@ -1,213 +1,208 @@
 {
   "animals-cat-window": {
     "file": "animals-cat-window",
-    "regions": 782,
-    "colors": 40
+    "regions": 591,
+    "colors": 27
   },
   "animals-fox-family": {
     "file": "animals-fox-family",
-    "regions": 1161,
-    "colors": 40
+    "regions": 967,
+    "colors": 28
   },
   "animals-sea-turtle": {
     "file": "animals-sea-turtle",
-    "regions": 735,
-    "colors": 40
+    "regions": 722,
+    "colors": 27
   },
   "animals-clownfish-reef": {
     "file": "animals-clownfish-reef",
-    "regions": 516,
-    "colors": 34
+    "regions": 435,
+    "colors": 27
   },
   "animals-octopus-garden": {
     "file": "animals-octopus-garden",
-    "regions": 364,
-    "colors": 19
+    "regions": 353,
+    "colors": 22
   },
   "animals-humpback-calf": {
     "file": "animals-humpback-calf",
-    "regions": 635,
+    "regions": 629,
     "colors": 23
   },
   "animals-seahorse-meadow": {
     "file": "animals-seahorse-meadow",
-    "regions": 562,
-    "colors": 28
+    "regions": 431,
+    "colors": 22
   },
   "animals-giraffe-sunset": {
     "file": "animals-giraffe-sunset",
-    "regions": 655,
+    "regions": 630,
     "colors": 24
   },
   "animals-elephant-waterhole": {
     "file": "animals-elephant-waterhole",
-    "regions": 494,
+    "regions": 392,
     "colors": 23
   },
   "animals-lion-cub": {
     "file": "animals-lion-cub",
-    "regions": 523,
-    "colors": 27
+    "regions": 498,
+    "colors": 31
   },
   "animals-toucan-macaw": {
     "file": "animals-toucan-macaw",
-    "regions": 817,
-    "colors": 40
+    "regions": 718,
+    "colors": 28
   },
   "animals-tree-frog": {
     "file": "animals-tree-frog",
-    "regions": 1317,
-    "colors": 31
+    "regions": 1205,
+    "colors": 29
   },
   "animals-jungle-tiger": {
     "file": "animals-jungle-tiger",
-    "regions": 920,
-    "colors": 26
+    "regions": 739,
+    "colors": 34
   },
   "flowers-lotus-pond": {
     "file": "flowers-lotus-pond",
-    "regions": 420,
+    "regions": 352,
     "colors": 16
   },
   "flowers-cottage-garden": {
     "file": "flowers-cottage-garden",
-    "regions": 1424,
-    "colors": 33
+    "regions": 1324,
+    "colors": 26
   },
   "flowers-peony-bouquet": {
     "file": "flowers-peony-bouquet",
-    "regions": 531,
+    "regions": 511,
     "colors": 24
   },
   "food-bakery-sweets": {
     "file": "food-bakery-sweets",
-    "regions": 377,
-    "colors": 23
+    "regions": 231,
+    "colors": 26
   },
   "food-ice-cream-sundae": {
     "file": "food-ice-cream-sundae",
-    "regions": 295,
+    "regions": 275,
     "colors": 26
   },
   "food-picnic": {
     "file": "food-picnic",
-    "regions": 1771,
-    "colors": 40
+    "regions": 1633,
+    "colors": 26
   },
   "fantasy-unicorn": {
     "file": "fantasy-unicorn",
-    "regions": 836,
-    "colors": 27
+    "regions": 833,
+    "colors": 24
   },
   "fantasy-mermaid": {
     "file": "fantasy-mermaid",
-    "regions": 624,
-    "colors": 28
+    "regions": 523,
+    "colors": 27
   },
   "fantasy-castle": {
     "file": "fantasy-castle",
-    "regions": 975,
-    "colors": 31
+    "regions": 928,
+    "colors": 27
   },
   "patterns-folk-art": {
     "file": "patterns-folk-art",
-    "regions": 620,
-    "colors": 17
+    "regions": 346,
+    "colors": 12
   },
   "patterns-stained-glass": {
     "file": "patterns-stained-glass",
-    "regions": 657,
-    "colors": 37
+    "regions": 521,
+    "colors": 26
   },
   "science-butterfly-life-cycle": {
     "file": "science-butterfly-life-cycle",
-    "regions": 299,
-    "colors": 16
+    "regions": 224,
+    "colors": 15
   },
   "science-solar-system": {
     "file": "science-solar-system",
-    "regions": 176,
-    "colors": 24
+    "regions": 174,
+    "colors": 26
   },
   "science-water-cycle": {
     "file": "science-water-cycle",
-    "regions": 232,
+    "regions": 230,
     "colors": 24
   },
   "patterns-mandala": {
     "file": "patterns-mandala",
-    "regions": 446,
+    "regions": 445,
     "colors": 18
   },
   "thanksgiving-turkey": {
     "file": "thanksgiving-turkey",
-    "regions": 301,
-    "colors": 22
+    "regions": 287,
+    "colors": 26
   },
   "thanksgiving-dinner": {
     "file": "thanksgiving-dinner",
-    "regions": 668,
+    "regions": 555,
     "colors": 27
   },
   "thanksgiving-porch": {
     "file": "thanksgiving-porch",
-    "regions": 619,
+    "regions": 441,
     "colors": 24
   },
   "thanksgiving-cornucopia": {
     "file": "thanksgiving-cornucopia",
-    "regions": 609,
+    "regions": 523,
     "colors": 16
   },
   "thanksgiving-pumpkin-patch": {
     "file": "thanksgiving-pumpkin-patch",
-    "regions": 1617,
-    "colors": 37
+    "regions": 1492,
+    "colors": 26
   },
   "thanksgiving-first-harvest": {
     "file": "thanksgiving-first-harvest",
-    "regions": 706,
-    "colors": 37
+    "regions": 507,
+    "colors": 39
   },
   "christmas-snowman": {
     "file": "christmas-snowman",
-    "regions": 366,
+    "regions": 312,
     "colors": 23
   },
   "christmas-wreath-cocoa": {
     "file": "christmas-wreath-cocoa",
-    "regions": 617,
-    "colors": 21
+    "regions": 312,
+    "colors": 24
   },
   "christmas-tree-fireplace": {
     "file": "christmas-tree-fireplace",
-    "regions": 797,
-    "colors": 22
+    "regions": 624,
+    "colors": 25
   },
   "christmas-gingerbread-village": {
     "file": "christmas-gingerbread-village",
-    "regions": 1039,
-    "colors": 23
+    "regions": 749,
+    "colors": 22
   },
   "christmas-reindeer-sleigh": {
     "file": "christmas-reindeer-sleigh",
-    "regions": 611,
-    "colors": 40
-  },
-  "realistic-zebras": {
-    "file": "realistic-zebras",
-    "regions": 280,
-    "colors": 19
+    "regions": 593,
+    "colors": 29
   },
   "realistic-lion-portrait": {
     "file": "realistic-lion-portrait",
-    "regions": 375,
-    "colors": 26
+    "regions": 400,
+    "colors": 31
   },
   "realistic-tiger-walking": {
     "file": "realistic-tiger-walking",
     "regions": 395,
-    "colors": 34
+    "colors": 35
   },
   "realistic-african-elephant": {
     "file": "realistic-african-elephant",
@@ -217,37 +212,42 @@
   "realistic-giraffe-browsing": {
     "file": "realistic-giraffe-browsing",
     "regions": 492,
-    "colors": 29
+    "colors": 30
+  },
+  "realistic-zebras": {
+    "file": "realistic-zebras",
+    "regions": 288,
+    "colors": 18
   },
   "realistic-cheetah": {
     "file": "realistic-cheetah",
-    "regions": 503,
-    "colors": 26
+    "regions": 509,
+    "colors": 27
   },
   "realistic-orangutan-mother-baby": {
     "file": "realistic-orangutan-mother-baby",
-    "regions": 409,
+    "regions": 403,
     "colors": 32
   },
   "realistic-red-fox-snow": {
     "file": "realistic-red-fox-snow",
-    "regions": 390,
-    "colors": 23
+    "regions": 402,
+    "colors": 26
   },
   "realistic-gray-wolf": {
     "file": "realistic-gray-wolf",
-    "regions": 525,
+    "regions": 532,
     "colors": 23
   },
   "realistic-bald-eagle": {
     "file": "realistic-bald-eagle",
     "regions": 413,
-    "colors": 31
+    "colors": 33
   },
   "realistic-snowy-owl": {
     "file": "realistic-snowy-owl",
-    "regions": 293,
-    "colors": 21
+    "regions": 290,
+    "colors": 23
   },
   "realistic-scarlet-macaw-flight": {
     "file": "realistic-scarlet-macaw-flight",
@@ -256,7 +256,7 @@
   },
   "realistic-peacock": {
     "file": "realistic-peacock",
-    "regions": 438,
+    "regions": 439,
     "colors": 34
   },
   "realistic-flamingos": {
@@ -266,12 +266,12 @@
   },
   "realistic-sea-turtle-reef": {
     "file": "realistic-sea-turtle-reef",
-    "regions": 451,
-    "colors": 36
+    "regions": 462,
+    "colors": 38
   },
   "realistic-humpback-breaching": {
     "file": "realistic-humpback-breaching",
-    "regions": 285,
+    "regions": 283,
     "colors": 38
   },
   "realistic-dolphins-sunset": {
@@ -281,47 +281,47 @@
   },
   "realistic-koala": {
     "file": "realistic-koala",
-    "regions": 400,
+    "regions": 409,
     "colors": 21
   },
   "realistic-giant-panda": {
     "file": "realistic-giant-panda",
     "regions": 293,
-    "colors": 28
+    "colors": 26
   },
   "realistic-horse-galloping": {
     "file": "realistic-horse-galloping",
-    "regions": 401,
-    "colors": 30
+    "regions": 408,
+    "colors": 32
   },
   "realistic-tiger-river": {
     "file": "realistic-tiger-river",
-    "regions": 460,
+    "regions": 464,
     "colors": 40
   },
   "realistic-white-tiger-cubs": {
     "file": "realistic-white-tiger-cubs",
-    "regions": 517,
-    "colors": 35
+    "regions": 522,
+    "colors": 36
   },
   "realistic-cheetah-sprint": {
     "file": "realistic-cheetah-sprint",
-    "regions": 412,
+    "regions": 415,
     "colors": 25
   },
   "realistic-cheetah-family": {
     "file": "realistic-cheetah-family",
-    "regions": 403,
-    "colors": 32
+    "regions": 420,
+    "colors": 33
   },
   "realistic-great-white-shark": {
     "file": "realistic-great-white-shark",
-    "regions": 444,
+    "regions": 443,
     "colors": 33
   },
   "realistic-hammerhead-school": {
     "file": "realistic-hammerhead-school",
-    "regions": 413,
+    "regions": 420,
     "colors": 40
   },
   "realistic-whale-shark": {
@@ -332,52 +332,52 @@
   "realistic-leopard-shark": {
     "file": "realistic-leopard-shark",
     "regions": 422,
-    "colors": 36
+    "colors": 35
   },
   "realistic-chameleon": {
     "file": "realistic-chameleon",
-    "regions": 379,
-    "colors": 28
+    "regions": 389,
+    "colors": 33
   },
   "realistic-green-iguana": {
     "file": "realistic-green-iguana",
-    "regions": 342,
+    "regions": 341,
     "colors": 26
   },
   "realistic-komodo-dragon": {
     "file": "realistic-komodo-dragon",
-    "regions": 601,
+    "regions": 603,
     "colors": 40
   },
   "realistic-alligator-swamp": {
     "file": "realistic-alligator-swamp",
-    "regions": 459,
+    "regions": 461,
     "colors": 38
   },
   "realistic-nile-crocodile": {
     "file": "realistic-nile-crocodile",
-    "regions": 399,
+    "regions": 400,
     "colors": 27
   },
   "realistic-galapagos-tortoise": {
     "file": "realistic-galapagos-tortoise",
-    "regions": 388,
-    "colors": 31
+    "regions": 396,
+    "colors": 30
   },
   "realistic-green-tree-python": {
     "file": "realistic-green-tree-python",
-    "regions": 389,
+    "regions": 391,
     "colors": 40
   },
   "realistic-poison-dart-frogs": {
     "file": "realistic-poison-dart-frogs",
-    "regions": 391,
+    "regions": 393,
     "colors": 39
   },
   "realistic-leopard-gecko": {
     "file": "realistic-leopard-gecko",
-    "regions": 310,
-    "colors": 32
+    "regions": 313,
+    "colors": 30
   },
   "realistic-leopard-tree": {
     "file": "realistic-leopard-tree",
@@ -386,12 +386,12 @@
   },
   "realistic-snow-leopard": {
     "file": "realistic-snow-leopard",
-    "regions": 596,
-    "colors": 17
+    "regions": 599,
+    "colors": 18
   },
   "realistic-jaguar": {
     "file": "realistic-jaguar",
-    "regions": 538,
+    "regions": 547,
     "colors": 35
   }
 }

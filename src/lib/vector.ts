@@ -19,6 +19,8 @@ export interface VectorFile {
   palette: { n: number; hex: string }[];
   regions: VectorRegion[];
   ink: string;
+  /** Fixed face detail, painted above the ink and left out of hit testing. */
+  detail?: { hex: string; d: string }[];
   art: string;
 }
 
@@ -29,8 +31,8 @@ export function asset(path: string): string {
 }
 
 /** Fingerprint of the vector picture, so an older save cannot paint the new regions. */
-export function vectorMapKey(width: number, height: number, paths: string[], ink: string): string {
-  let hash = (paths.length + 1) * 131 + width * 17 + height + ink.length;
+export function vectorMapKey(width: number, height: number, paths: string[], ink: string, detail = ''): string {
+  let hash = (paths.length + 1) * 131 + width * 17 + height + ink.length + detail.length;
   const step = Math.max(1, Math.floor(paths.length / 48));
   for (let i = 0; i < paths.length; i += step) hash = Math.imul(hash, 16777619) ^ (paths[i]?.length ?? 0);
   return (hash >>> 0).toString(36);
@@ -162,13 +164,14 @@ export function decodeVector(file: VectorFile, record?: ArtRecord): DecodedPuzzl
     regionColors,
     paths,
     ink: file.ink,
+    detail: file.detail ?? [],
     cx,
     cy,
     inr,
     area,
     box,
     art: file.art,
-    map: vectorMapKey(file.w, file.h, paths, file.ink),
+    map: vectorMapKey(file.w, file.h, paths, file.ink, (file.detail ?? []).map((shape) => shape.d).join('')),
     mystery: record?.mystery ?? false,
     tags,
     facts: record?.facts ?? [],

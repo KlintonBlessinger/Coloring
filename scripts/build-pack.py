@@ -6,11 +6,12 @@ book. This script refuses to write the pack inside the repository.
     python3 scripts/build-pack.py --sources <folder> --out <pack.zip>
 
 meta.json lists each picture, its tags, and the line-art or tonal settings
-(`pbn.mode`, `pbn.k`, `pbn.minArea`). An optional per-picture ``eyes`` list
-(or ``pbn.eyes``) is source-pixel boxes ``{x, y, w, h}``. The pipeline keeps
-those boxes out of min-area merging and hands them to ``protect_eyes``. A
-picture the source meta already places under the region floor, or marks with
-``pbn.acceptRegions``, is kept when the rest of the quality gate passes.
+(`pbn.mode`, `pbn.k`, `pbn.minArea`). Optional ``eyes`` and ``mouths`` lists
+are boxes in the 1024 working space. Pupils, catchlights, eyelid lines,
+nostrils, and mouth lines stay fixed detail. A line-art picture with no boxes
+still auto-detects a compact near-black pupil. A picture the source meta
+already places under the region floor, or marks with ``pbn.acceptRegions``,
+is kept when the rest of the quality gate passes.
 """
 
 from __future__ import annotations
@@ -51,7 +52,7 @@ def region_exempt(picture: dict, pipeline: dict) -> bool:
 def build_one(task: dict) -> dict:
     source = task['source']
     mode = task['mode']
-    result = segment(source, mode, k=task['k'], min_area=task['minArea'], eyes=task['eyes'])
+    result = segment(source, mode, k=task['k'], min_area=task['minArea'], eyes=task['eyes'], mouths=task.get('mouths'))
     meta = {
         'id': task['id'],
         'title': task['title'],
@@ -90,6 +91,8 @@ def build_one(task: dict) -> dict:
             'coverage': score['coverage'],
             'borderOpen': score['borderOpen'],
             'smallRadiusFraction': score['smallRadiusFraction'],
+            'autoEyes': result['stats'].get('autoEyes', 0),
+            'faceDetail': result['stats'].get('faceDetail', 0),
         },
         'reasons': reasons,
         'exempt': task['exempt'],
@@ -145,6 +148,7 @@ def tasks_from(folder: Path) -> tuple[dict, list[dict]]:
             'k': int(settings['k']),
             'minArea': int(settings['minArea']),
             'eyes': picture.get('eyes', settings.get('eyes')),
+            'mouths': picture.get('mouths', settings.get('mouths')),
             'tags': [str(tag) for tag in tags],
             'facts': picture.get('facts') or [],
             'factsEs': picture.get('factsEs') or [],
@@ -218,7 +222,8 @@ def main() -> None:
         print(
             f"{picture['id']}: dE {score['meanDE76']:.2f}  regions {score['regions']}  "
             f"colors {score['colors']}  cover {score['coverage']:.1%}  "
-            f"border {score['borderOpen']}  r<3 {score['smallRadiusFraction']:.1%}  {status}",
+            f"border {score['borderOpen']}  r<3 {score['smallRadiusFraction']:.1%}  "
+            f"auto {score.get('autoEyes', 0)}  detail {score.get('faceDetail', 0)}  {status}",
             flush=True,
         )
         if picture['reasons']:

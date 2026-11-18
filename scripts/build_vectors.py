@@ -16,6 +16,7 @@ SOURCES = ROOT / 'content' / 'sources'
 OUT = ROOT / 'public' / 'puzzles'
 THUMBS = ROOT / 'public' / 'thumbs'
 INDEX = ROOT / 'src' / 'art' / 'puzzle-index.json'
+FACES = ROOT / 'content' / 'face-boxes.json'
 
 PICTURES = [
     ('animals-cat-window', 'Cat in the Window', 'Animals', 'hard'),
@@ -129,31 +130,42 @@ def picture_eyes(picture) -> list | None:
     return None
 
 
+def face_settings() -> dict:
+    if not FACES.exists():
+        return {}
+    return json.loads(FACES.read_text())
+
+
 def build_one(picture: tuple) -> dict:
     puzzle_id, title, category, difficulty = picture[:4]
     source = SOURCES / f'{puzzle_id}.jpg'
     if not source.exists():
         raise FileNotFoundError(source)
-    eyes = picture_eyes(picture)
+    spec = face_settings().get(puzzle_id, {})
+    eyes = spec.get('eyes', picture_eyes(picture))
+    mouths = spec.get('mouths')
     kind = next((item for item in picture[4:] if item in ('lineart', 'tonal')), None)
     numbers = [item for item in picture[4:] if isinstance(item, (int, float))]
-    if kind == 'tonal' or (kind is None and len(numbers) >= 2):
+    if 'k' in spec and 'minArea' in spec:
+        mode = 'tonal' if kind == 'tonal' or (kind is None and len(numbers) >= 2) else 'lineart'
+        result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths)
+    elif kind == 'tonal' or (kind is None and len(numbers) >= 2):
         _k, min_area = numbers[0], numbers[1]
-        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes)
+        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes, mouths=mouths)
         mode = 'tonal'
     elif kind == 'lineart' and len(numbers) >= 2:
         # Use the picture's own k and min area. Do not search, and do not shift the palette.
-        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes)
+        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes, mouths=mouths)
         mode = 'lineart'
     else:
         # k=28 is the line-art default. Busy pictures try a larger palette and
         # keep the closest match that still stays at or under 40 colors.
-        result = segment(str(source), 'lineart', k=28, eyes=eyes)
+        result = segment(str(source), 'lineart', k=28, eyes=eyes, mouths=mouths)
         for k in (36, 44):
             stats = result['stats']
             if stats['meanDE76'] <= 4.6 and stats['smallRadiusFraction'] <= 0.03 and stats['colors'] <= 40:
                 break
-            nxt = segment(str(source), 'lineart', k=k, eyes=eyes)
+            nxt = segment(str(source), 'lineart', k=k, eyes=eyes, mouths=mouths)
             if nxt['stats']['meanDE76'] < result['stats']['meanDE76']:
                 result = nxt
         mode = 'lineart'
@@ -165,7 +177,8 @@ def build_one(picture: tuple) -> dict:
     stats = result['stats']
     print(
         f"{puzzle_id}: {stats['regions']} regions, {stats['colors']} colors, "
-        f"raster dE {stats['meanDE76']:.2f}, small {stats['smallRadiusFraction']:.1%}, {stats['secs']}s",
+        f"raster dE {stats['meanDE76']:.2f}, small {stats['smallRadiusFraction']:.1%}, "
+        f"detail {stats.get('faceDetail', 0)}, {stats['secs']}s",
         flush=True,
     )
     return {

@@ -42,6 +42,7 @@ export class Renderer {
   private readonly viewCtx: CanvasRenderingContext2D;
   private readonly paths: Path2D[];
   private readonly inkPath: Path2D;
+  private readonly detailPaths: { hex: string; path: Path2D }[];
   private readonly ids: Uint16Array;
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
@@ -83,6 +84,7 @@ export class Renderer {
     this.viewCtx = viewCtx;
     this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
     this.inkPath = new Path2D(puzzle.ink || undefined);
+    this.detailPaths = (puzzle.detail ?? []).filter((shape) => shape.d).map((shape) => ({ hex: shape.hex, path: new Path2D(shape.d) }));
     this.ids = buildIdMap(puzzle.width, puzzle.height, this.paths);
     this.artImage = new Image();
     this.artImage.onload = () => this.requestDraw();
@@ -375,6 +377,7 @@ export class Renderer {
       this.strokeSeams(ctx, (index) => this.visible(index) && !this.isFilled(index) && (this.puzzle.regionColors[index] ?? 0) === this.selected);
     }
     this.paintInk(ctx);
+    this.paintDetail(ctx);
     this.paintHint(ctx, now);
     this.paintNumbers(ctx, dpr);
     if (this.view.dataset.hideArt !== '1' && this.artAlpha > 0.01 && this.artImage.complete && this.artImage.naturalWidth) {
@@ -428,6 +431,14 @@ export class Renderer {
     if (!this.puzzle.ink) return;
     ctx.fillStyle = INK;
     ctx.fill(this.inkPath, 'evenodd');
+  }
+
+  /** Pupils, catchlights, eyelids, nostrils, and mouth lines. Not paintable. */
+  private paintDetail(ctx: CanvasRenderingContext2D): void {
+    for (const shape of this.detailPaths) {
+      ctx.fillStyle = shape.hex;
+      ctx.fill(shape.path, 'evenodd');
+    }
   }
 
   private paintChecker(ctx: CanvasRenderingContext2D, dpr: number): void {
