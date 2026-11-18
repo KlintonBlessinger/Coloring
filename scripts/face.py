@@ -319,52 +319,241 @@ def _share_iris(colors: list[np.ndarray]) -> np.ndarray:
     return ranked[0]
 
 
-def _ridge(mask: np.ndarray) -> np.ndarray | None:
-    ys, xs = np.where(mask)
-    if len(xs) < 10:
-        return None
-    points = np.stack([xs, ys], 1).astype(np.float64)
-    mean = points.mean(axis=0)
-    centered = points - mean
-    _values, vectors = np.linalg.eigh(np.cov(centered.T))
-    axis = vectors[:, -1]
-    projection = centered @ axis
-    order = np.argsort(projection)
-    slices = np.array_split(order, min(8, max(3, len(order) // 8)))
-    ridge = [points[chunk].mean(axis=0) for chunk in slices if len(chunk)]
-    curve = np.array(ridge)
-    # Corner cutting rounds a kink in the dark crease into one stroke.
-    for _ in range(4):
-        if len(curve) < 2:
-            break
-        nxt = [curve[0]]
-        for left, right in zip(curve[:-1], curve[1:]):
-            nxt.append(0.75 * left + 0.25 * right)
-            nxt.append(0.25 * left + 0.75 * right)
-        nxt.append(curve[-1])
-        curve = np.array(nxt)
-    return curve
+def _thin(mask: np.ndarray) -> np.ndarray:
+    """Zhang-Suen thinning. The cross-element skeleton leaves a wedge on a diagonal."""
+    image = (mask > 0).astype(np.uint8)
+    if image.shape[0] < 3 or image.shape[1] < 3 or not image.any():
+        return image.astype(bool)
+    # Neighbor bits: N NE E SE S SW W NW.
+    drop_a = np.zeros(256, np.uint8)
+    drop_b = np.zeros(256, np.uint8)
+    for code in range(256):
+        bits = [(code >> shift) & 1 for shift in range(8)]
+        count = sum(bits)
+        if count < 2 or count > 6:
+            continue
+        sequence = bits + [bits[0]]
+        turns = sum(sequence[i] == 0 and sequence[i + 1] == 1 for i in range(8))
+        if turns != 1:
+            continue
+        if bits[0] * bits[2] * bits[4] == 0 and bits[2] * bits[4] * bits[6] == 0:
+            drop_a[code] = 1
+        if bits[0] * bits[2] * bits[6] == 0 and bits[0] * bits[4] * bits[6] == 0:
+            drop_b[code] = 1
+    changed = True
+    while changed:
+        changed = False
+        for table in (drop_a, drop_b):
+            padded = np.pad(image, 1)
+            code = (
+                (padded[:-2, 1:-1] << 0)
+                | (padded[:-2, 2:] << 1)
+                | (padded[1:-1, 2:] << 2)
+                | (padded[2:, 2:] << 3)
+                | (padded[2:, 1:-1] << 4)
+                | (padded[2:, :-2] << 5)
+                | (padded[1:-1, :-2] << 6)
+                | (padded[:-2, :-2] << 7)
+            )
+            remove = table[code] & image
+            if remove.any():
+                image[remove.astype(bool)] = 0
+                changed = True
+    return image.astype(bool)
 
 
-def _ribbon(points: np.ndarray, half: float) -> tuple[str, np.ndarray]:
-    empty = np.zeros((0, 2))
-    if len(points) < 2:
-        return '', empty
-    left = []
-    right = []
-    for index, point in enumerate(points):
-        if index == 0:
-            direction = points[1] - points[0]
-        elif index == len(points) - 1:
-            direction = points[-1] - points[-2]
+def _join_breaks(raw: list[tuple[list[tuple[int, int]], bool]], min_spur: int, gap: float = 12.0) -> list[tuple[np.ndarray, bool]]:
+    """Join dashes of one crease. A turn, such as a smile meeting the cheek, stays two strokes."""
+    open_paths = [np.array(path, np.float64) for path, closed in raw if not closed and len(path) >= 2]
+    closed_paths = [(np.array(path, np.float64), True) for path, closed in raw if closed and len(path) >= min_spur]
+
+    def outward(path: np.ndarray, at_end: bool) -> np.ndarray:
+        if at_end:
+            origin = path[max(0, len(path) - 4)]
+            tip = path[-1]
         else:
-            direction = points[index + 1] - points[index - 1]
-        length = float(np.hypot(direction[0], direction[1])) + 1e-6
-        normal = np.array([-direction[1], direction[0]]) / length
-        left.append(point + normal * half)
-        right.append(point - normal * half)
-    polygon = np.vstack([left, right[::-1]])
-    return _smooth_path(polygon), polygon
+            origin = path[min(len(path) - 1, 3)]
+            tip = path[0]
+        vector = tip - origin
+        return vector / (float(np.hypot(vector[0], vector[1])) + 1e-6)
+
+    for _round in range(12):
+        if len(open_paths) < 2:
+            break
+        buckets: dict[tuple[int, int], list[int]] = {}
+        ends: list[tuple[int, bool, np.ndarray]] = []
+        for index, path in enumerate(open_paths):
+            for at_end, point in ((False, path[0]), (True, path[-1])):
+                ends.append((index, at_end, point))
+                key = (int(point[0] // gap), int(point[1] // gap))
+                buckets.setdefault(key, []).append(len(ends) - 1)
+        best_for: dict[int, tuple[float, int]] = {}
+        for key, ids in buckets.items():
+            nearby: list[int] = []
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    nearby.extend(buckets.get((key[0] + dx, key[1] + dy), []))
+            for left in ids:
+                left_index, left_end, left_point = ends[left]
+                left_dir = outward(open_paths[left_index], left_end)
+                for right in nearby:
+                    if right <= left:
+                        continue
+                    right_index, right_end, right_point = ends[right]
+                    if left_index == right_index:
+                        continue
+                    gap_vec = right_point - left_point
+                    dist = float(np.hypot(gap_vec[0], gap_vec[1]))
+                    if dist > gap or dist < 0.5:
+                        continue
+                    direction = gap_vec / (dist + 1e-6)
+                    if float(np.dot(left_dir, direction)) < 0.55:
+                        continue
+                    if float(np.dot(outward(open_paths[right_index], right_end), -direction)) < 0.55:
+                        continue
+                    for end_id in (left, right):
+                        current = best_for.get(end_id)
+                        if current is None or dist < current[0]:
+                            other = right if end_id == left else left
+                            best_for[end_id] = (dist, other)
+        pairs = []
+        seen: set[tuple[int, int]] = set()
+        for left, (dist, right) in best_for.items():
+            match = best_for.get(right)
+            if match is None or match[1] != left:
+                continue
+            key = (min(left, right), max(left, right))
+            if key in seen:
+                continue
+            seen.add(key)
+            pairs.append((dist, left, right))
+        pairs.sort()
+        used: set[int] = set()
+        merged: set[int] = set()
+        rebuilt: list[np.ndarray] = []
+        for _dist, left, right in pairs:
+            left_index = ends[left][0]
+            right_index = ends[right][0]
+            if left_index in used or right_index in used:
+                continue
+            used.add(left_index)
+            used.add(right_index)
+            merged.add(left_index)
+            merged.add(right_index)
+            left_path = open_paths[left_index]
+            right_path = open_paths[right_index]
+            if not ends[left][1]:
+                left_path = left_path[::-1]
+            if ends[right][1]:
+                right_path = right_path[::-1]
+            rebuilt.append(np.vstack([left_path, right_path]))
+        if not rebuilt:
+            break
+        for index, path in enumerate(open_paths):
+            if index not in merged:
+                rebuilt.append(path)
+        open_paths = rebuilt
+    kept = [(path, False) for path in open_paths if len(path) >= min_spur]
+    return kept + closed_paths
+
+
+def centerline_paths(center: np.ndarray, sigma: float = 2.6, min_spur: int = 6) -> list[np.ndarray]:
+    """One smoothed polyline per branch of a centerline.
+
+    A stair-stepped skeleton is what turns a smooth crease into a jagged seam.
+    The line is thinned to one pixel first, or a diagonal stays a wedge.
+    Short spurs off a junction are the scallops along that seam, so they go.
+    Endpoints stay put so a smile and the line that meets it still join.
+    """
+    center = _thin(center)
+    ys, xs = np.where(center)
+    if len(xs) < 2:
+        return []
+    points = set(zip(xs.tolist(), ys.tolist()))
+    neighbors: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for x, y in points:
+        found = []
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                other = (x + dx, y + dy)
+                if other in points:
+                    found.append(other)
+        neighbors[(x, y)] = found
+    special = [point for point, found in neighbors.items() if len(found) != 2]
+    visited: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    raw: list[tuple[list[tuple[int, int]], bool]] = []
+
+    def walk(start: tuple[int, int], nxt: tuple[int, int], closed: bool) -> None:
+        edge = tuple(sorted((start, nxt)))
+        if edge in visited:
+            return
+        path = [start, nxt]
+        visited.add(edge)
+        prev, cur = start, nxt
+        guard = 0
+        while len(neighbors[cur]) == 2 and guard <= len(points):
+            guard += 1
+            nxts = [item for item in neighbors[cur] if item != prev]
+            if not nxts:
+                break
+            edge = tuple(sorted((cur, nxts[0])))
+            if edge in visited:
+                if nxts[0] == start:
+                    closed = True
+                break
+            visited.add(edge)
+            prev, cur = cur, nxts[0]
+            path.append(cur)
+        raw.append((path, closed))
+
+    if not special and neighbors:
+        start = next(iter(neighbors))
+        walk(start, neighbors[start][0], True)
+    else:
+        for start in special:
+            for nxt in neighbors[start]:
+                walk(start, nxt, False)
+
+    pieces = _join_breaks(raw, min_spur)
+    radius = max(1, int(round(sigma * 2)))
+    kernel = np.exp(-0.5 * (np.arange(-radius, radius + 1) / sigma) ** 2)
+    kernel /= kernel.sum()
+    smoothed: list[np.ndarray] = []
+    for path, closed in pieces:
+        if len(path) < 2:
+            continue
+        pts = np.array(path, np.float64)
+        if len(pts) < 6:
+            smoothed.append(pts)
+            continue
+        if closed:
+            pad = np.vstack([pts[-radius:], pts, pts[:radius]])
+            out = np.empty_like(pts)
+            for index in range(len(pts)):
+                out[index] = (pad[index:index + len(kernel)] * kernel[:, None]).sum(0)
+        else:
+            pad = np.pad(pts, ((radius, radius), (0, 0)), mode='edge')
+            out = np.empty_like(pts)
+            for index in range(len(pts)):
+                out[index] = (pad[index:index + len(kernel)] * kernel[:, None]).sum(0)
+            out[0] = pts[0]
+            out[-1] = pts[-1]
+        smoothed.append(out)
+    return smoothed
+
+
+def smooth_centerline(center: np.ndarray, sigma: float = 2.6, min_spur: int = 6) -> np.ndarray:
+    """Redraw a skeleton as smoothed branches, then let the pen give it width."""
+    if center is None or not np.any(center):
+        return np.zeros(center.shape if center is not None else (0, 0), bool)
+    canvas = np.zeros(center.shape, np.uint8)
+    for path in centerline_paths(center, sigma, min_spur):
+        if len(path) < 2:
+            continue
+        cv2.polylines(canvas, [np.round(path).astype(np.int32)], False, 1, 1)
+    return canvas.astype(bool)
 
 
 def _paint_ellipse(canvas, covered, cx, cy, a, b, lab, color_hex=None) -> None:
@@ -379,7 +568,11 @@ def _paint_ellipse(canvas, covered, cx, cy, a, b, lab, color_hex=None) -> None:
 
 
 def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
-    """Replace traced eye and mouth pixels with matched ellipses and one smooth stroke."""
+    """Matched iris ellipses, and nostrils that are not already the ink stroke.
+
+    A lip, a smile, and a forehead crease stay one ink stroke. A second ribbon
+    on that stroke is the seam.
+    """
     height, width = image.shape[:2]
     yy, xx = np.mgrid[0:height, 0:width]
     zone = np.zeros((height, width), bool)
@@ -465,6 +658,10 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
                 'd': _ellipse_path(cx, cy, semi_a, semi_b, 0),
             })
     chroma = np.hypot(source_lab[..., 1] - 128, source_lab[..., 2] - 128)
+    # A lip or a forehead crease is the ink stroke. A second ribbon on top of
+    # that stroke is the seam, and a filled nose is a paint region, not a wedge.
+    # Only a small round nostril, clear of the stroke, becomes its own dot.
+    stroke_clear = np.zeros((height, width), bool)
     for box in mouths:
         x, y, w, h = [float(value) for value in box[:4]]
         x0, y0 = int(max(0, x)), int(max(0, y))
@@ -477,41 +674,21 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
         for index in range(1, count + 1):
             component = components == index
             area = int(component.sum())
-            if area < 8:
+            if area < 24:
                 continue
-            full = np.zeros((height, width), bool)
-            full[y0:y1, x0:x1] = component
             ys, xs = np.where(component)
             box_w = int(xs.max() - xs.min() + 1)
             box_h = int(ys.max() - ys.min() + 1)
             reach = float(cv2.distanceTransform(component.astype(np.uint8), cv2.DIST_L2, 3).max())
             elongated = max(box_w, box_h) > 1.8 * max(1, min(box_w, box_h))
-            # A filled nose stays a paint region. A dot becomes a nostril.
-            # Only a long dark crease becomes a stroke, so the pad is not a wedge.
-            if not elongated and reach >= 4:
+            if elongated or reach >= 3.5 or reach < 1.5:
                 continue
-            if not elongated:
-                cx = float(xs.mean() + x0)
-                cy = float(ys.mean() + y0)
-                radius = max(2.0, min(6.0, np.sqrt(area / np.pi)))
-                path = _ellipse_path(cx, cy, radius, radius * 0.72, 0)
-                shapes.append((0.4, _lab_hex(line_lab), path))
-                _paint_ellipse(canvas, covered, cx, cy, radius, radius * 0.72, line_lab)
-                zone[full] = True
-                continue
-            curve = _ridge(full)
-            if curve is None:
-                continue
-            path, polygon = _ribbon(curve, 2.2)
-            if not path or len(polygon) < 3:
-                continue
+            cx = float(xs.mean() + x0)
+            cy = float(ys.mean() + y0)
+            radius = max(2.0, min(4.0, np.sqrt(area / np.pi)))
+            path = _ellipse_path(cx, cy, radius, radius * 0.72, 0)
             shapes.append((0.4, _lab_hex(line_lab), path))
-            ribbon = np.zeros((height, width), np.uint8)
-            cv2.fillPoly(ribbon, [np.round(polygon).astype(np.int32)], 1)
-            on = ribbon.astype(bool)
-            canvas[on] = _hex_bgr(_lab_hex(line_lab))
-            covered[on] = True
-            zone[on] = True
+            _paint_ellipse(canvas, covered, cx, cy, radius, radius * 0.72, line_lab)
     return {
         'shapes': shapes,
         'covered': covered,
@@ -519,6 +696,7 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
         'zone': zone,
         'eye_zone': eye_zone,
         'irises': irises,
+        'stroke_clear': stroke_clear,
     }
 
 
@@ -631,6 +809,7 @@ def extract_faces(image: np.ndarray, source_lab: np.ndarray, ink: np.ndarray, fa
         'iris_union': iris_union,
         'eye_detail': geometry['covered'].copy(),
         'hold': hold,
+        'stroke_clear': geometry.get('stroke_clear'),
     }
 
 

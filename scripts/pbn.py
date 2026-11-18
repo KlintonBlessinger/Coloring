@@ -21,7 +21,7 @@ import numpy as np
 from scipy import ndimage as ndi
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
-from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids
+from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids, smooth_centerline
 from symmetry import fold_field, refold_regions, replicate, ring_path, round_ink_rings
 
 LINEART = {'k': 28, 'min_area': 60, 'merge': 6.0}
@@ -301,6 +301,9 @@ def even_ink(mask: np.ndarray) -> np.ndarray:
     center = skeletonize(kept)
     if not center.any():
         center = kept
+    else:
+        # A raw skeleton stair-steps a smooth crease into a jagged seam.
+        center = smooth_centerline(center)
     diameter = int(round(INK_STROKE))
     if diameter % 2 == 0:
         diameter += 1
@@ -1532,6 +1535,29 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     regions = absorb_unlabeled(regions)
     protect = face_region_ids(regions, zone) | regions_covering(regions, thick_strokes)
     regions, orphan = fold_by_color(regions, region_cluster, centers, min_area, protect, merge)
+    if mouth_boxes and orphan.any():
+        # A crumb on a lip is the dark speck. It joins the lip instead of
+        # becoming a stack of pixel rectangles.
+        mouth = np.zeros(orphan.shape, bool)
+        for box in mouth_boxes:
+            x, y, w, h = [int(value) for value in box[:4]]
+            x0, y0 = max(0, x), max(0, y)
+            x1, y1 = min(width, x + w), min(height, y + h)
+            if x1 > x0 and y1 > y0:
+                mouth[y0:y1, x0:x1] = True
+        mouth = cv2.dilate(mouth.astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool)
+        crumb = orphan & mouth
+        if crumb.any():
+            count, labels = cv2.connectedComponents(crumb.astype(np.uint8))
+            kernel = np.ones((3, 3), np.uint8)
+            for index in range(1, count):
+                component = labels == index
+                ring = cv2.dilate(component.astype(np.uint8), kernel).astype(bool) & ~component & (regions > 0)
+                if not ring.any():
+                    continue
+                values, counts = np.unique(regions[ring], return_counts=True)
+                regions[component] = int(values[int(np.argmax(counts))])
+            orphan = orphan & ~crumb
     if orphan.any():
         if mode == 'lineart':
             orphan, ink_add = claim_black_ink(source_lab, orphan)
@@ -1916,7 +1942,12 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     for index, region in enumerate(paths):
         region['id'] = index
     ink_eps = 3.0 if symmetry and symmetry.get('style') == 'curve' else (1.8 if symmetry else 1.5)
-    ink_path = vectorize_ink(ink, ink_eps, symmetry) if mode == 'lineart' else ''
+    drawn_ink = ink
+    stroke_clear = face.get('stroke_clear')
+    if stroke_clear is not None and getattr(stroke_clear, 'any', lambda: False)():
+        # The mouth ribbon is the one stroke. The traced ink under it is the kink.
+        drawn_ink = ink & ~stroke_clear
+    ink_path = vectorize_ink(drawn_ink, ink_eps, symmetry) if mode == 'lineart' else ''
     seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height, detail)
     for region in paths:
