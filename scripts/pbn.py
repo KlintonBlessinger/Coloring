@@ -22,29 +22,34 @@ import numpy as np
 from scipy import ndimage as ndi
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
-from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids, smooth_centerline, swallow_lion_cap
+from face import clear_lion_cheek_lines, extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids, smooth_centerline
 from symmetry import fold_field, refold_regions, replicate, replicate_stroke, ring_path, round_ink_rings, wedge_mask
 
 LINEART = {'k': 28, 'min_area': 60, 'merge': 6.0}
 TONAL = {'k': 36, 'min_area': 90, 'merge': 6.0}
 
 # Lion only, until that eye is approved. Other species keep their previous
-# eyes. Iris is one paintable color. The lid is a short upper curve, thickest
-# at the crown. Catchlight is an offset inside the pupil, up and left negative.
+# eyes. The iris is two or three paintable bands. Pupil and catchlight are ink.
 EYE_TEMPLATES: dict[str, dict] = {
     'lion': {
         'shape': 'almond',
-        'iris': '#E08A2C',
+        'iris': '#E3922A',
+        'iris_outer': '#C56A14',
+        'iris_inner': '#F6C56A',
         'pupil': 'round',
-        'pupil_scale': 0.28,
-        'lid': 1.2,
-        'lid_span': 0.38,
-        'aspect': 0.50,
-        'scale': 1.25,
+        # Diameter as a fraction of the iris width.
+        'pupil_scale': 0.38,
+        'lid': 2.4,
+        'lid_bottom': 1.15,
+        'aspect': 0.58,
+        'pinch': 1.62,
+        'tilt': 8.0,
+        'scale': 1.32,
         'place': 'box',
-        'drop': 4.0,
-        'catchlight': (-0.20, -0.24),
-        'catch_px': 1.4,
+        'drop': 1.0,
+        'catchlight': (-0.42, -0.42),
+        'catch_px': 1.7,
+        'bands': True,
     },
 }
 
@@ -60,7 +65,6 @@ def eye_template(puzzle_id: str) -> dict | None:
         'pupil': float(spec['pupil_scale']),
         'rim': 0.0,
         'lid': float(spec['lid']),
-        'lid_span': float(spec['lid_span']),
         'tear': False,
         'scale': float(spec['scale']),
         'slit': False,
@@ -69,6 +73,12 @@ def eye_template(puzzle_id: str) -> dict | None:
         'catch_px': float(spec['catch_px']),
         'place': spec['place'],
         'drop': float(spec['drop']),
+        'bands': True,
+        'pinch': float(spec['pinch']),
+        'tilt': float(spec['tilt']),
+        'lid_bottom': float(spec['lid_bottom']),
+        'outer': spec['iris_outer'],
+        'inner': spec['iris_inner'],
     }
 
 
@@ -911,23 +921,38 @@ def seal_border(regions: list[dict], width: int, height: int) -> int:
 
 
 def park_eye_labels(regions: list[dict], width: int, height: int) -> None:
-    """The iris number sits just outside the eye. Nothing is drawn inside the pupil."""
+    """Every iris band's number sits below the eye. Nothing is drawn inside it."""
     eyes = [region for region in regions if region.get('eye')]
     if not eyes:
         return
-    mid = float(np.mean([float(region['label']['x']) for region in eyes]))
+    placed = []
     for region in eyes:
         mask = path_mask(region['d'], width, height)
         if not mask.any():
             continue
         ys, xs = np.where(mask)
-        cx = float(xs.mean())
-        side = -1.0 if cx < mid else 1.0
-        if len(eyes) == 1:
-            side = 0.0
-        label_x = min(width - 8, max(8, cx + side * 10))
-        label_y = min(height - 8, float(ys.max()) + 14)
-        region['label'] = {'x': round(label_x, 1), 'y': round(label_y, 1), 'r': 8.0}
+        placed.append((float(xs.mean()), float(ys.max()), int(mask.sum()), region, mask))
+    if not placed:
+        return
+    mid = float(np.median([item[0] for item in placed]))
+    for side in (-1.0, 1.0):
+        group = [item for item in placed if (item[0] < mid) == (side < 0)]
+        group.sort(key=lambda item: -item[2])
+        if not group:
+            continue
+        anchor_x = float(np.mean([item[0] for item in group]))
+        base_y = max(item[1] for item in group) + 12.0
+        union = np.zeros((height, width), bool)
+        for item in group:
+            union |= item[4]
+        for index, item in enumerate(group):
+            label_x = min(width - 8, max(8.0, anchor_x))
+            label_y = min(height - 8, base_y + index * 13.0)
+            guard = 0
+            while guard < 8 and 0 <= int(label_y) < height and 0 <= int(label_x) < width and union[int(label_y), int(label_x)]:
+                label_y = min(height - 8, label_y + 8.0)
+                guard += 1
+            item[3]['label'] = {'x': round(label_x, 1), 'y': round(label_y, 1), 'r': 8.0}
 
 
 def seat_labels(regions: list[dict], ink_path: str, width: int, height: int, avoid: np.ndarray | None = None) -> None:
@@ -1514,6 +1539,64 @@ def fold_by_color(
             regions[np.isin(regions, drop)] = 0
             regions = absorb_unlabeled(regions)
     return regions, orphan
+
+
+def _pin_locked_colors(regions, region_number, palette, number_lab, locked):
+    """An iris band keeps its template color instead of inheriting a shared fur."""
+    if region_number is None or not locked:
+        return region_number, palette, number_lab
+    groups: dict[tuple, list[int]] = {}
+    for region_id, color in locked.items():
+        if int(region_id) >= len(region_number):
+            continue
+        key = tuple(np.round(np.asarray(color, np.float32), 2).tolist())
+        groups.setdefault(key, []).append(int(region_id))
+    protected: set[int] = set()
+    for key, region_ids in groups.items():
+        color = np.asarray(locked[region_ids[0]], np.float32)
+        current = {int(region_number[region_id]) for region_id in region_ids if int(region_number[region_id]) > 0}
+        owned = len(current) == 1 and all(
+            int(region_id) in region_ids
+            for region_id, number in enumerate(region_number.tolist())
+            if int(number) == next(iter(current)) and int(number) > 0
+        )
+        if owned:
+            number = next(iter(current))
+            number_lab[number] = color
+            for item in palette:
+                if int(item['n']) == number:
+                    item['hex'] = lab_to_hex(color)
+            protected.add(number)
+            continue
+        while len(number_lab) >= 40:
+            if not _merge_nearest_color(region_number, palette, number_lab, protected):
+                break
+        number = (max(number_lab) if number_lab else 0) + 1
+        for region_id in region_ids:
+            region_number[region_id] = number
+        number_lab[number] = color
+        palette.append({'n': int(number), 'hex': lab_to_hex(color)})
+        protected.add(int(number))
+    return region_number, palette, number_lab
+
+
+def _merge_nearest_color(region_number, palette, number_lab, protected: set[int]) -> bool:
+    numbers = [number for number in list(number_lab) if int(number) not in protected]
+    if len(numbers) < 2:
+        return False
+    best = None
+    for index, left in enumerate(numbers):
+        for right in numbers[:index]:
+            distance = lab_dist(number_lab[left], number_lab[right])
+            if best is None or distance < best[0]:
+                best = (distance, left, right)
+    if best is None:
+        return False
+    _distance, drop, keep = best
+    region_number[region_number == drop] = keep
+    del number_lab[drop]
+    palette[:] = [item for item in palette if int(item['n']) != int(drop)]
+    return True
 
 
 def quantize_tonal_palette(
@@ -2695,6 +2778,22 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         regions, region_cluster, region_number, palette, number_lab, peel = quantize_tonal_palette(
             regions, region_cluster, sample_lab, ink, detail, keep_ids=set(locked_irises),
         )
+        if region_number is not None and face.get('irises'):
+            # Peel renumbers regions, so the pin follows the mask, not the old id.
+            current_locked = {}
+            for iris in face['irises']:
+                mask = iris.get('mask')
+                if mask is None or not mask.any():
+                    continue
+                owners = regions[mask]
+                owners = owners[owners > 0]
+                if owners.size == 0:
+                    continue
+                current_locked[int(np.bincount(owners).argmax())] = np.asarray(iris['color'], np.float32)
+            if current_locked:
+                region_number, palette, number_lab = _pin_locked_colors(
+                    regions, region_number, palette, number_lab, current_locked,
+                )
         if peel.any():
             extra, kept_detail = paint_stroke_detail(source_lab, peel, face['bgr'], width, height, whole=True)
             stroke_shapes.extend(extra)
@@ -2887,7 +2986,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             '_regions': regions,
         }
     if 'lion' in str(puzzle_id):
-        swallow_lion_cap(regions, source_lab, face.get('irises') or [])
+        clear_lion_cheek_lines(regions, detail, stroke_shapes, source_lab)
     paths = []
     for region_id in range(region_count):
         # Large tonal areas, such as a wall, get a smoother contour. Small
@@ -2899,6 +2998,11 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         # misses the gate, and those regions are all under this size.
         if mode == 'tonal' and area >= 40000:
             path = vectorize_region(regions, region_id, height, width, 2.2, 2.4)
+        elif mode == 'tonal' and 'lion' in str(puzzle_id):
+            # Smooth the fur, the nose, and the patches. Exact runs are the staircase.
+            path = vectorize_region(regions, region_id, height, width, 1.05, 2.6)
+            if not path:
+                path = region_runs_path(regions, region_id)
         elif mode == 'tonal':
             path = region_runs_path(regions, region_id)
         elif symmetry and symmetry.get('style') == 'straight':

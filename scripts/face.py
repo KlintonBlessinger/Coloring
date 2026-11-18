@@ -653,6 +653,174 @@ def _paint_poly(canvas, covered, points, lab) -> None:
     covered[on] = True
 
 
+def _superellipse(cx: float, cy: float, a: float, b: float, pinch: float, count: int = 56) -> tuple[np.ndarray, np.ndarray]:
+    """Pointed almond. pinch 1 is an ellipse. Higher pinch pulls the corners to points."""
+    theta = np.linspace(-np.pi, np.pi, count, endpoint=False)
+    cosine = np.cos(theta)
+    sine = np.sin(theta)
+    exponent = 2.0 / max(1.05, float(pinch))
+    points = np.stack(
+        [
+            cx + a * np.copysign(np.abs(cosine) ** exponent, cosine),
+            cy + b * np.copysign(np.abs(sine) ** exponent, sine),
+        ],
+        axis=1,
+    )
+    return points, theta
+
+
+def _rotate(points: np.ndarray, cx: float, cy: float, degrees: float) -> np.ndarray:
+    if abs(degrees) < 0.1:
+        return points
+    angle = np.deg2rad(degrees)
+    cosine, sine = float(np.cos(angle)), float(np.sin(angle))
+    delta = points - np.array([cx, cy])
+    return np.stack(
+        [
+            cx + delta[:, 0] * cosine - delta[:, 1] * sine,
+            cy + delta[:, 0] * sine + delta[:, 1] * cosine,
+        ],
+        axis=1,
+    )
+
+
+def _outset(points: np.ndarray, thick: np.ndarray) -> np.ndarray:
+    """Move each vertex outward along the outline. Zero thickness stays put."""
+    tangent = np.roll(points, -1, axis=0) - np.roll(points, 1, axis=0)
+    length = np.maximum(np.linalg.norm(tangent, axis=1, keepdims=True), 1e-6)
+    tangent = tangent / length
+    normal = np.stack([-tangent[:, 1], tangent[:, 0]], axis=1)
+    center = points.mean(axis=0)
+    if float(np.mean(np.sum((points - center) * normal, axis=1))) < 0:
+        normal *= -1
+    return points + normal * np.asarray(thick, np.float64)[:, None]
+
+
+def _fill_points(shape: tuple[int, int], points: np.ndarray) -> np.ndarray:
+    mask = np.zeros(shape, np.uint8)
+    if len(points) >= 3:
+        cv2.fillPoly(mask, [np.round(points).astype(np.int32)], 1)
+    return mask.astype(bool)
+
+
+def _scale_points(cx: float, cy: float, points: np.ndarray, scale: float) -> np.ndarray:
+    return np.column_stack([cx + (points[:, 0] - cx) * scale, cy + (points[:, 1] - cy) * scale])
+
+
+def _ribbon(samples: np.ndarray, width_start: float, width_end: float) -> np.ndarray:
+    left = []
+    right = []
+    last = len(samples) - 1
+    for index, point in enumerate(samples):
+        if index == 0:
+            direction = samples[1] - samples[0]
+        elif index == last:
+            direction = samples[-1] - samples[-2]
+        else:
+            direction = samples[index + 1] - samples[index - 1]
+        direction = direction / max(float(np.linalg.norm(direction)), 1e-6)
+        normal = np.array([-direction[1], direction[0]])
+        span = width_start * (1 - index / last) + width_end * (index / last)
+        left.append(point + normal * span / 2)
+        right.append(point - normal * span / 2)
+    return np.array(left + right[::-1], np.float64)
+
+
+def _paint_lion_eyes(
+    fitted, semi_a, semi_b, profile, pair_index,
+    shapes, irises, zone, eye_zone, covered, canvas, placed_eyes,
+    pupil_lab, catch_lab, line_lab,
+) -> None:
+    """Pointed almond, a lid that goes all the way around, and two or three iris bands."""
+    height, width = canvas.shape[:2]
+    pinch = float(profile.get('pinch', 1.6))
+    tilt = float(profile.get('tilt', 0.0))
+    mid_x = float(np.mean([item[0] for item in fitted]))
+    opening_cache = []
+    for cx, cy, _ew, _eh in fitted:
+        # Outer corner sits a little higher than the inner corner.
+        degrees = tilt if cx >= mid_x else -tilt
+        opening, theta = _superellipse(cx, cy, semi_a, semi_b, pinch)
+        opening = _rotate(opening, cx, cy, degrees)
+        sine = np.sin(theta)
+        top = np.clip(-sine, 0, 1)
+        bottom = np.clip(sine, 0, 1)
+        # The rim dies at both corners, so the lid comes to a point instead of a ring.
+        taper = np.clip(np.abs(sine) ** 0.42, 0, 1)
+        thick = (float(profile.get('lid', 2.4)) * top + float(profile.get('lid_bottom', 1.1)) * bottom) * taper
+        lid = _rotate(_outset(_superellipse(cx, cy, semi_a, semi_b, pinch)[0], thick), cx, cy, degrees)
+        opening_cache.append((cx, cy, degrees, opening, lid))
+    for cx, cy, degrees, opening, lid in opening_cache:
+        outer_pts = opening
+        mid_pts = _scale_points(cx, cy, opening, 0.84)
+        pupil_r = max(4.0, semi_a * float(profile.get('pupil', 0.38)))
+        light_r = min(pupil_r * 1.35, semi_b * 0.78)
+        lid_path = _poly_path(lid) + _poly_path(outer_pts[::-1])
+        if lid_path:
+            shapes.append((0.1, _lab_hex(line_lab), lid_path))
+            _paint_poly(canvas, covered, lid, line_lab)
+            # The hole of the rim is the iris. Paint the lid polygon, then clear the opening.
+            hole = _fill_points((height, width), outer_pts)
+            canvas[hole] = 0
+            covered[hole] = False
+        inner_sign = 1.0 if cx < mid_x else -1.0
+        corner_index = int(np.argmax(outer_pts[:, 0] * inner_sign))
+        corner = outer_pts[corner_index]
+        inward = np.array([cx - corner[0], cy - corner[1]], np.float64)
+        inward /= max(float(np.linalg.norm(inward)), 1e-6)
+        down = np.array([0.0, 1.0])
+        notch = np.array([
+            corner,
+            corner + inward * 9.0 + down * 1.2,
+            corner + inward * 4.0 + down * 7.0,
+            corner - inward * 0.6 + down * 3.2,
+        ])
+        notch_path = _poly_path(notch)
+        if notch_path:
+            shapes.append((0.2, _lab_hex(line_lab), notch_path))
+            _paint_poly(canvas, covered, notch, line_lab)
+        lower = outer_pts[outer_pts[:, 1] > cy + semi_b * 0.05]
+        if len(lower):
+            target_x = cx + inner_sign * semi_a * 0.45
+            start = lower[int(np.argmin(np.abs(lower[:, 0] - target_x)))]
+            control = start + np.array([inner_sign * 9.0, 13.0])
+            end = start + np.array([inner_sign * 6.0, 30.0])
+            curve = np.array([(1 - t) ** 2 * start + 2 * (1 - t) * t * control + t ** 2 * end for t in np.linspace(0, 1, 12)])
+            tear = _ribbon(curve, 1.7, 0.45)
+            tear_path = _poly_path(tear)
+            if tear_path:
+                shapes.append((0.3, _lab_hex(line_lab), tear_path))
+                _paint_poly(canvas, covered, tear, line_lab)
+        catch_r = float(profile.get('catch_px', 1.7))
+        catch_dx, catch_dy = profile.get('catchlight', (-0.42, -0.42))
+        catch_x = cx + pupil_r * float(catch_dx)
+        catch_y = cy + pupil_r * float(catch_dy)
+        shapes.append((1.0, _lab_hex(pupil_lab), _ellipse_path(cx, cy, pupil_r, pupil_r, 0)))
+        shapes.append((2.0, _lab_hex(catch_lab), _ellipse_path(catch_x, catch_y, catch_r, catch_r, 0)))
+        _paint_ellipse(canvas, covered, cx, cy, pupil_r, pupil_r, pupil_lab)
+        _paint_ellipse(canvas, covered, catch_x, catch_y, catch_r, catch_r, catch_lab)
+        full = _fill_points((height, width), outer_pts)
+        mid = _fill_points((height, width), mid_pts)
+        yy, xx = np.ogrid[:height, :width]
+        light = ((xx - cx) ** 2 + (yy - cy) ** 2) <= light_r ** 2
+        light &= mid
+        bands = (
+            (10, profile.get('outer', '#C56A14'), full & ~mid, _poly_path(outer_pts) + _poly_path(mid_pts[::-1])),
+            (11, profile.get('hex', '#E3922A'), mid & ~light, _poly_path(mid_pts) + _ellipse_path(cx, cy, light_r, light_r, 0)),
+            (12, profile.get('inner', '#F6C56A'), light, _ellipse_path(cx, cy, light_r, light_r, 0)),
+        )
+        zone |= full
+        eye_zone |= full
+        placed_eyes.append((cx, cy, semi_a, semi_b))
+        for pair, hex_color, mask, path in bands:
+            if path and int(mask.sum()) >= 12:
+                irises.append({
+                    'cx': cx, 'cy': cy, 'a': semi_a, 'b': semi_b,
+                    'mask': mask, 'pair': pair_index * 10 + pair, 'color': _hex_lab(hex_color),
+                    'd': path,
+                })
+
+
 def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str = '') -> dict:
     """Iris fills the eye. Pupil, catchlight, and a tapered lid are fixed ink.
 
@@ -713,6 +881,13 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
         else:
             shared_a = max(3.0, mean_w / 2 * scale)
             shared_b = max(3.0, min(mean_h / 2 * scale, shared_a * aspect))
+        if profile.get('bands') and shared_a and shared_b:
+            _paint_lion_eyes(
+                fitted, shared_a, shared_b, profile, pair_index,
+                shapes, irises, zone, eye_zone, covered, canvas, placed_eyes,
+                pupil_lab, catch_lab, line_lab,
+            )
+            continue
         colors = []
         ellipses = []
         for cx, cy, ew, eh in fitted:
@@ -869,6 +1044,58 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
     }
 
 
+def clear_lion_cheek_lines(regions: np.ndarray, detail: np.ndarray, stroke_shapes: list[dict], source_lab: np.ndarray) -> None:
+    """Drop the long diagonal under the left eye and the short line beside it.
+
+    The lid's own tear is a face shape, drawn on purpose, and is not in this list.
+    """
+    from pbn import path_mask
+    height, width = regions.shape
+    corridor = np.zeros((height, width), bool)
+    corridor[385:560, 270:460] = True
+    drop = np.zeros((height, width), bool)
+    kept: list[dict] = []
+    for shape in stroke_shapes:
+        mask = path_mask(shape.get('d') or '', width, height)
+        if not mask.any() or int((mask & corridor).sum()) < 0.55 * int(mask.sum()):
+            kept.append(shape)
+            continue
+        ys, xs = np.nonzero(mask)
+        box_w = int(xs.max() - xs.min() + 1)
+        box_h = int(ys.max() - ys.min() + 1)
+        thin = min(box_w, box_h) <= 18 and max(box_w, box_h) >= 20 and int(mask.sum()) < 900
+        if thin:
+            drop |= mask
+        else:
+            kept.append(shape)
+    stroke_shapes[:] = kept
+    lightness = source_lab[..., 0] * 100.0 / 255.0
+    for region_id in np.unique(regions[corridor]).tolist():
+        region_id = int(region_id)
+        if region_id <= 0:
+            continue
+        pixels = regions == region_id
+        if int(pixels.sum()) > 700 or int((pixels & corridor).sum()) < 0.72 * int(pixels.sum()):
+            continue
+        ys, xs = np.nonzero(pixels)
+        box_w = int(xs.max() - xs.min() + 1)
+        box_h = int(ys.max() - ys.min() + 1)
+        if min(box_w, box_h) > 16 or max(box_w, box_h) < 24:
+            continue
+        if float(np.median(lightness[pixels])) > 48:
+            continue
+        drop |= pixels
+        regions[pixels] = 0
+    if not drop.any():
+        return
+    detail[drop] = False
+    labeled = regions > 0
+    _distance, indices = ndi.distance_transform_edt(~labeled, return_indices=True)
+    take = drop & ~labeled
+    if take.any():
+        regions[take] = regions[indices[0][take], indices[1][take]]
+
+
 def swallow_lion_cap(regions: np.ndarray, source_lab: np.ndarray, irises: list[dict]) -> None:
     """A dark cap left above the almond is the old lid. It joins the iris.
 
@@ -962,6 +1189,11 @@ def extract_faces(image: np.ndarray, source_lab: np.ndarray, ink: np.ndarray, fa
             continue
         dark = lightness[y0:y1, x0:x1] < 40
         hold[y0:y1, x0:x1] |= dark
+    if 'lion' in (puzzle_id or '').lower() and hold.any():
+        # The painted lid is wider than the box. Hold that dark out so it does not
+        # survive as a second black line around the almond.
+        grown = cv2.dilate(hold.astype(np.uint8), np.ones((15, 15), np.uint8)).astype(bool)
+        hold |= grown & (lightness < 42)
     hold &= ~covered
     if auto:
         components, count = ndi.label(fat & ~zone)
