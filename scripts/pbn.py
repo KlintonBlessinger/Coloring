@@ -1514,6 +1514,51 @@ def wedge_ink(mask: np.ndarray, spec: dict) -> tuple[np.ndarray, str]:
     return full.astype(bool), ring_path_d + copied
 
 
+def visible_gold_mask(image_bgr: np.ndarray, spec: dict) -> np.ndarray:
+    """Gold piping as one stroke. A blank page draws this, so it cannot be an unfilled region."""
+    lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    yellow = (lab[..., 0] > 160) & (np.abs(lab[..., 1] - 128) < 30) & (lab[..., 2] - 128 > 12)
+    gold = continuous_gold(yellow.astype(np.uint8), spec)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    closed = cv2.morphologyEx(gold.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    near = cv2.dilate(gold.astype(np.uint8), kernel)
+    closed = ((closed > 0) & (near > 0)).astype(np.uint8)
+    # A ring that already runs most of the way around is one circle.
+    closed = _circle_ridges(closed, spec, clear=True, lo=24, hi=180, cover=0.45)
+    count, labels, stats, _cent = cv2.connectedComponentsWithStats(closed)
+    out = np.zeros(gold.shape, np.uint8)
+    for index in range(1, count):
+        if int(stats[index, cv2.CC_STAT_AREA]) >= 120:
+            out[labels == index] = 1
+    return out.astype(bool)
+
+
+def visible_gold_shapes(image_bgr: np.ndarray, spec: dict) -> list[dict]:
+    """One smooth gold stroke, in the piping color, drawn on the blank."""
+    shown = visible_gold_mask(image_bgr, spec)
+    if not shown.any():
+        return []
+    lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    color = np.median(lab[shown], axis=0)
+    soft = cv2.GaussianBlur(shown.astype(np.float32), (0, 0), 0.7)
+    up = cv2.resize(soft, (image_bgr.shape[1] * 2, image_bgr.shape[0] * 2), interpolation=cv2.INTER_LINEAR)
+    path = contours_to_path((up > 0.45).astype(np.uint8), 2, np.zeros(2), image_bgr.shape[1], image_bgr.shape[0], epsilon=1.6)
+    if not path:
+        return []
+    return [{'hex': lab_to_hex(color), 'd': path}]
+
+
+def painting_core_ink(image_bgr: np.ndarray) -> str:
+    """The painting's own thin dark lines, not a second outline through the gold."""
+    lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+    reach = cv2.distanceTransform((lab[:, :, 0] < 70).astype(np.uint8), cv2.DIST_L2, 3)
+    core = ((reach > 0) & (reach <= 2.2)).astype(np.uint8)
+    pen = even_ink(core, diameter=3)
+    mask = np.zeros(pen.shape, np.int32)
+    mask[pen.astype(bool)] = 1
+    return region_runs_path(mask, 1)
+
+
 def continuous_gold(mask: np.ndarray, spec: dict) -> np.ndarray:
     """Redraw thin gold as one smooth stroke, and a full ring as one circle.
 
@@ -2350,7 +2395,9 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     if stroke_clear is not None and getattr(stroke_clear, 'any', lambda: False)():
         # The mouth ribbon is the one stroke. The traced ink under it is the kink.
         drawn_ink = ink & ~stroke_clear
-    if prebuilt_ink:
+    if puzzle_id == 'adult-jewel-swirls':
+        ink_path = painting_core_ink(image)
+    elif prebuilt_ink:
         ink_path = prebuilt_ink
     else:
         ink_path = vectorize_ink(drawn_ink, ink_eps, symmetry) if mode == 'lineart' else ''
@@ -2365,6 +2412,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     stroke_shapes = clip_shapes_outside(stroke_shapes, eye_pad, width, height)
     iris_shapes = clip_shapes_outside(iris_shapes, eye_pad, width, height)
     detail_shapes = iris_shapes + face['shapes'] + stroke_shapes
+    if symmetry is not None and symmetry.get('style') == 'curve':
+        # An unfilled gold region is paper on the blank. The stroke is also
+        # fixed detail, so the piping stays gold with no color selected.
+        detail_shapes.extend(visible_gold_shapes(image, symmetry))
     flat = np.zeros((height, width, 3), np.float32)
     for region_id in range(region_count):
         if region_number is not None:
