@@ -72,7 +72,7 @@ async function beginPicture(page: Page, mode?: 'normal' | 'math' | 'espanol'): P
 }
 
 async function openPuzzle(page: Page, id: string, mode?: 'normal' | 'math' | 'espanol'): Promise<void> {
-  await page.goto(`/?open=${id}&t=${Date.now()}`);
+  await page.goto(`/color/?open=${id}&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator(`[data-testid="puzzle-card"][data-id="${id}"]`).click();
   await beginPicture(page, mode);
@@ -169,7 +169,7 @@ async function sample(page: Page, book: Book, index: number): Promise<number[]> 
 test('gallery, coloring, undo, zoom, and resume', async ({ page }) => {
   const errors = watch(page);
   const book = puzzle('food-ice-cream-sundae');
-  await page.goto('/');
+  await page.goto('/color/');
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(104);
   await page.locator('[data-category="Animals"]').click();
@@ -357,7 +357,7 @@ test('settings backup, sound default, and reset', async ({ page }) => {
 test('service worker, manifest, and offline reload', async ({ page, context }) => {
   const errors = watch(page);
   await page.goto('/');
-  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  await page.getByRole('heading', { name: 'Cozy Games' }).waitFor();
   const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
   expect(manifestHref).toBeTruthy();
   const manifest = await page.evaluate(async (href) => {
@@ -367,10 +367,13 @@ test('service worker, manifest, and offline reload', async ({ page, context }) =
       display: string;
       icons: { sizes: string; purpose?: string }[];
       start_url: string;
+      scope: string;
     }>;
   }, manifestHref);
-  expect(manifest.name).toBe('Color Cozy');
+  expect(manifest.name).toBe('Cozy Games');
   expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toBe('/');
+  expect(manifest.scope).toBe('/');
   expect(manifest.icons.some((icon) => icon.sizes === '192x192')).toBe(true);
   expect(manifest.icons.some((icon) => icon.sizes === '512x512')).toBe(true);
   expect(manifest.icons.some((icon) => icon.purpose?.includes('maskable'))).toBe(true);
@@ -383,6 +386,12 @@ test('service worker, manifest, and offline reload', async ({ page, context }) =
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await context.setOffline(true);
   await page.reload();
+  await expect(page.getByRole('heading', { name: 'Cozy Games' })).toBeVisible();
+  await context.setOffline(false);
+  await page.goto('/color/');
+  await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
+  await context.setOffline(true);
+  await page.reload();
   await expect(page.getByRole('heading', { name: 'Color Cozy' })).toBeVisible();
   await context.setOffline(false);
   const noisy = errors.filter((error) => !/fetch|offline|network|service worker/i.test(error));
@@ -391,7 +400,7 @@ test('service worker, manifest, and offline reload', async ({ page, context }) =
 
 test('screenshots of gallery, fit, half colored, and a finished hard picture', async ({ page }) => {
   fs.mkdirSync(mediaDir, { recursive: true });
-  await page.goto(`/?shot=gallery&t=${Date.now()}`);
+  await page.goto(`/color/?shot=gallery&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await expect(page.locator('[data-category="Thanksgiving"]')).toBeVisible();
   await expect(page.locator('[data-category="Christmas"]')).toBeVisible();
@@ -411,7 +420,7 @@ test('screenshots of gallery, fit, half colored, and a finished hard picture', a
   await page.screenshot({ path: path.join(mediaDir, 'turtle-fit.png') });
 
   const tree = puzzle('christmas-tree-fireplace');
-  await page.goto(`/?shot=tree&t=${Date.now()}`);
+  await page.goto(`/color/?shot=tree&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-id="christmas-tree-fireplace"]').click();
   await beginPicture(page);
@@ -429,7 +438,7 @@ test('screenshots of gallery, fit, half colored, and a finished hard picture', a
   await page.screenshot({ path: path.join(mediaDir, 'tree-half.png') });
 
   const hard = puzzle('food-bakery-sweets');
-  await page.goto(`/?shot=done&t=${Date.now()}`);
+  await page.goto(`/color/?shot=done&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-id="food-bakery-sweets"]').click();
   await beginPicture(page);
@@ -579,7 +588,7 @@ test('learning labels, facts, science shelf, and the first harvest', async ({ pa
     await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 60 });
   };
 
-  await page.goto(`/?shot=science&t=${Date.now()}`);
+  await page.goto(`/color/?shot=science&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-category="Science"]').click();
   await expect(page.getByTestId('puzzle-card')).toHaveCount(3);
@@ -790,7 +799,7 @@ test('line art gallery, clownfish, unicorn, harvest, and a finished picture', as
   const jpg = async (name: string) => {
     await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 55 });
   };
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await expect(page.locator('[data-id="animals-clownfish-reef"] img.thumb')).toBeVisible();
   await page.waitForTimeout(400);
@@ -874,7 +883,7 @@ test('owner review: colors, solid fills, smooth ink, numbers, and line-art thumb
   };
   fs.mkdirSync(mediaDir, { recursive: true });
 
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await expect(page.locator('[data-id="animals-clownfish-reef"] img.thumb')).toBeVisible();
   await page.waitForTimeout(300);
@@ -992,7 +1001,7 @@ test('vector gallery, turkey, clownfish, harvest, and math', async ({ page }) =>
   };
   fs.mkdirSync(mediaDir, { recursive: true });
 
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await expect(page.locator('[data-id="thanksgiving-turkey"] img.thumb')).toBeVisible();
   await page.waitForTimeout(300);
@@ -1133,7 +1142,7 @@ test('realistic animals shelf, finished zebras and lion, tiger zoom', async ({ p
   };
 
   fs.mkdirSync(mediaDir, { recursive: true });
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   const shelf = page.locator('[data-shelf="realistic"]');
   await shelf.scrollIntoViewIfNeeded();
@@ -1192,7 +1201,7 @@ test('realistic v3 groups on the shelf', async ({ page }) => {
     expect(bytes, name).toBeGreaterThan(12 * 1024);
   };
   fs.mkdirSync(mediaDir, { recursive: true });
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   const bigCats = page.locator('[data-shelf="big-cats"]');
   await page.locator('[data-group="big-cats"]').evaluate((el) => el.scrollIntoView({ block: 'start' }));
@@ -1241,7 +1250,7 @@ test('an imported pack gets a shelf for each tag and survives a reload', async (
   const file = path.join(mediaDir, 'sample-pack.json');
   fs.mkdirSync(mediaDir, { recursive: true });
   fs.writeFileSync(file, JSON.stringify(pack));
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByTestId('open-settings').click();
   await page.getByTestId('import-pack').setInputFiles(file);
   await expect(page.getByTestId('settings-status')).toHaveText('Picture pack added.');
@@ -1262,7 +1271,7 @@ test('an imported pack gets a shelf for each tag and survives a reload', async (
 
 test('for grown-ups shelf shows the four groups', async ({ page }) => {
   const errors = watch(page);
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   const shelf = page.locator('[data-shelf="grown-ups"]');
   await shelf.scrollIntoViewIfNeeded();
@@ -1417,7 +1426,7 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
     expect(bytes, name).toBeGreaterThan(12 * 1024);
   };
   fs.mkdirSync(mediaDir, { recursive: true });
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   const shelf = page.locator('[data-shelf="grown-ups"]');
   await shelf.getByRole('heading', { name: 'For Grown-ups' }).evaluate((el) => el.scrollIntoView({ block: 'start' }));
@@ -1491,7 +1500,7 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
 
   const book = puzzle('adult-cherry-blossom-garden');
   // Cherry sits on both the places and floral rows, so the gallery has two cards.
-  await page.goto(`/?open=adult-cherry-blossom-garden&t=${Date.now()}`);
+  await page.goto(`/color/?open=adult-cherry-blossom-garden&t=${Date.now()}`);
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.locator('[data-testid="puzzle-card"][data-id="adult-cherry-blossom-garden"]').first().click();
   await beginPicture(page);
@@ -1539,7 +1548,7 @@ test('v3 faces and the hammerhead shelf', async ({ page }) => {
   };
 
   fs.mkdirSync(mediaDir, { recursive: true });
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   const card = page.locator('[data-testid="puzzle-card"][data-id="realistic-hammerhead-school"]');
   await card.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
@@ -1618,7 +1627,7 @@ test('private pack labels, faces, and the PAW shelf', async ({ page }) => {
   };
 
   fs.mkdirSync(mediaDir, { recursive: true });
-  await page.goto('/');
+  await page.goto('/color/');
   await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
   await page.getByTestId('open-settings').click();
   await page.getByTestId('import-pack').setInputFiles(packPath);

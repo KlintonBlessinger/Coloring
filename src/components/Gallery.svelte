@@ -3,6 +3,7 @@
   import { listPuzzles, type CatalogEntry } from '../lib/catalog';
   import { ANIMAL_HABITATS, GROWNUP_GROUPS, REALISTIC_GROUPS, categoryLabel, grownupGroupLabel, habitatLabel, realisticGroupLabel, t, type AnimalHabitat, type GrownupGroup } from '../lib/i18n';
   import type { Settings } from '../lib/settings';
+  import { siteUrl } from '../lib/games/paths';
   import { asset } from '../lib/vector';
   import { saveRatio } from '../lib/thumb';
   import type { ProgressSave } from '../lib/storage';
@@ -114,6 +115,12 @@
         <p class="lede">{t(settings.language, 'lede')}</p>
       </div>
     </div>
+    <a class="icon-btn" href={siteUrl('/')} aria-label={t(settings.language, 'allGames')} data-testid="all-games">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M4 11.5 12 4l8 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M7 10.5V20h10v-9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </svg>
+    </a>
     <button class="icon-btn" type="button" aria-label={t(settings.language, 'openSettings')} data-testid="open-settings" onclick={onSettings}>
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
         <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" />
