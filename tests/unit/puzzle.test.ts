@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { encode } from 'jpeg-js';
-import { APP_NAME } from '../../src/lib/brand';
+import { SITE_NAME } from '../../src/lib/brand';
 import { bytesToBase64, decodeRLE, decodeRLE16, encodeRLE } from '../../src/lib/codec';
 import { deltaE76, hexToOklab, hexToRgb, labDist2, oklabToHex, rgbToCielab } from '../../src/lib/color';
 import { progressFits, regionMapKey } from '../../src/lib/progress';
@@ -343,7 +343,7 @@ test('starter puzzles cover every shelf', () => {
   const licenses = fs.readFileSync(path.join(process.cwd(), 'content/LICENSES.md'), 'utf8');
   for (const puzzle of puzzles) assert.ok(licenses.includes(puzzle.id), puzzle.id);
   const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
-  assert.match(html, new RegExp(`<title>${APP_NAME}</title>`));
+  assert.match(html, new RegExp(`<title>${SITE_NAME}</title>`));
   assert.match(html, /viewport-fit=cover/);
 });
 
