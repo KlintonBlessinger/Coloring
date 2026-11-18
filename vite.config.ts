@@ -1,9 +1,35 @@
+import { copyFileSync, mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { APP_DESCRIPTION, APP_NAME } from './src/lib/brand.ts';
+import { SITE_DESCRIPTION, SITE_NAME } from './src/lib/brand.ts';
 
 const base = process.env.PAGES_BASE || '/';
+
+/** GitHub Pages has no SPA fallback. Copy the shell so / and /color/ both boot. */
+function spaCopies(): Plugin {
+  let outDir = resolve('dist');
+  return {
+    name: 'games-spa-copies',
+    apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle: {
+      sequential: true,
+      order: 'pre',
+      handler() {
+        const index = resolve(outDir, 'index.html');
+        for (const fileName of ['color/index.html', '404.html']) {
+          const file = resolve(outDir, fileName);
+          mkdirSync(dirname(file), { recursive: true });
+          copyFileSync(index, file);
+        }
+      },
+    },
+  };
+}
 
 export default defineConfig({
   base,
@@ -11,15 +37,16 @@ export default defineConfig({
     svelte(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png', 'games/word-search-cover.svg'],
       manifest: {
-        name: APP_NAME,
-        short_name: APP_NAME,
-        description: APP_DESCRIPTION,
+        name: SITE_NAME,
+        short_name: SITE_NAME,
+        description: SITE_DESCRIPTION,
         theme_color: '#f4efe6',
         background_color: '#f4efe6',
         display: 'standalone',
         orientation: 'portrait',
+        // The shelf. Scope stays the site root so /color/ is inside the same app.
         start_url: base,
         scope: base,
         id: base,
@@ -49,5 +76,6 @@ export default defineConfig({
       },
       devOptions: { enabled: false },
     }),
+    spaCopies(),
   ],
 });
