@@ -622,11 +622,12 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
             zone |= ellipse
             eye_zone |= ellipse
             outline = _ellipse_path(cx, cy, semi_a + 2.2, semi_b + 2.2, 0) + _ellipse_path(cx, cy, semi_a + 0.3, semi_b + 0.3, 0)
-            # Two close ellipses. Their even-odd difference is a thin top crescent.
-            # Using the whole iris as the inner path fills the lower eye black.
+            # Two ellipses a couple of pixels apart. The even-odd gap is a
+            # hairline at the top. Using the whole iris as the inner path
+            # fills the lower eye black.
             lid = (
-                _ellipse_path(cx, cy - semi_b * 0.10, semi_a * 1.0, semi_b * 0.96, 0)
-                + _ellipse_path(cx, cy + semi_b * 0.08, semi_a * 0.92, semi_b * 0.70, 0)
+                _ellipse_path(cx, cy - 0.4, semi_a * 1.01, semi_b * 0.99, 0)
+                + _ellipse_path(cx, cy + 1.6, semi_a * 0.99, semi_b * 0.97, 0)
             )
             pupil_path = _ellipse_path(cx, cy, pupil_a, pupil_b, 0)
             catch_r = max(1.5, min(pupil_a, pupil_b) * 0.32)
@@ -640,12 +641,12 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
             cv2.ellipse(inner, (int(round(cx)), int(round(cy))), (max(1, int(round(semi_a + 0.3))), max(1, int(round(semi_b + 0.3)))), 0, 0, 360, 1, -1)
             covered[inner.astype(bool)] = False
             canvas[inner.astype(bool)] = 0
-            _paint_ellipse(canvas, covered, cx, cy - semi_b * 0.10, semi_a * 1.0, semi_b * 0.96, line_lab)
+            _paint_ellipse(canvas, covered, cx, cy - 0.4, semi_a * 1.01, semi_b * 0.99, line_lab)
             lid_inner = np.zeros((height, width), np.uint8)
             cv2.ellipse(
                 lid_inner,
-                (int(round(cx)), int(round(cy + semi_b * 0.08))),
-                (max(1, int(round(semi_a * 0.92))), max(1, int(round(semi_b * 0.70)))),
+                (int(round(cx)), int(round(cy + 1.6))),
+                (max(1, int(round(semi_a * 0.99))), max(1, int(round(semi_b * 0.97)))),
                 0, 0, 360, 1, -1,
             )
             covered[lid_inner.astype(bool)] = False

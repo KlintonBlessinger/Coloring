@@ -1664,9 +1664,11 @@ test('four times face zooms for the owner review', async ({ page }) => {
   const show = async (id: string) => {
     await openPuzzle(page, id);
     await page.evaluate(() => {
-      const canvas = document.querySelector('canvas.surface');
+      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
       if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+      canvas.clearColor?.();
     });
+    await expect(page.locator('.swatch.selected')).toHaveCount(0);
   };
   fs.mkdirSync(mediaDir, { recursive: true });
   const shots: [string, string][] = [
@@ -1682,5 +1684,10 @@ test('four times face zooms for the owner review', async ({ page }) => {
     await page.waitForTimeout(300);
     await jpg(name);
   }
+  // Tiger at the River: the muzzle box is gone and the upper lid is a hairline.
+  await show('realistic-tiger-river');
+  await zoomFace(page, 'realistic-tiger-river', 3.6, { x: 620, y: 560 });
+  await page.waitForTimeout(300);
+  await jpg('face-tiger-river-4x.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });
