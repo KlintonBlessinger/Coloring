@@ -682,32 +682,45 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
         fitted = []
         for index in pair:
             x, y, w, h = [float(value) for value in eyes[index][:4]]
-            box = (lightness[int(max(0, y)):int(min(height, y + h)), int(max(0, x)):int(min(width, x + w))] < 42)
-            if int(np.count_nonzero(box)) >= 8:
-                ys, xs = np.where(box)
-                cx = float(xs.mean() + max(0, x))
-                cy = float(ys.mean() + max(0, y))
+            if profile.get('place') == 'box':
+                cx, cy = x + w / 2, y + h / 2 + float(profile.get('drop', 0))
             else:
-                cx, cy = x + w / 2, y + h / 2
+                box = (lightness[int(max(0, y)):int(min(height, y + h)), int(max(0, x)):int(min(width, x + w))] < 42)
+                if int(np.count_nonzero(box)) >= 8:
+                    ys, xs = np.where(box)
+                    cx = float(xs.mean() + max(0, x))
+                    cy = float(ys.mean() + max(0, y))
+                else:
+                    cx, cy = x + w / 2, y + h / 2
             fitted.append((cx, cy, w, h))
         mean_w = float(np.mean([item[2] for item in fitted]))
         mean_h = float(np.mean([item[3] for item in fitted]))
         scale = float(profile['scale'])
-        if profile['shape'] == 'round':
-            radius = max(4.0, min(mean_w, mean_h) / 2 * scale)
-            semi_a = semi_b = radius
+        aspect = float(profile.get('aspect', 0.72))
+        if profile.get('place') == 'box':
+            # The two eyes of a pair match. Width is the wider box, and the
+            # height follows the template curve so a square box stays an almond.
+            span = max(item[2] for item in fitted)
+            shared_a = max(4.0, span / 2 * scale)
+            shared_b = max(3.0, shared_a * aspect)
+        elif profile['shape'] == 'round':
+            shared_a = shared_b = max(4.0, min(mean_w, mean_h) / 2 * scale)
         elif profile['shape'] == 'small':
-            radius = max(3.0, min(mean_w, mean_h) / 2 * scale)
-            semi_a = semi_b = radius
+            shared_a = shared_b = max(3.0, min(mean_w, mean_h) / 2 * scale)
         elif profile['shape'] == 'almond':
-            semi_a = max(4.0, mean_w / 2 * scale)
-            semi_b = max(3.0, min(mean_h / 2 * scale, semi_a * float(profile.get('aspect', 0.72))))
+            shared_a = max(4.0, mean_w / 2 * scale)
+            shared_b = max(3.0, min(mean_h / 2 * scale, shared_a * aspect))
         else:
-            semi_a = max(3.0, mean_w / 2 * scale)
-            semi_b = max(3.0, min(mean_h / 2 * scale, semi_a * float(profile.get('aspect', 0.72))))
+            shared_a = max(3.0, mean_w / 2 * scale)
+            shared_b = max(3.0, min(mean_h / 2 * scale, shared_a * aspect))
         colors = []
         ellipses = []
-        for cx, cy, _w, _h in fitted:
+        for cx, cy, ew, eh in fitted:
+            if shared_a is None:
+                semi_a = max(4.0, ew / 2 * scale)
+                semi_b = max(3.0, semi_a * aspect)
+            else:
+                semi_a, semi_b = shared_a, shared_b
             ellipse = ((xx - cx) / semi_a) ** 2 + ((yy - cy) / semi_b) ** 2 <= 1
             pupil_scale = float(profile['pupil'])
             base = min(semi_a, semi_b) * pupil_scale
@@ -723,7 +736,7 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
                 if eroded.any():
                     sample = eroded
             colors.append(_iris_lab(source_lab, sample))
-            ellipses.append((cx, cy, pupil_a, pupil_b, ellipse))
+            ellipses.append((cx, cy, pupil_a, pupil_b, semi_a, semi_b, ellipse))
         sampled = _share_iris(colors)
         sampled_l = float(sampled[0] * 100 / 255)
         sampled_c = float(np.hypot(sampled[1] - 128, sampled[2] - 128))
@@ -733,7 +746,7 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
             shared = sampled
         else:
             shared = _hex_lab('#8A5A28')
-        for cx, cy, pupil_a, pupil_b, ellipse in ellipses:
+        for cx, cy, pupil_a, pupil_b, semi_a, semi_b, ellipse in ellipses:
             zone |= ellipse
             eye_zone |= ellipse
             placed_eyes.append((cx, cy, semi_a, semi_b))
@@ -760,7 +773,7 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
                     shapes.append((0.1, _lab_hex(line_lab), lid_path))
                     _paint_poly(canvas, covered, lid_pts, line_lab)
             pupil_path = _ellipse_path(cx, cy, pupil_a, pupil_b, 0)
-            catch_r = max(2.2, min(pupil_a, pupil_b) * 0.34)
+            catch_r = max(float(profile.get('catch_px', 1.6)), min(pupil_a, pupil_b) * 0.22)
             catch_dx, catch_dy = profile.get('catchlight', (-0.22, -0.28))
             catch_x = cx + pupil_a * float(catch_dx)
             catch_y = cy + pupil_b * float(catch_dy)
