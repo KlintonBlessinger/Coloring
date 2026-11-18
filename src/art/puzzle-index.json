@@ -56,8 +56,8 @@
   },
   "adult-lotus-mandala": {
     "file": "adult-lotus-mandala",
-    "regions": 1167,
-    "colors": 29
+    "regions": 1230,
+    "colors": 35
   },
   "adult-lush-peony-garden": {
     "file": "adult-lush-peony-garden",
@@ -76,7 +76,7 @@
   },
   "adult-peacock-mandala": {
     "file": "adult-peacock-mandala",
-    "regions": 1133,
+    "regions": 969,
     "colors": 23
   },
   "adult-santorini-village": {

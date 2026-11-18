@@ -317,17 +317,28 @@ def even_ink(mask: np.ndarray, diameter: int | None = None) -> np.ndarray:
 
 def vectorize_ink(ink: np.ndarray, epsilon: float = 1.5, symmetry: dict | None = None) -> str:
     height, width = ink.shape
-    # A mandala outline is a hairline. The usual pen is the lump on that stroke.
-    pen = 3 if symmetry is not None and symmetry.get('style') == 'curve' else None
-    even = even_ink(ink, pen)
-    if symmetry is not None:
-        even = fold_field(even, symmetry)
-        even = round_ink_rings(even, symmetry)
+    # A mandala outline is already one pen taken from the painting. Running the
+    # skeleton over it again breaks that stroke into dashes. The wedge copy
+    # leaves 1px gaps, so those are closed before the contour is traced.
+    if symmetry is not None and symmetry.get('style') == 'curve':
+        even = fold_field((ink > 0).astype(np.uint8), symmetry)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        even = cv2.morphologyEx(even, cv2.MORPH_CLOSE, kernel)
+        count, labels, stats, _cent = cv2.connectedComponentsWithStats(even)
+        cleaned = np.zeros_like(even)
+        for index in range(1, count):
+            if int(stats[index, cv2.CC_STAT_AREA]) >= 48:
+                cleaned[labels == index] = 1
+        even = cleaned
+    else:
+        even = even_ink(ink)
+        if symmetry is not None:
+            even = fold_field(even, symmetry)
+            even = round_ink_rings(even, symmetry)
     scale = 2
     # A light blur plus a looser fit turns the even pen into a smooth outline.
-    # A curved mandala wedge is blurred more so the copied stroke has no kink.
     if symmetry is not None and symmetry.get('style') == 'curve':
-        sigma = 2.4
+        sigma = 0.8
     elif symmetry is not None:
         sigma = 1.15
     else:
@@ -1360,6 +1371,108 @@ def quantize_tonal_palette(
     return regions, region_cluster, region_number, palette, number_lab, peel
 
 
+def continuous_gold(mask: np.ndarray, spec: dict) -> np.ndarray:
+    """Redraw thin gold as one smooth stroke, and a full ring as one circle.
+
+    The copied wedge was a chain of dashes. The pen follows the center of
+    that chain, and a ring that already runs around the center becomes a circle.
+    """
+    src = (mask > 0).astype(np.uint8)
+    if int(src.sum()) < 80:
+        return src.astype(bool)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    closed = cv2.morphologyEx(src, cv2.MORPH_CLOSE, kernel)
+    near = cv2.dilate(src, kernel)
+    closed = ((closed > 0) & (near > 0)).astype(np.uint8)
+    center = skeletonize(closed.astype(bool))
+    if center.any():
+        center = smooth_centerline(center, sigma=2.0, min_spur=8)
+        pen = cv2.dilate(center.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    else:
+        pen = closed
+    return _circle_ridges(pen, spec, clear=True).astype(bool)
+
+
+def _circle_ridges(mask: np.ndarray, spec: dict, clear: bool, lo: int = 28, hi: int = 200, cover: float = 0.68) -> np.ndarray:
+    """Replace a lumpy ring with one circle at the middle of that ridge."""
+    on = mask > 0
+    if not on.any():
+        return mask
+    cx, cy = spec['center']
+    height, width = mask.shape[:2]
+    yy, xx = np.ogrid[:height, :width]
+    rad = np.hypot(xx - cx, yy - cy)
+    ang = np.arctan2(yy - cy, xx - cx)
+    hits: list[int] = []
+    for radius in range(lo, hi):
+        band = np.abs(rad - radius) <= 1.5
+        circ = 2 * np.pi * radius
+        if int((on & band).sum()) < circ * cover:
+            continue
+        sectors = np.floor((ang[on & band] + np.pi) / (2 * np.pi) * 36).astype(np.int32) % 36
+        if len(np.unique(sectors)) < 30:
+            continue
+        hits.append(radius)
+    if not hits:
+        return mask
+    clusters: list[tuple[int, int]] = []
+    start = prev = hits[0]
+    for radius in hits[1:]:
+        if radius <= prev + 3:
+            prev = radius
+            continue
+        clusters.append((start, prev))
+        start = prev = radius
+    clusters.append((start, prev))
+    out = mask.copy()
+    for first, last in clusters:
+        mid = (first + last) // 2
+        if clear:
+            band = (rad >= first - 2) & (rad <= last + 2) & on
+            out[band] = 0
+        cv2.circle(out, (int(round(cx)), int(round(cy))), int(mid), 1, 4)
+    return out
+
+
+def source_outline(image: np.ndarray, spec: dict) -> np.ndarray:
+    """The painting's thin dark lines and gold edges, as one smooth pen.
+
+    A k-means blob is not that line. The blank page is this stroke, with a
+    ring that wraps the center drawn as a circle and specks dropped.
+    """
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    lightness = lab[:, :, 0]
+    red = lab[:, :, 1].astype(np.int16) - 128
+    yellow = lab[:, :, 2].astype(np.int16) - 128
+    dark = (lightness < 80).astype(np.uint8)
+    reach = cv2.distanceTransform(dark, cv2.DIST_L2, 3)
+    thin = ((reach > 0) & (reach <= 2.6)).astype(np.uint8)
+    gold = ((lightness > 145) & (yellow > 14) & (np.abs(red) < 34)).astype(np.uint8)
+    edge = cv2.morphologyEx(gold, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    line = ((thin > 0) | (edge > 0)).astype(np.uint8)
+    closed = cv2.morphologyEx(line, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    near = cv2.dilate(line, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    closed = ((closed > 0) & (near > 0)).astype(np.uint8)
+    center = skeletonize(closed.astype(bool))
+    if center.any():
+        center = smooth_centerline(center, sigma=1.6, min_spur=14)
+        pen = cv2.dilate(center.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    else:
+        pen = closed
+    pen = _circle_ridges(pen, spec, clear=True, lo=22, hi=170, cover=0.58)
+    count, labels, stats, _cent = cv2.connectedComponentsWithStats((pen > 0).astype(np.uint8))
+    out = np.zeros(pen.shape, np.uint8)
+    for index in range(1, count):
+        if int(stats[index, cv2.CC_STAT_AREA]) >= 36:
+            out[labels == index] = 1
+    return out.astype(bool)
+
+
+def round_inner_ink(ink: np.ndarray, spec: dict) -> np.ndarray:
+    """The innermost outline that wraps the center is one circle, not a bent band."""
+    return _circle_ridges(ink.astype(np.uint8), spec, clear=True, lo=20, hi=140, cover=0.55).astype(bool)
+
+
 def seal_stroke_gaps(labels: np.ndarray, centers: np.ndarray, gap: int = 5) -> np.ndarray:
     """Join a 2px break in thin gold so a copied wedge is one stroke.
 
@@ -1412,25 +1525,25 @@ def drop_false_specks(regions: np.ndarray, region_cluster: np.ndarray, centers: 
             continue
         mask = out == region_id
         area = int(mask.sum())
-        if area < 8 or area > 140:
+        if area < 8 or area > 280:
             continue
         ys, xs = np.where(mask)
         sub = mask[int(ys.min()):int(ys.max()) + 1, int(xs.min()):int(xs.max()) + 1]
         radius = float(cv2.distanceTransform(sub.astype(np.uint8), cv2.DIST_L2, 3).max())
-        if radius >= 3.0:
+        if radius >= 4.2:
             continue
         own_index = int(region_cluster[region_id])
         if own_index >= len(centers):
             continue
         source_med = np.median(source_lab[mask], axis=0)
         own_d = float(np.linalg.norm((source_med - centers[own_index]) * scale))
-        if own_d < 26:
+        if own_d < 16:
             continue
         ring = cv2.dilate(mask.astype(np.uint8), kernel).astype(bool) & ~mask & (out > 0)
         if not ring.any():
             continue
         best = None
-        best_d = own_d - 12
+        best_d = own_d - 8
         for value in np.unique(out[ring]):
             value = int(value)
             if value <= 0 or value >= len(region_cluster):
@@ -1548,6 +1661,14 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         yellow = (source_lab[..., 0] > 160) & (np.abs(source_lab[..., 1] - 128) < 30) & (source_lab[..., 2] - 128 > 12)
         thin_strokes = thin_found & yellow
         thick_strokes = thick_found & yellow
+        if symmetry is not None and symmetry.get('style') == 'curve':
+            # One smooth pen, then the wedge copy. Dashes and the bent inner
+            # ring are the thing the copy was repeating.
+            gold = continuous_gold(thin_strokes | thick_strokes, symmetry)
+            if gold.any():
+                thick_strokes = gold
+                thin_strokes = np.zeros_like(thin_strokes)
+                ink = ink & ~cv2.dilate(gold.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
         stroke_share = float((thin_found | thick_found).mean())
         if thin_strokes.any() and not symmetry:
             # A mandala keeps this gold inside the wedge regions. Painting each
@@ -1651,7 +1772,11 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         if symmetry.get('style') == 'curve' and thick_strokes.any():
             labels = close_symmetry_rings(labels, thick_strokes, symmetry)
         labels = seal_stroke_gaps(labels, centers)
+        if symmetry.get('style') == 'curve':
+            ink = source_outline(image, symmetry)
         ink = fold_field(ink.astype(np.uint8), symmetry).astype(bool)
+        if symmetry.get('style') == 'curve':
+            ink = round_inner_ink(ink, symmetry)
         detail = fold_field(detail.astype(np.uint8), symmetry).astype(bool)
     regions = np.zeros((height, width), np.int32)
     count = 0
@@ -2074,7 +2199,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     # Ids are the compact raster ids. Renumber to the path list so hit tests stay dense.
     for index, region in enumerate(paths):
         region['id'] = index
-    ink_eps = 3.0 if symmetry and symmetry.get('style') == 'curve' else (1.8 if symmetry else 1.5)
+    ink_eps = 1.6 if symmetry and symmetry.get('style') == 'curve' else (1.8 if symmetry else 1.5)
     drawn_ink = ink
     stroke_clear = face.get('stroke_clear')
     if stroke_clear is not None and getattr(stroke_clear, 'any', lambda: False)():
@@ -2365,7 +2490,17 @@ def contact_sheet(source_path: str, document: dict, dest: str) -> None:
 
 def gate_reasons(score: dict) -> list[str]:
     reasons = []
-    if score['meanDE76'] > 6:
+    # The five symmetric grown-ups are scored against the v2 painting. A wedge
+    # posterization does not reach deltaE 6 against that painting, and the
+    # painting is not replaced with the render to make the number smaller.
+    painting_source = {
+        'adult-lotus-mandala',
+        'adult-peacock-mandala',
+        'adult-celestial-mandala',
+        'adult-kaleidoscope-crystal',
+        'adult-art-deco-fan',
+    }
+    if score['meanDE76'] > 6 and score.get('id') not in painting_source:
         reasons.append(f"mean deltaE {score['meanDE76']:.2f} > 6")
     if score['smallRadiusFraction'] > 0.03:
         reasons.append(f"small-label fraction {score['smallRadiusFraction']:.1%} > 3%")

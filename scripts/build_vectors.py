@@ -198,8 +198,8 @@ def build_one(picture: tuple) -> dict:
     if spun is not None:
         # The saved art is the symmetric vector picture, which is what the page paints.
         art, _ink, _covered = rasterize(document)
-        # Quality 96 keeps a thin face line inside the color gate after JPEG.
-        cv2.imwrite(str(source), art, [int(cv2.IMWRITE_JPEG_QUALITY), 96])
+        # The v2 painting in content/sources stays the source. Scoring a recut
+        # against this render would hide the distance from that painting.
         public_art = ROOT / 'public' / 'art'
         public_art.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(public_art / f'{puzzle_id}.jpg'), art, [int(cv2.IMWRITE_JPEG_QUALITY), 96])

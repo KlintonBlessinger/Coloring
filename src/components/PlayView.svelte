@@ -154,6 +154,7 @@
       opened = game;
       game.setLearning(live);
       gameRef = game;
+      if (canvasEl) (canvasEl as HTMLCanvasElement & { clearColor?: () => void }).clearColor = () => game.clearColor();
     });
     return () => {
       gone = true;

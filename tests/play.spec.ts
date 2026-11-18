@@ -1429,9 +1429,11 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
 
   await openPuzzle(page, 'adult-lotus-mandala');
   await page.evaluate(() => {
-    const canvas = document.querySelector('canvas.surface');
-    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+    canvas.dataset.hideArt = '1';
+    canvas.clearColor?.();
   });
+  await expect(page.locator('.swatch.selected')).toHaveCount(0);
   const canvas = page.locator('canvas.surface');
   const fitted = Number(await canvas.getAttribute('data-scale'));
   await page.evaluate(() => {
@@ -1464,9 +1466,11 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
 
   await openPuzzle(page, 'adult-peacock-mandala');
   await page.evaluate(() => {
-    const canvas = document.querySelector('canvas.surface');
-    if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+    canvas.dataset.hideArt = '1';
+    canvas.clearColor?.();
   });
+  await expect(page.locator('.swatch.selected')).toHaveCount(0);
   await page.waitForTimeout(300);
   await jpg('vector-peacock-mandala-fit.jpg');
 

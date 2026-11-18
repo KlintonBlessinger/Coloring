@@ -164,6 +164,14 @@ export class Game {
     };
   }
 
+  clearColor(): void {
+    this.selected = -1;
+    this.hintRegion = -1;
+    this.renderer.setSelected(-1);
+    this.markDirty();
+    this.emit();
+  }
+
   select(index: number): void {
     if (index < 0 || index >= this.totals.length || this.replaying) return;
     if (index !== this.selected) this.hintRegion = -1;
