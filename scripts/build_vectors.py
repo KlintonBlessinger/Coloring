@@ -105,9 +105,9 @@ REALISTIC = [
     ('realistic-jaguar', 'Jaguar by the River', 'Animals', 'medium', 96, 150),
 ]
 
-# v2 replaces the rejected blurry set. Celestial Mandala is back in this list:
-# its petals are one wedge spun around the sun, and the face stays put.
-# Each tuple carries its mode so a k/minArea pair is not mistaken for a tonal picture.
+# v2 replaces the rejected blurry set. Each tuple carries its mode so a
+# k/minArea pair is not mistaken for a tonal picture. Celestial Mandala stays
+# out of this list until a recut scores deltaE 6 or under against the v2 painting.
 GROWNUPS: list[tuple] = [
     ('adult-flowing-geometry', 'Flowing Geometry', 'Grown-ups', 'hard', 'lineart', 48, 55),
     ('adult-jewel-swirls', 'Jewel Swirls', 'Grown-ups', 'hard', 'lineart', 48, 80),
@@ -119,7 +119,6 @@ GROWNUPS: list[tuple] = [
     ('adult-sunset-tessellation', 'Sunset Tessellation', 'Grown-ups', 'hard', 'lineart', 36, 180),
     ('adult-lotus-mandala', 'Lotus Mandala', 'Grown-ups', 'hard', 'lineart', 64, 50),
     ('adult-peacock-mandala', 'Peacock Mandala', 'Grown-ups', 'hard', 'lineart', 64, 80),
-    ('adult-celestial-mandala', 'Celestial Mandala', 'Grown-ups', 'hard', 'lineart', 48, 80),
     ('adult-lush-peony-garden', 'Lush Peony Garden', 'Grown-ups', 'hard', 'tonal', 160, 160),
     ('adult-butterfly-garden', 'Butterfly Garden', 'Grown-ups', 'hard', 'tonal', 96, 40),
     ('adult-peacock-feathers', 'Peacock Feathers', 'Grown-ups', 'hard', 'tonal', 80, 100),

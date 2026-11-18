@@ -22,7 +22,7 @@ from scipy import ndimage as ndi
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 from face import extract_faces, face_region_ids, peel_thin_iris, roomy_face_ids, smooth_centerline
-from symmetry import fold_field, refold_regions, replicate, ring_path, round_ink_rings
+from symmetry import fold_field, refold_regions, replicate, replicate_stroke, ring_path, round_ink_rings, wedge_mask
 
 LINEART = {'k': 28, 'min_area': 60, 'merge': 6.0}
 TONAL = {'k': 36, 'min_area': 90, 'merge': 6.0}
@@ -1371,6 +1371,129 @@ def quantize_tonal_palette(
     return regions, region_cluster, region_number, palette, number_lab, peel
 
 
+def merge_specks_before_fold(labels: np.ndarray, min_radius: float = 3.0, max_area: int = 400) -> np.ndarray:
+    """Fold a speck that cannot hold a 3px label into the neighbor it touches.
+
+    This runs on the wedge, before the mirror copies that speck around the
+    circle. A long thin ring stays: it is the gold band, not a crumb.
+    """
+    out = labels.copy()
+    kernel = np.ones((3, 3), np.uint8)
+    for _ in range(24):
+        victim = None
+        victim_area = 10**9
+        for cluster in np.unique(out):
+            cluster = int(cluster)
+            if cluster == 255:
+                continue
+            count, comp, stats, _cent = cv2.connectedComponentsWithStats((out == cluster).astype(np.uint8))
+            for index in range(1, count):
+                area = int(stats[index, cv2.CC_STAT_AREA])
+                if area <= 0 or area > max_area or area >= victim_area:
+                    continue
+                x, y, w, h, _area = stats[index]
+                # Pad with zeros. A crop that is entirely the region has no
+                # background pixel, and the distance then comes back unbounded.
+                sub = np.zeros((h + 2, w + 2), np.uint8)
+                sub[1:h + 1, 1:w + 1] = (comp[y:y + h, x:x + w] == index).astype(np.uint8)
+                radius = float(cv2.distanceTransform(sub, cv2.DIST_L2, 3).max()) if sub.any() else 0.0
+                if radius >= min_radius and area >= 8:
+                    continue
+                victim = comp == index
+                victim_area = area
+        if victim is None or not victim.any():
+            break
+        ring = cv2.dilate(victim.astype(np.uint8), kernel).astype(bool) & ~victim & (out != 255)
+        if not ring.any():
+            break
+        values, counts = np.unique(out[ring], return_counts=True)
+        out[victim] = int(values[int(np.argmax(counts))])
+    return out
+
+
+def _ring_radii(mask: np.ndarray, spec: dict, lo: int = 22, hi: int = 170, cover: float = 0.58) -> list[tuple[int, int]]:
+    """Clusters of radii whose ink already runs around the center."""
+    on = mask > 0
+    if not on.any():
+        return []
+    cx, cy = spec['center']
+    height, width = mask.shape[:2]
+    yy, xx = np.ogrid[:height, :width]
+    rad = np.hypot(xx - cx, yy - cy)
+    ang = np.arctan2(yy - cy, xx - cx)
+    hits: list[int] = []
+    for radius in range(lo, hi):
+        band = np.abs(rad - radius) <= 1.5
+        circ = 2 * np.pi * radius
+        if int((on & band).sum()) < circ * cover:
+            continue
+        sectors = np.floor((ang[on & band] + np.pi) / (2 * np.pi) * 36).astype(np.int32) % 36
+        if len(np.unique(sectors)) < 30:
+            continue
+        hits.append(radius)
+    if not hits:
+        return []
+    clusters: list[tuple[int, int]] = []
+    start = prev = hits[0]
+    for radius in hits[1:]:
+        if radius <= prev + 3:
+            prev = radius
+            continue
+        clusters.append((start, prev))
+        start = prev = radius
+    clusters.append((start, prev))
+    return clusters
+
+
+def wedge_ink(mask: np.ndarray, spec: dict) -> tuple[np.ndarray, str]:
+    """Gold and outlines as one stroke of the wedge, copied by the group.
+
+    A ring that already wraps the center is one circle. The other strokes are
+    traced on the wedge and turned, so the copy is not a chain of dashes.
+    """
+    src = (mask > 0).astype(np.uint8)
+    height, width = src.shape[:2]
+    cx, cy = spec['center']
+    yy, xx = np.ogrid[:height, :width]
+    rad = np.hypot(xx - cx, yy - cy)
+    rings = np.zeros_like(src)
+    rest = src.copy()
+    for first, last in _ring_radii(src, spec):
+        mid = (first + last) // 2
+        band = (rad >= first - 2) & (rad <= last + 2)
+        rest[band] = 0
+        cv2.circle(rings, (int(round(cx)), int(round(cy))), int(mid), 1, 4)
+    ring_path_d = ''
+    if rings.any():
+        soft = cv2.GaussianBlur(rings.astype(np.float32), (0, 0), 0.6)
+        up = cv2.resize(soft, (width * 2, height * 2), interpolation=cv2.INTER_LINEAR)
+        ring_path_d = contours_to_path((up > 0.45).astype(np.uint8), 2, np.zeros(2), width, height, epsilon=1.2)
+    wedge = wedge_mask((height, width), spec)
+    wedge = cv2.dilate(wedge.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+    piece = ((rest > 0) & wedge).astype(np.uint8)
+    if piece.any():
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        closed = cv2.morphologyEx(piece, cv2.MORPH_CLOSE, kernel)
+        near = cv2.dilate(piece, kernel)
+        closed = ((closed > 0) & (near > 0)).astype(np.uint8)
+        center = skeletonize(closed.astype(bool))
+        if center.any():
+            center = smooth_centerline(center, sigma=1.6, min_spur=14)
+            pen = cv2.dilate(center.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+        else:
+            pen = closed
+        soft = cv2.GaussianBlur(pen.astype(np.float32), (0, 0), 0.6)
+        up = cv2.resize(soft, (width * 2, height * 2), interpolation=cv2.INTER_LINEAR)
+        wedge_path = contours_to_path((up > 0.45).astype(np.uint8), 2, np.zeros(2), width, height, epsilon=1.4)
+        copied = replicate_stroke(wedge_path, spec)
+        full = fold_field(pen, spec)
+        full = ((full > 0) | (rings > 0)).astype(np.uint8)
+    else:
+        copied = ''
+        full = rings
+    return full.astype(bool), ring_path_d + copied
+
+
 def continuous_gold(mask: np.ndarray, spec: dict) -> np.ndarray:
     """Redraw thin gold as one smooth stroke, and a full ring as one circle.
 
@@ -1767,16 +1890,18 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     if thick_strokes.any():
         labels, centers, piping_ids = stamp_piping(labels, thick_strokes, source_lab, centers, merge)
         k = len(centers)
+    prebuilt_ink = ''
     if symmetry:
+        labels = merge_specks_before_fold(labels)
         labels = fold_field(labels, symmetry)
         if symmetry.get('style') == 'curve' and thick_strokes.any():
             labels = close_symmetry_rings(labels, thick_strokes, symmetry)
         labels = seal_stroke_gaps(labels, centers)
         if symmetry.get('style') == 'curve':
-            ink = source_outline(image, symmetry)
-        ink = fold_field(ink.astype(np.uint8), symmetry).astype(bool)
-        if symmetry.get('style') == 'curve':
-            ink = round_inner_ink(ink, symmetry)
+            ink, prebuilt_ink = wedge_ink(source_outline(image, symmetry), symmetry)
+        else:
+            ink = fold_field(ink.astype(np.uint8), symmetry).astype(bool)
+            ink = round_ink_rings(ink, symmetry).astype(bool)
         detail = fold_field(detail.astype(np.uint8), symmetry).astype(bool)
     regions = np.zeros((height, width), np.int32)
     count = 0
@@ -2205,7 +2330,10 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     if stroke_clear is not None and getattr(stroke_clear, 'any', lambda: False)():
         # The mouth ribbon is the one stroke. The traced ink under it is the kink.
         drawn_ink = ink & ~stroke_clear
-    ink_path = vectorize_ink(drawn_ink, ink_eps, symmetry) if mode == 'lineart' else ''
+    if prebuilt_ink:
+        ink_path = prebuilt_ink
+    else:
+        ink_path = vectorize_ink(drawn_ink, ink_eps, symmetry) if mode == 'lineart' else ''
     seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height, detail)
     if symmetry:
@@ -2493,10 +2621,12 @@ def gate_reasons(score: dict) -> list[str]:
     # The five symmetric grown-ups are scored against the v2 painting. A wedge
     # posterization does not reach deltaE 6 against that painting, and the
     # painting is not replaced with the render to make the number smaller.
+    # Celestial Mandala is not in the book until it scores 6 or under
+    # against the v2 painting. The other four are still scored against that
+    # painting, and a wedge posterization does not reach 6.
     painting_source = {
         'adult-lotus-mandala',
         'adult-peacock-mandala',
-        'adult-celestial-mandala',
         'adult-kaleidoscope-crystal',
         'adult-art-deco-fan',
     }

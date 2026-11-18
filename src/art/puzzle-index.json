@@ -14,14 +14,9 @@
     "regions": 459,
     "colors": 40
   },
-  "adult-celestial-mandala": {
-    "file": "adult-celestial-mandala",
-    "regions": 1048,
-    "colors": 20
-  },
   "adult-cherry-blossom-garden": {
     "file": "adult-cherry-blossom-garden",
-    "regions": 3502,
+    "regions": 1650,
     "colors": 40
   },
   "adult-coral-reef-pattern": {
@@ -46,7 +41,7 @@
   },
   "adult-jewel-swirls": {
     "file": "adult-jewel-swirls",
-    "regions": 482,
+    "regions": 282,
     "colors": 21
   },
   "adult-kaleidoscope-crystal": {
@@ -56,8 +51,8 @@
   },
   "adult-lotus-mandala": {
     "file": "adult-lotus-mandala",
-    "regions": 1230,
-    "colors": 35
+    "regions": 1125,
+    "colors": 34
   },
   "adult-lush-peony-garden": {
     "file": "adult-lush-peony-garden",
@@ -76,8 +71,8 @@
   },
   "adult-peacock-mandala": {
     "file": "adult-peacock-mandala",
-    "regions": 969,
-    "colors": 23
+    "regions": 993,
+    "colors": 22
   },
   "adult-santorini-village": {
     "file": "adult-santorini-village",

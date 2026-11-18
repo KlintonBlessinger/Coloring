@@ -625,7 +625,9 @@ export class Renderer {
       ctx.stroke(path);
     }
     this.dirtyRegions.clear();
-    this.strokeSeams(ctx, () => true);
+    // A filled region already strokes in its own color. Redrawing every seam
+    // here put the dark crack back onto a finished picture.
+    this.strokeSeams(ctx, (index) => !this.isFilled(index));
     this.paintInk(ctx);
   }
 

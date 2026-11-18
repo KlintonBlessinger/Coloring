@@ -449,6 +449,45 @@ def round_ink_rings(mask: np.ndarray, spec: dict, max_radius: int = 260) -> np.n
     return out
 
 
+def wedge_mask(shape: tuple[int, int], spec: dict) -> np.ndarray:
+    """Pixels that already sit in the fundamental wedge."""
+    height, width = shape
+    yy, xx = np.indices((height, width), dtype=np.float32)
+    _rad, _phi, sx, sy = _sample_maps((height, width), spec)
+    return (np.abs(sx - xx) < 0.75) & (np.abs(sy - yy) < 0.75)
+
+
+def replicate_stroke(path: str, spec: dict) -> str:
+    """Copy one wedge stroke onto every rotation and mirror.
+
+    The path is already drawn in the fundamental wedge. Each copy is that
+    same path turned by a whole sector, so a continuous stroke stays continuous.
+    """
+    if not path:
+        return ''
+    order = max(int(spec['order']), 1)
+    slots: list[tuple[int, bool]] = [(0, False)]
+    if order <= 1:
+        if spec.get('mirror'):
+            slots.append((0, True))
+    else:
+        for k in range(order):
+            if k != 0:
+                slots.append((k, False))
+            if spec.get('mirror'):
+                slots.append((k, True))
+    parts = [path]
+    for k, mirrored in slots:
+        if k == 0 and not mirrored:
+            continue
+
+        def fn(x: float, y: float, k: int = k, mirrored: bool = mirrored) -> tuple[float, float]:
+            return _apply_group(x, y, k, mirrored, spec)
+
+        parts.append(transform_path(path, fn))
+    return ''.join(parts)
+
+
 def symmetry_for(puzzle_id: str) -> dict | None:
     spec = SPECS.get(puzzle_id)
     if spec is None:
