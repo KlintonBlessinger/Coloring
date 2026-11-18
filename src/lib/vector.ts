@@ -6,6 +6,8 @@ export interface VectorRegion {
   n: number;
   d: string;
   label: { x: number; y: number; r: number };
+  /** An iris. The number stays off the eye; hint still fills the region. */
+  eye?: boolean;
 }
 
 export interface VectorFile {
@@ -137,6 +139,7 @@ export function decodeVector(file: VectorFile, record?: ArtRecord): DecodedPuzzl
   const cx = regions.map((region) => region.label.x);
   const cy = regions.map((region) => region.label.y);
   const inr = regions.map((region) => region.label.r);
+  const quiet = regions.map((region) => region.eye === true);
   const box: number[] = [];
   const area: number[] = [];
   for (const region of regions) {
@@ -168,6 +171,7 @@ export function decodeVector(file: VectorFile, record?: ArtRecord): DecodedPuzzl
     cx,
     cy,
     inr,
+    quiet,
     area,
     box,
     art: file.art,

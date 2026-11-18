@@ -1647,3 +1647,36 @@ test('private pack labels, faces, and the PAW shelf', async ({ page }) => {
   await jpg('private-paw-shelf.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+test('four times face zooms for the owner review', async ({ page }) => {
+  test.setTimeout(300_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  const show = async (id: string) => {
+    await openPuzzle(page, id);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface');
+      if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    });
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const shots: [string, string][] = [
+    ['realistic-lion-portrait', 'face-lion-4x.jpg'],
+    ['realistic-snowy-owl', 'face-owl-4x.jpg'],
+    ['realistic-koala', 'face-koala-4x.jpg'],
+    ['realistic-tiger-walking', 'face-tiger-4x.jpg'],
+    ['realistic-cheetah', 'face-cheetah-4x.jpg'],
+  ];
+  for (const [id, name] of shots) {
+    await show(id);
+    await zoomFace(page, id, 3.6);
+    await page.waitForTimeout(300);
+    await jpg(name);
+  }
+  expect(errors, errors.join('\n')).toEqual([]);
+});

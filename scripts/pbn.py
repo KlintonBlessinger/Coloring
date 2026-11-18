@@ -566,6 +566,31 @@ def place_label(reg: np.ndarray, ink: np.ndarray, region_id: int) -> tuple[float
     return (round(x0 + pole[0], 1), round(y0 + pole[1], 1), pole[2])
 
 
+def clip_shapes_outside(shapes: list[dict], avoid: np.ndarray | None, width: int, height: int) -> list[dict]:
+    """Traced strokes stop at the eye. The ellipse, pupil, and catchlight replace them."""
+    if avoid is None or not getattr(avoid, 'any', lambda: False)():
+        return shapes
+    pad = cv2.dilate(avoid.astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool)
+    kept = []
+    for shape in shapes:
+        path = shape.get('d') or ''
+        mask = path_mask(path, width, height)
+        if not mask.any():
+            continue
+        if not (mask & pad).any():
+            kept.append(shape)
+            continue
+        remain = mask & ~pad
+        if int(remain.sum()) < 16:
+            continue
+        grid = np.zeros((height, width), np.int32)
+        grid[remain] = 1
+        rebuilt = region_runs_path(grid, 1)
+        if rebuilt:
+            kept.append({'hex': shape['hex'], 'd': rebuilt})
+    return kept
+
+
 def path_mask(path: str, width: int, height: int) -> np.ndarray:
     """Pixels whose centers lie inside the path.
 
@@ -699,13 +724,59 @@ def seat_labels(regions: list[dict], ink_path: str, width: int, height: int, avo
         region['label'] = {'x': x, 'y': y, 'r': pole[2]}
 
 
-def _assign_face_colors(region_cluster: np.ndarray, regions: np.ndarray, zone: np.ndarray, k: int) -> set[int]:
-    """Each paintable face region keeps a color of its own until the palette merge."""
+def stamp_irises(regions: np.ndarray, region_cluster: np.ndarray, face: dict) -> tuple[np.ndarray, np.ndarray, dict[int, np.ndarray], list[list[int]]]:
+    """One ellipse region per eye. Both eyes of a pair share the fitted iris color."""
+    irises = face.get('irises') or []
+    if not irises:
+        return regions, region_cluster, {}, []
+    regions = regions.copy()
+    pairs: dict[int, list[dict]] = {}
+    for iris in irises:
+        pairs.setdefault(int(iris['pair']), []).append(iris)
+    locked: dict[int, np.ndarray] = {}
+    groups: list[list[int]] = []
+    next_id = int(regions.max()) + 1
+    for group in pairs.values():
+        ids = []
+        color = np.asarray(group[0]['color'], np.float32)
+        for iris in group:
+            mask = iris['mask']
+            if mask is None or not mask.any():
+                continue
+            regions[mask] = next_id
+            iris['region_id'] = next_id
+            locked[next_id] = color
+            ids.append(next_id)
+            next_id += 1
+        if ids:
+            groups.append(ids)
+    if next_id > len(region_cluster):
+        region_cluster = np.concatenate([region_cluster, np.zeros(next_id - len(region_cluster), np.int32)])
+    return regions, region_cluster, locked, groups
+
+
+def _assign_face_colors(region_cluster: np.ndarray, regions: np.ndarray, zone: np.ndarray, k: int, groups: list[list[int]] | None = None) -> set[int]:
+    """Each paintable face region keeps a color of its own until the palette merge.
+
+    A pair of irises is the exception: both eyes share one color index.
+    """
     face_clusters: set[int] = set()
-    if not zone.any():
-        return face_clusters
+    grouped: set[int] = set()
     next_cluster = k
+    for group in groups or []:
+        members = [region_id for region_id in group if region_id < len(region_cluster)]
+        if not members:
+            continue
+        for region_id in members:
+            region_cluster[region_id] = next_cluster
+            grouped.add(region_id)
+        face_clusters.add(next_cluster)
+        next_cluster += 1
+    if not zone.any() and not grouped:
+        return face_clusters
     for region_id in sorted(face_region_ids(regions, zone)):
+        if region_id in grouped:
+            continue
         if region_id >= len(region_cluster):
             continue
         region_cluster[region_id] = next_cluster
@@ -905,6 +976,106 @@ def regions_covering(reg: np.ndarray, mask: np.ndarray, fraction: float = 0.4) -
     return found
 
 
+def fold_unnumberable(
+    regions: np.ndarray,
+    ink: np.ndarray,
+    detail: np.ndarray,
+    keep: set[int] | None = None,
+) -> np.ndarray:
+    """A region whose number would be under 3px is folded into the neighbor it touches.
+
+    The color gate counts those labels. The earlier fold uses a distance that
+    can call a thin sliver wide enough, so this pass uses the same pole the
+    label will use. Iris ellipses stay, even when the disc is small.
+    """
+    keep = keep or set()
+    blocked = ink | detail
+    kernel = np.ones((3, 3), np.uint8)
+    for _ in range(80):
+        folded = False
+        for region_id in np.unique(regions):
+            region_id = int(region_id)
+            if region_id <= 0 or region_id in keep:
+                continue
+            placed = place_label(regions, blocked, region_id)
+            # Seating the label on the smoothed outline can shrink the pole
+            # by about a pixel, so a 3px raster pole still fails the gate.
+            if placed is not None and placed[2] >= 4:
+                continue
+            mask = regions == region_id
+            ring = cv2.dilate(mask.astype(np.uint8), kernel).astype(bool) & ~mask
+            neighbors = regions[ring]
+            neighbors = neighbors[neighbors > 0]
+            if neighbors.size == 0:
+                continue
+            values, counts = np.unique(neighbors, return_counts=True)
+            regions[mask] = int(values[int(np.argmax(counts))])
+            folded = True
+            break
+        if not folded:
+            break
+    return regions
+
+
+def trim_to_band(
+    regions: np.ndarray,
+    region_cluster: np.ndarray,
+    centers: np.ndarray,
+    limit: int,
+    keep: set[int] | None = None,
+) -> np.ndarray:
+    """Fold the smallest regions into a neighbor until an animal fits the band.
+
+    The iris regions stay. A large shape stays too: only speckles are folded,
+    and a close color wins over the neighbor that merely shares the longest edge.
+    """
+    keep = keep or set()
+    kernel = np.ones((3, 3), np.uint8)
+    for _ in range(4000):
+        areas = np.bincount(regions.ravel())
+        present = [int(region_id) for region_id in np.flatnonzero(areas) if int(region_id) not in keep]
+        if len(present) + len(keep) <= limit:
+            break
+        region_id = min(present, key=lambda item: int(areas[item]))
+        if int(areas[region_id]) > 40000:
+            break
+        mask = regions == region_id
+        ring = cv2.dilate(mask.astype(np.uint8), kernel).astype(bool) & ~mask
+        neighbors = regions[ring]
+        neighbors = neighbors[neighbors > 0]
+        if neighbors.size == 0:
+            keep.add(region_id)
+            continue
+        values, counts = np.unique(neighbors, return_counts=True)
+        own_index = int(region_cluster[region_id]) if region_id < len(region_cluster) else 0
+        own = centers[own_index] if own_index < len(centers) else np.array([128, 128, 128], np.float32)
+        best = None
+        best_key = None
+        for value, count in zip(values, counts):
+            value = int(value)
+            if value <= 0:
+                continue
+            other_index = int(region_cluster[value]) if value < len(region_cluster) else 0
+            other = centers[other_index] if other_index < len(centers) else own
+            distance = lab_dist(own, other)
+            # Past this distance the speck is a real accent. Take the longest edge then.
+            key = (0 if distance < 14 else 1, distance, -int(count))
+            if best_key is None or key < best_key:
+                best_key = key
+                best = value
+        if best is None:
+            keep.add(region_id)
+            continue
+        regions[mask] = best
+    kept = np.unique(regions)
+    remap = np.zeros(int(regions.max()) + 1, np.int32)
+    remap[kept] = np.arange(len(kept))
+    cluster = region_cluster
+    if int(kept.max()) >= len(cluster):
+        cluster = np.concatenate([cluster, np.zeros(int(kept.max()) + 1 - len(cluster), np.int32)])
+    return remap[regions], cluster[kept], {int(old): int(remap[old]) for old in kept.tolist()}
+
+
 def union_touching(reg: np.ndarray, region_cluster: np.ndarray, source_lab: np.ndarray, merge: float) -> np.ndarray:
     """Merge neighboring clusters whose colors all stay within deltaE.
 
@@ -1050,6 +1221,7 @@ def quantize_tonal_palette(
     ink: np.ndarray,
     detail: np.ndarray,
     max_colors: int = 40,
+    keep_ids: set[int] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[dict], dict[int, np.ndarray], np.ndarray]:
     """Give each tonal region its own median, then share 40 colors across regions.
 
@@ -1089,7 +1261,7 @@ def quantize_tonal_palette(
     for index, region_id in enumerate(region_ids.tolist()):
         # A small accent that matches none of the 40 paints stays its own color,
         # drawn as fixed detail, instead of being averaged into a neighbor.
-        if distance[index] > 12 and weights[index] < 800:
+        if distance[index] > 12 and weights[index] < 800 and int(region_id) not in (keep_ids or ()):
             peel[regions == int(region_id)] = True
             keep[index] = False
     if peel.any():
@@ -1137,7 +1309,7 @@ def quantize_tonal_palette(
     return regions, region_cluster, region_number, palette, number_lab, peel
 
 
-def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None, mouths=None, auto_eyes: bool | None = None, symmetry: dict | None = None) -> dict:
+def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int | None = None, merge: float | None = None, ink_thresh: int = 70, eyes=None, mouths=None, auto_eyes: bool | None = None, symmetry: dict | None = None, puzzle_id: str = '', join_colors: bool = True, region_limit: int | None = None) -> dict:
     preset = defaults(mode)
     k = int(preset['k'] if k is None else k)
     min_area = int(preset['min_area'] if min_area is None else min_area)
@@ -1178,10 +1350,12 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         ink = ink & ~fat
     else:
         fat = np.zeros((height, width), bool)
-    face = extract_faces(image, source_lab, ink, fat, eye_boxes, mouth_boxes, bool(auto_eyes))
+    face = extract_faces(image, source_lab, ink, fat, eye_boxes, mouth_boxes, bool(auto_eyes), puzzle_id)
     detail = face['mask']
     zone = face['zone']
     blocked = ink | detail
+    hold = face.get('hold')
+    cluster_blocked = blocked | hold if hold is not None else blocked
     stroke_shapes: list[dict] = []
     thick_strokes = np.zeros((height, width), bool)
     thin_strokes = np.zeros((height, width), bool)
@@ -1209,19 +1383,33 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         light = cv2.cvtColor(cv2.bilateralFilter(image, 5, 18, 5), cv2.COLOR_BGR2LAB).astype(np.float32)
         lab = np.where(zone[..., None], light, lab)
         lab_fit = np.where(zone[..., None], light, lab_fit)
-    fit_samples = lab_fit[~ink].reshape(-1, 3)
+    # Line art keeps the old training set. Holding the pupil out of it shifts the
+    # whole palette and the picture misses the color gate. The pupil is still
+    # not labeled: it is drawn as the ellipse.
+    train = ~ink if mode == 'lineart' else ~cluster_blocked
+    if not train.any():
+        train = ~cluster_blocked
+    fit_samples = lab_fit[train].reshape(-1, 3)
     model = MiniBatchKMeans(k, random_state=0, batch_size=8192, n_init=3).fit(fit_samples[::3])
     labels = np.full((height, width), 255, np.uint8)
-    open_pixels = ~blocked
+    open_pixels = ~cluster_blocked
     if open_pixels.any():
         labels[open_pixels] = model.predict(lab_fit[open_pixels].reshape(-1, 3)).astype(np.uint8)
     centers = model.cluster_centers_
     cluster_map = np.arange(k)
-    # Tonal bands stay apart until two neighbors are within deltaE. A global
-    # join, or a join by hue alone, paints a light band and a dark band as one.
-    if mode != 'tonal':
+    # Grown-up florals keep every band. Joining centers would paint a light
+    # petal and a dark one as one color. Animal fur does join centers that
+    # stay within deltaE, before the regions are cut, so the same paint does
+    # not come out as a pile of speckles.
+    if join_colors and (mode != 'tonal' or not str(puzzle_id).startswith('adult-')):
         cluster_map = link_centers(centers, merge)
-    labels = np.where(blocked, 255, cluster_map[np.minimum(labels, k - 1)]).astype(np.uint8)
+    # 255 is "not a cluster" (ink, the pupil stroke, or a dark pixel held out
+    # of the palette). Mapping it through the table would paint it as the last color.
+    known = (labels < k) & ~blocked
+    mapped = np.full(labels.shape, 255, np.uint8)
+    if known.any():
+        mapped[known] = cluster_map[labels[known]]
+    labels = mapped
     gentle_source = labels.copy()
     trace = os.environ.get('PBN_TRACE') == '1'
 
@@ -1301,7 +1489,33 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             stroke_shapes.extend(extra)
             detail = detail | kept_detail
             blocked = ink | detail
+    # Animal pictures used to drop every speck under the minimum area. A speck
+    # that is a different color from its neighbor still cannot hold a number,
+    # and leaving it in pushes a portrait past the region band. Grown-up
+    # florals keep those accents.
+    if mode == 'tonal' and not str(puzzle_id).startswith('adult-'):
+        areas = np.bincount(regions.ravel(), minlength=int(regions.max()) + 1)
+        small = (areas < min_area) & (areas > 0)
+        small[0] = False
+        for region_id in protect:
+            if region_id < len(small):
+                small[region_id] = False
+        if small.any():
+            regions[small[regions]] = 0
+            regions = absorb_unlabeled(regions)
     regions, iris_shapes = peel_thin_iris(regions, face['eye_zone'], detail, source_lab, face['bgr'], detail)
+    iris_union = face.get('iris_union')
+    eye_detail = face.get('eye_detail')
+    if iris_union is not None and getattr(iris_union, 'any', lambda: False)():
+        keep_detail = eye_detail if eye_detail is not None else np.zeros_like(iris_union)
+        detail[iris_union & ~keep_detail] = False
+        kept_shapes = []
+        for shape in iris_shapes:
+            shape_mask = path_mask(shape['d'], height, width)
+            if shape_mask.any() and float(iris_union[shape_mask].mean()) > 0.45:
+                continue
+            kept_shapes.append(shape)
+        iris_shapes = kept_shapes
     if iris_shapes:
         regions = absorb_unlabeled(regions)
     kept = np.unique(regions)
@@ -1358,9 +1572,27 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     if mode == 'tonal':
         region_cluster = union_touching(regions, region_cluster, source_lab, merge)
         trace_de('union', regions, region_cluster)
-    face_clusters = _assign_face_colors(region_cluster, regions, zone, k)
+    regions, region_cluster, locked_irises, iris_groups = stamp_irises(regions, region_cluster, face)
+    band_limit = region_limit
+    if band_limit is None and mode == 'tonal' and not str(puzzle_id).startswith('adult-'):
+        band_limit = TONAL_REGION_MAX
+    if band_limit:
+        iris_ids = {region_id for group in iris_groups for region_id in group}
+        regions, region_cluster, id_map = trim_to_band(regions, region_cluster, centers, int(band_limit), iris_ids)
+        locked_irises = {id_map[region_id]: color for region_id, color in locked_irises.items() if region_id in id_map}
+        iris_groups = [[id_map[region_id] for region_id in group if region_id in id_map] for group in iris_groups]
+        for iris in face.get('irises') or []:
+            previous = iris.get('region_id')
+            if previous in id_map:
+                iris['region_id'] = id_map[previous]
+    face_clusters = _assign_face_colors(region_cluster, regions, zone, k, iris_groups)
     region_count = len(np.unique(regions))
     used = sorted(set(int(v) for v in region_cluster.tolist()))
+    sample_lab = source_lab
+    if locked_irises:
+        sample_lab = source_lab.copy()
+        for region_id, color in locked_irises.items():
+            sample_lab[regions == region_id] = color
     palette_lab = {}
     cluster_of = region_cluster[regions]
     for cluster in used:
@@ -1368,7 +1600,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
         interior = ndi.binary_erosion(member, iterations=2) if int(member.sum()) > 0 else member
         sample = interior if int(np.count_nonzero(interior)) >= 12 else member
         if int(np.count_nonzero(sample)) > 0:
-            palette_lab[cluster] = np.median(source_lab[sample], axis=0)
+            palette_lab[cluster] = np.median(sample_lab[sample], axis=0)
         elif int(cluster) < len(centers):
             palette_lab[cluster] = centers[cluster]
         else:
@@ -1376,7 +1608,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     region_number = None
     if mode == 'tonal':
         regions, region_cluster, region_number, palette, number_lab, peel = quantize_tonal_palette(
-            regions, region_cluster, source_lab, ink, detail,
+            regions, region_cluster, sample_lab, ink, detail, keep_ids=set(locked_irises),
         )
         if peel.any():
             extra, kept_detail = paint_stroke_detail(source_lab, peel, face['bgr'], width, height, whole=True)
@@ -1517,6 +1749,36 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             regions, region_cluster, ink | detail, centers, 4.0, roomy_face_ids(regions, zone, detail), far_detail=False,
         )
         region_count = int(regions.max()) + 1 if regions.size else 0
+    # Joining nearby colors can collapse a simple scene, such as sharks on
+    # open water, under the region floor. Build that picture again with the
+    # colors left apart.
+    if not str(puzzle_id).startswith('adult-'):
+        iris_keep = {
+            int(iris['region_id'])
+            for iris in (face.get('irises') or [])
+            if iris.get('region_id') is not None
+        }
+        regions = fold_unnumberable(regions, ink, detail, iris_keep)
+        kept_ids = np.unique(regions)
+        remap_ids = np.zeros(int(regions.max()) + 1, np.int32)
+        remap_ids[kept_ids] = np.arange(len(kept_ids))
+        regions = remap_ids[regions]
+        if int(kept_ids.max()) < len(region_cluster):
+            region_cluster = region_cluster[kept_ids]
+        if region_number is not None and int(kept_ids.max()) < len(region_number):
+            region_number = region_number[kept_ids]
+    alive = int(np.count_nonzero(np.bincount(regions.ravel()))) if regions.size else 0
+    if (
+        join_colors
+        and mode == 'tonal'
+        and not str(puzzle_id).startswith('adult-')
+        and puzzle_id not in TONAL_REGION_FLOOR_OK
+        and alive < TONAL_REGION_MIN
+    ):
+        return segment(
+            src, mode, k, min_area, merge, ink_thresh, eyes, mouths, auto_eyes, symmetry, puzzle_id,
+            join_colors=False, region_limit=region_limit,
+        )
     if os.environ.get('PBN_SKIP_PATHS') == '1':
         return {
             'w': width,
@@ -1558,6 +1820,16 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             ring = ring_path(regions == region_id, symmetry)
             if ring:
                 path = ring
+        eye = False
+        region_pixels = regions == region_id
+        for iris in face.get('irises') or []:
+            iris_mask = iris.get('mask')
+            if iris_mask is None or not region_pixels.any():
+                continue
+            if float(iris_mask[region_pixels].mean()) > 0.55:
+                path = iris['d']
+                eye = True
+                break
         if not path:
             continue
         label = place_label(regions, ink | detail, region_id)
@@ -1569,13 +1841,16 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
             number = int(number_of[int(region_cluster[region_id])])
         if number <= 0:
             continue
-        paths.append({
+        record = {
             'id': region_id,
             'n': number,
             'd': path,
-            'label': {'x': label[0], 'y': label[1], 'r': label[2]},
+            'label': {'x': label[0], 'y': label[1], 'r': max(label[2], 4.0) if eye else label[2]},
             'ring': bool(symmetry and path and ring_path(regions == region_id, symmetry)),
-        })
+        }
+        if eye:
+            record['eye'] = True
+        paths.append(record)
     if symmetry:
         replicate(paths, regions, symmetry)
         for region in paths:
@@ -1590,6 +1865,12 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     ink_path = vectorize_ink(ink, ink_eps, symmetry) if mode == 'lineart' else ''
     seal_border(paths, width, height)
     seat_labels(paths, ink_path, width, height, detail)
+    for region in paths:
+        if region.get('eye'):
+            region['label']['r'] = max(float(region['label']['r']), 4.0)
+    eye_pad = face.get('iris_union')
+    stroke_shapes = clip_shapes_outside(stroke_shapes, eye_pad, width, height)
+    iris_shapes = clip_shapes_outside(iris_shapes, eye_pad, width, height)
     detail_shapes = iris_shapes + face['shapes'] + stroke_shapes
     flat = np.zeros((height, width, 3), np.float32)
     for region_id in range(region_count):
@@ -1606,7 +1887,7 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
     delta = np.linalg.norm((flat - source_lab) * np.array([100 / 255, 1, 1], np.float32), axis=2)
     fill_pixels = ~ink & ~detail & ~thick_strokes
     covered = np.ones((height, width), bool)
-    small = sum(1 for region in paths if region['label']['r'] < 3)
+    small = sum(1 for region in paths if region['label']['r'] < 3 and not region.get('eye'))
     stats = {
         'src': src,
         'mode': mode,

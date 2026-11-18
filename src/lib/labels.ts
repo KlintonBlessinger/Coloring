@@ -423,11 +423,28 @@ export function markGlyph(mark: RegionMark, fontPx: number, advance = 1): { w: n
   return { w: w * advance, h };
 }
 
+/** The radius most numbered regions use, so a huge area cannot outgrow its neighbors. */
+export function typicalLabelRadius(radii: ArrayLike<number>): number {
+  const values: number[] = [];
+  for (let index = 0; index < radii.length; index++) {
+    const radius = radii[index] ?? 0;
+    if (radius >= 6) values.push(radius);
+  }
+  if (values.length < 4) return 22;
+  values.sort((left, right) => left - right);
+  return values[Math.min(values.length - 1, Math.floor(values.length * 0.55))];
+}
+
 /** Font size before the page and the region shrink it. Grows as you zoom. */
-export function cappedFontPx(radius: number, scale: number, fitScale: number, big: boolean): number {
+export function cappedFontPx(radius: number, scale: number, fitScale: number, big: boolean, typicalRadius = 22): number {
   const boost = big ? 1.35 : 1;
   const natural = 0.9 * radius * scale * boost;
-  const cap = FIT_LABEL_CAP * boost * (scale / Math.max(fitScale, 1e-3));
+  const zoom = scale / Math.max(fitScale, 1e-3);
+  const fitCap = FIT_LABEL_CAP * boost * zoom;
+  let typicalCap = 0.9 * typicalRadius * scale * boost;
+  // At the fit view the number still has to be readable. Zoomed in, it stays with its neighbors.
+  if (zoom <= 1.05) typicalCap = Math.max(typicalCap, 8 * boost);
+  const cap = Math.min(fitCap, typicalCap);
   return Math.min(natural, cap);
 }
 
@@ -449,8 +466,9 @@ export function fittedFontPx(
   pictureH: number,
   contains?: (x: number, y: number) => boolean,
   advance = 1,
+  typicalRadius = 22,
 ): number {
-  const font = cappedFontPx(radius, scale, fitScale, big);
+  const font = cappedFontPx(radius, scale, fitScale, big, typicalRadius);
   if (!(font > 0) || !(scale > 0)) return 0;
   const fits = (size: number) => {
     const { w, h } = markGlyph(mark, size, advance);

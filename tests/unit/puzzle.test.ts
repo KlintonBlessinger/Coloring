@@ -198,17 +198,18 @@ test('a label center has to fall inside its path', () => {
 test('fit view caps a huge number and keeps the whole glyph on the page', () => {
   const fit = 0.36;
   const ten = { kind: 'text' as const, text: '10' };
-  const huge = fittedFontPx(128, fit, fit, false, ten, 512, 512, 1024, 1024);
-  const normal = fittedFontPx(30, fit, fit, false, { kind: 'text', text: '4' }, 512, 512, 1024, 1024);
+  const huge = fittedFontPx(128, fit, fit, false, ten, 512, 512, 1024, 1024, undefined, 1, 80);
+  const normal = fittedFontPx(30, fit, fit, false, { kind: 'text', text: '4' }, 512, 512, 1024, 1024, undefined, 1, 80);
   assert.equal(huge, FIT_LABEL_CAP);
   assert.ok(Math.abs(normal - 0.9 * 30 * fit) < 1e-6);
   assert.ok(huge / normal < 2.2, `huge ${huge} vs normal ${normal}`);
   const edge = fittedFontPx(40, fit, fit, false, { kind: 'text', text: '17' }, 12, 400, 1024, 1024);
   const box = markGlyph({ kind: 'text', text: '17' }, edge);
   assert.ok(12 * fit - box.w / 2 >= fit - 0.01, `glyph starts at ${12 * fit - box.w / 2}`);
-  const zoomed = fittedFontPx(128, fit * 4, fit, false, ten, 512, 512, 1024, 1024);
+  const zoomed = fittedFontPx(128, fit * 4, fit, false, ten, 512, 512, 1024, 1024, undefined, 1, 22);
   assert.ok(zoomed > huge, 'numbers still grow when you zoom in');
-  assert.ok(zoomed <= FIT_LABEL_CAP * 4 + 1e-6);
+  // A giant region stays with its neighbors. It does not grow to the old 4× cap.
+  assert.ok(Math.abs(zoomed - 0.9 * 22 * fit * 4) < 1e-6, `zoomed ${zoomed}`);
 });
 
 test('starter puzzles cover every shelf', () => {
@@ -255,7 +256,7 @@ test('starter puzzles cover every shelf', () => {
     assert.equal(puzzle.w, 1024);
     assert.ok(puzzle.palette.length >= 8 && puzzle.palette.length <= 40, `${puzzle.id} ${puzzle.palette.length} colors`);
     assert.ok(puzzle.regions.length >= 30, puzzle.id);
-    const small = puzzle.regions.filter((region) => region.label.r < 3).length;
+    const small = puzzle.regions.filter((region) => region.label.r < 3 && !region.eye).length;
     assert.ok(small / puzzle.regions.length <= 0.03, `${puzzle.id} small labels ${(small / puzzle.regions.length).toFixed(3)}`);
     for (const region of puzzle.regions) {
       assert.ok(region.d.startsWith('M'), puzzle.id);
@@ -289,6 +290,7 @@ test('starter puzzles cover every shelf', () => {
         }
       }
       // At 4x the cap grows, and a big region near the edge still has to keep the whole glyph on the page.
+      if (region.eye) continue;
       const zoom = fit * 4;
       const zoomed = fittedFontPx(r, zoom, fit, false, mark, x, y, puzzle.w, puzzle.h, (px, py) => pointInPath(region.d, px, py));
       if (zoomed >= 8) {

@@ -53,6 +53,7 @@ def region_exempt(picture: dict, pipeline: dict) -> bool:
 def build_one(task: dict) -> dict:
     source = task['source']
     mode = task['mode']
+    band = task['regionBand']
     result = segment(
         source,
         mode,
@@ -61,6 +62,8 @@ def build_one(task: dict) -> dict:
         eyes=task['eyes'],
         mouths=task.get('mouths'),
         auto_eyes=task.get('autoEyes'),
+        puzzle_id=task['id'],
+        region_limit=int(band[1]) if band else None,
     )
     meta = {
         'id': task['id'],

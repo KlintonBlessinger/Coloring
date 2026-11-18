@@ -1,4 +1,4 @@
-import { fittedFontPx, markGlyph, regionMarks, type RegionMark } from './labels';
+import { fittedFontPx, markGlyph, regionMarks, typicalLabelRadius, type RegionMark } from './labels';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { MAX_SCALE, type DecodedPuzzle } from './types';
 
@@ -43,6 +43,8 @@ export class Renderer {
   private readonly paths: Path2D[];
   private readonly inkPath: Path2D;
   private readonly detailPaths: { hex: string; path: Path2D }[];
+  private readonly typical: number;
+  private readonly quiet: boolean[];
   private readonly ids: Uint16Array;
   private readonly filled: Uint8Array;
   private visual: Uint8Array | null = null;
@@ -87,6 +89,8 @@ export class Renderer {
     this.paths = puzzle.paths.map((path) => new Path2D(path || undefined));
     this.inkPath = new Path2D(puzzle.ink || undefined);
     this.detailPaths = (puzzle.detail ?? []).filter((shape) => shape.d).map((shape) => ({ hex: shape.hex, path: new Path2D(shape.d) }));
+    this.typical = typicalLabelRadius(puzzle.inr);
+    this.quiet = puzzle.quiet ?? [];
     this.ids = buildIdMap(puzzle.width, puzzle.height, this.paths);
     this.artImage = new Image();
     this.artImage.onload = () => this.requestDraw();
@@ -492,6 +496,10 @@ export class Renderer {
       const fonts = new Float32Array(this.paths.length);
       this.viewCtx.setTransform(1, 0, 0, 1, 0, 0);
       for (let i = 0; i < this.paths.length; i++) {
+        if (this.quiet[i]) {
+          fonts[i] = 0;
+          continue;
+        }
         const radius = this.puzzle.inr[i] ?? 0;
         const cx = this.puzzle.cx[i] ?? 0;
         const cy = this.puzzle.cy[i] ?? 0;
@@ -500,7 +508,7 @@ export class Renderer {
         const contains = path
           ? (x: number, y: number) => this.viewCtx.isPointInPath(path, x, y, 'evenodd')
           : undefined;
-        let px = fittedFontPx(radius, this.scale, fit, this.big, mark, cx, cy, this.puzzle.width, this.puzzle.height, contains);
+        let px = fittedFontPx(radius, this.scale, fit, this.big, mark, cx, cy, this.puzzle.width, this.puzzle.height, contains, 1, this.typical);
         if (mark.kind === 'text' && px >= 8) {
           this.viewCtx.font = `500 ${px}px ${LABEL_FONT}`;
           const lines = mark.text.includes(' ') && mark.text.length > 8 ? mark.text.split(' ') : [mark.text];
@@ -519,6 +527,7 @@ export class Renderer {
               this.puzzle.height,
               contains,
               measured / estimated,
+              this.typical,
             );
           }
         }

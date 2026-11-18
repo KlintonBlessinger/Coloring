@@ -161,7 +161,368 @@ def _small_eye(image, eye, cx, cy, axis_a, axis_b, height, width, shapes, canvas
         _paint(canvas, covered, covered, small, (y0, x0), color)
 
 
-def extract_faces(image: np.ndarray, source_lab: np.ndarray, ink: np.ndarray, fat: np.ndarray, eyes: list, mouths: list, auto: bool) -> dict:
+def pupil_kind(puzzle_id: str) -> str:
+    """Round for most mammals and birds. A slit only where the species has one."""
+    name = puzzle_id.lower()
+    if any(key in name for key in ('horse', 'goat')):
+        return 'horizontal'
+    if any(key in name for key in (
+        'fox', 'gecko', 'python', 'snake', 'crocodile', 'alligator',
+        'cat-window', 'catnip', 'kitty-fairy', 'pandy', 'catrat', 'pillow-cat', 'mercat',
+    )):
+        return 'vertical'
+    return 'round'
+
+
+def _merge_same_eye(boxes: list) -> list:
+    """Two boxes on one eye become the tighter box.
+
+    A second box touching the first, with almost the same center, is the same
+    eye marked twice. A real pair sits side by side, so it is left alone.
+    """
+    merged = [list(box[:4]) for box in boxes]
+    changed = True
+    while changed:
+        changed = False
+        for index, box in enumerate(merged):
+            cx = box[0] + box[2] / 2
+            for other in range(index + 1, len(merged)):
+                candidate = merged[other]
+                ocx = candidate[0] + candidate[2] / 2
+                if abs(cx - ocx) > 0.5 * max(box[2], candidate[2]):
+                    continue
+                # A gap means a stripe above the eye, not the same pupil.
+                gap = max(box[1], candidate[1]) - min(box[1] + box[3], candidate[1] + candidate[3])
+                if gap > 0:
+                    continue
+                # Keep the tighter box. A union would stretch one pupil across both marks.
+                if box[2] * box[3] > candidate[2] * candidate[3]:
+                    merged[index] = candidate
+                del merged[other]
+                changed = True
+                break
+            if changed:
+                break
+    return merged
+
+
+def _tight_eyes(boxes: list) -> list:
+    """Drop a box that only frames another eye.
+
+    A tight box and a loose box on the same eye were both becoming ellipses,
+    so the eye was drawn twice. Side-by-side eyes stay: each center is outside
+    the other box.
+    """
+    drop: set[int] = set()
+    for index, box in enumerate(boxes):
+        if index in drop:
+            continue
+        x, y, w, h = [float(value) for value in box[:4]]
+        cx, cy = x + w / 2, y + h / 2
+        for other, candidate in enumerate(boxes):
+            if other == index or other in drop:
+                continue
+            ox, oy, ow, oh = [float(value) for value in candidate[:4]]
+            ocx, ocy = ox + ow / 2, oy + oh / 2
+            center_in = ox <= cx <= ox + ow and oy <= cy <= oy + oh
+            other_in = x <= ocx <= x + w and y <= ocy <= y + h
+            if not center_in and not other_in:
+                continue
+            if w * h <= ow * oh:
+                drop.add(other)
+            else:
+                drop.add(index)
+                break
+    return [box for index, box in enumerate(boxes) if index not in drop]
+
+
+def _pair_eyes(boxes: list) -> list[tuple[int, ...]]:
+    """Pair the two eyes of one face. A lone eye stays on its own."""
+    centers = []
+    for box in boxes:
+        x, y, w, h = [float(value) for value in box[:4]]
+        centers.append((x + w / 2, y + h / 2, w, h))
+    used: set[int] = set()
+    pairs: list[tuple[int, ...]] = []
+    for index, (cx, cy, width, height) in enumerate(centers):
+        if index in used:
+            continue
+        partner = None
+        for other, (ox, oy, owidth, oheight) in enumerate(centers):
+            if other <= index or other in used:
+                continue
+            if abs(cy - oy) > max(height, oheight) * 0.85:
+                continue
+            distance = abs(cx - ox)
+            # A hammerhead's eyes sit at the two tips, far apart for their size.
+            if distance > max(width, owidth) * 14:
+                continue
+            if partner is None or distance < partner[0]:
+                partner = (distance, other)
+        used.add(index)
+        if partner is None:
+            pairs.append((index,))
+            continue
+        used.add(partner[1])
+        pairs.append((index, partner[1]))
+    return _without_brow_marks(boxes, pairs)
+
+
+def _without_brow_marks(boxes: list, pairs: list[tuple[int, ...]]) -> list[tuple[int, ...]]:
+    """A dark stripe just above a real eye is not a third eye.
+
+    It sits on the same face, so it never pairs, and drawing it makes an extra pupil.
+    """
+    centers = []
+    for box in boxes:
+        x, y, w, h = [float(value) for value in box[:4]]
+        centers.append((x + w / 2, y + h / 2, w, h))
+    paired = {index for pair in pairs if len(pair) == 2 for index in pair}
+    drop: set[int] = set()
+    for pair in pairs:
+        if len(pair) != 1:
+            continue
+        index = pair[0]
+        cx, cy, width, height = centers[index]
+        for other in paired:
+            ox, oy, owidth, oheight = centers[other]
+            if abs(cx - ox) > max(width, owidth) * 0.8:
+                continue
+            if 0 < (oy - cy) < max(height, oheight) * 1.6:
+                drop.add(index)
+                break
+    return [pair for pair in pairs if pair[0] not in drop]
+
+
+def _iris_lab(source_lab: np.ndarray, ring: np.ndarray) -> np.ndarray:
+    samples = source_lab[ring]
+    if len(samples) < 8:
+        return np.array([150.0, 140.0, 170.0])
+    lightness = samples[:, 0] * 100 / 255
+    chroma = np.hypot(samples[:, 1] - 128, samples[:, 2] - 128)
+    keep = (lightness > 35) & (lightness < 210) & (chroma > 6)
+    chosen = samples[keep] if int(keep.sum()) >= 8 else samples
+    chroma = np.hypot(chosen[:, 1] - 128, chosen[:, 2] - 128)
+    order = np.argsort(chroma)
+    vivid = chosen[order[len(order) // 3:]]
+    return np.median(vivid if len(vivid) else chosen, axis=0)
+
+
+def _share_iris(colors: list[np.ndarray]) -> np.ndarray:
+    """One iris color for the pair. A dull spill does not tint the other eye."""
+    if len(colors) == 1:
+        return colors[0]
+    ranked = sorted(colors, key=lambda color: float(np.hypot(color[1] - 128, color[2] - 128)), reverse=True)
+    scale = np.array([100 / 255, 1, 1])
+    if float(np.linalg.norm((ranked[0] - ranked[1]) * scale)) < 14:
+        return np.median(np.vstack(ranked), axis=0)
+    return ranked[0]
+
+
+def _ridge(mask: np.ndarray) -> np.ndarray | None:
+    ys, xs = np.where(mask)
+    if len(xs) < 10:
+        return None
+    points = np.stack([xs, ys], 1).astype(np.float64)
+    mean = points.mean(axis=0)
+    centered = points - mean
+    _values, vectors = np.linalg.eigh(np.cov(centered.T))
+    axis = vectors[:, -1]
+    projection = centered @ axis
+    order = np.argsort(projection)
+    slices = np.array_split(order, min(8, max(3, len(order) // 8)))
+    ridge = [points[chunk].mean(axis=0) for chunk in slices if len(chunk)]
+    curve = np.array(ridge)
+    # Corner cutting rounds a kink in the dark crease into one stroke.
+    for _ in range(4):
+        if len(curve) < 2:
+            break
+        nxt = [curve[0]]
+        for left, right in zip(curve[:-1], curve[1:]):
+            nxt.append(0.75 * left + 0.25 * right)
+            nxt.append(0.25 * left + 0.75 * right)
+        nxt.append(curve[-1])
+        curve = np.array(nxt)
+    return curve
+
+
+def _ribbon(points: np.ndarray, half: float) -> tuple[str, np.ndarray]:
+    empty = np.zeros((0, 2))
+    if len(points) < 2:
+        return '', empty
+    left = []
+    right = []
+    for index, point in enumerate(points):
+        if index == 0:
+            direction = points[1] - points[0]
+        elif index == len(points) - 1:
+            direction = points[-1] - points[-2]
+        else:
+            direction = points[index + 1] - points[index - 1]
+        length = float(np.hypot(direction[0], direction[1])) + 1e-6
+        normal = np.array([-direction[1], direction[0]]) / length
+        left.append(point + normal * half)
+        right.append(point - normal * half)
+    polygon = np.vstack([left, right[::-1]])
+    return _smooth_path(polygon), polygon
+
+
+def _paint_ellipse(canvas, covered, cx, cy, a, b, lab, color_hex=None) -> None:
+    mask = np.zeros(canvas.shape[:2], np.uint8)
+    cv2.ellipse(mask, (int(round(cx)), int(round(cy))), (max(1, int(round(a))), max(1, int(round(b)))), 0, 0, 360, 1, -1)
+    on = mask.astype(bool)
+    if not on.any():
+        return
+    bgr = _hex_bgr(color_hex or _lab_hex(lab))
+    canvas[on] = bgr
+    covered[on] = True
+
+
+def compose_geometry(image, source_lab, eyes, mouths, kind: str) -> dict:
+    """Replace traced eye and mouth pixels with matched ellipses and one smooth stroke."""
+    height, width = image.shape[:2]
+    yy, xx = np.mgrid[0:height, 0:width]
+    zone = np.zeros((height, width), bool)
+    eye_zone = np.zeros((height, width), bool)
+    covered = np.zeros((height, width), bool)
+    canvas = np.zeros((height, width, 3), np.uint8)
+    shapes: list[tuple[float, str, str]] = []
+    irises: list[dict] = []
+    lightness = source_lab[..., 0] * 100 / 255
+    pupil_lab = np.array([12.0, 128.0, 128.0])
+    catch_lab = np.array([248.0, 128.0, 128.0])
+    line_lab = np.array([18.0, 128.0, 128.0])
+    eyes = _merge_same_eye(_tight_eyes(eyes))
+    for pair_index, pair in enumerate(_pair_eyes(eyes)):
+        fitted = []
+        for index in pair:
+            x, y, w, h = [float(value) for value in eyes[index][:4]]
+            box = (lightness[int(max(0, y)):int(min(height, y + h)), int(max(0, x)):int(min(width, x + w))] < 42)
+            if int(np.count_nonzero(box)) >= 8:
+                ys, xs = np.where(box)
+                cx = float(xs.mean() + max(0, x))
+                cy = float(ys.mean() + max(0, y))
+            else:
+                cx, cy = x + w / 2, y + h / 2
+            fitted.append((cx, cy, w, h))
+        semi_a = float(np.mean([item[2] for item in fitted])) / 2 * 0.92
+        semi_b = float(np.mean([item[3] for item in fitted])) / 2 * 0.92
+        semi_a = max(semi_a, 3)
+        semi_b = max(semi_b, 3)
+        colors = []
+        placed = []
+        for cx, cy, _w, _h in fitted:
+            ellipse = ((xx - cx) / semi_a) ** 2 + ((yy - cy) / semi_b) ** 2 <= 1
+            if kind == 'vertical':
+                pupil_a, pupil_b = min(semi_a, semi_b) * 0.24, semi_b * 0.62
+            elif kind == 'horizontal':
+                pupil_a, pupil_b = semi_a * 0.62, min(semi_a, semi_b) * 0.22
+            else:
+                pupil_a = pupil_b = min(semi_a, semi_b) * 0.40
+            pupil = ((xx - cx) / max(pupil_a, 1) ) ** 2 + ((yy - cy) / max(pupil_b, 1)) ** 2 <= 1
+            ring = ellipse & ~pupil
+            ring = cv2.erode(ring.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool) if int(ring.sum()) > 40 else ring
+            colors.append(_iris_lab(source_lab, ring if ring.any() else ellipse))
+            placed.append((cx, cy, pupil_a, pupil_b, ellipse))
+        shared = _share_iris(colors)
+        for cx, cy, pupil_a, pupil_b, ellipse in placed:
+            zone |= ellipse
+            eye_zone |= ellipse
+            outline = _ellipse_path(cx, cy, semi_a + 2.2, semi_b + 2.2, 0) + _ellipse_path(cx, cy, semi_a + 0.3, semi_b + 0.3, 0)
+            # Two close ellipses. Their even-odd difference is a thin top crescent.
+            # Using the whole iris as the inner path fills the lower eye black.
+            lid = (
+                _ellipse_path(cx, cy - semi_b * 0.10, semi_a * 1.0, semi_b * 0.96, 0)
+                + _ellipse_path(cx, cy + semi_b * 0.08, semi_a * 0.92, semi_b * 0.70, 0)
+            )
+            pupil_path = _ellipse_path(cx, cy, pupil_a, pupil_b, 0)
+            catch_r = max(1.5, min(pupil_a, pupil_b) * 0.32)
+            catch_path = _ellipse_path(cx - pupil_a * 0.28, cy - pupil_b * 0.30, catch_r, catch_r, 0)
+            shapes.append((0.0, _lab_hex(line_lab), outline))
+            shapes.append((0.1, _lab_hex(line_lab), lid))
+            shapes.append((1.0, _lab_hex(pupil_lab), pupil_path))
+            shapes.append((2.0, _lab_hex(catch_lab), catch_path))
+            _paint_ellipse(canvas, covered, cx, cy, semi_a + 2.2, semi_b + 2.2, line_lab)
+            inner = np.zeros((height, width), np.uint8)
+            cv2.ellipse(inner, (int(round(cx)), int(round(cy))), (max(1, int(round(semi_a + 0.3))), max(1, int(round(semi_b + 0.3)))), 0, 0, 360, 1, -1)
+            covered[inner.astype(bool)] = False
+            canvas[inner.astype(bool)] = 0
+            _paint_ellipse(canvas, covered, cx, cy - semi_b * 0.10, semi_a * 1.0, semi_b * 0.96, line_lab)
+            lid_inner = np.zeros((height, width), np.uint8)
+            cv2.ellipse(
+                lid_inner,
+                (int(round(cx)), int(round(cy + semi_b * 0.08))),
+                (max(1, int(round(semi_a * 0.92))), max(1, int(round(semi_b * 0.70)))),
+                0, 0, 360, 1, -1,
+            )
+            covered[lid_inner.astype(bool)] = False
+            canvas[lid_inner.astype(bool)] = 0
+            _paint_ellipse(canvas, covered, cx, cy, pupil_a, pupil_b, pupil_lab)
+            _paint_ellipse(canvas, covered, cx - pupil_a * 0.28, cy - pupil_b * 0.30, catch_r, catch_r, catch_lab)
+            irises.append({
+                'cx': cx, 'cy': cy, 'a': semi_a, 'b': semi_b,
+                'mask': ellipse, 'pair': pair_index, 'color': shared,
+                'd': _ellipse_path(cx, cy, semi_a, semi_b, 0),
+            })
+    chroma = np.hypot(source_lab[..., 1] - 128, source_lab[..., 2] - 128)
+    for box in mouths:
+        x, y, w, h = [float(value) for value in box[:4]]
+        x0, y0 = int(max(0, x)), int(max(0, y))
+        x1, y1 = int(min(width, x + w)), int(min(height, y + h))
+        if x1 - x0 < 3 or y1 - y0 < 3:
+            continue
+        dark = (lightness[y0:y1, x0:x1] < 28) & (chroma[y0:y1, x0:x1] < 24)
+        dark = cv2.morphologyEx(dark.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
+        components, count = ndi.label(dark)
+        for index in range(1, count + 1):
+            component = components == index
+            area = int(component.sum())
+            if area < 8:
+                continue
+            full = np.zeros((height, width), bool)
+            full[y0:y1, x0:x1] = component
+            ys, xs = np.where(component)
+            box_w = int(xs.max() - xs.min() + 1)
+            box_h = int(ys.max() - ys.min() + 1)
+            reach = float(cv2.distanceTransform(component.astype(np.uint8), cv2.DIST_L2, 3).max())
+            elongated = max(box_w, box_h) > 1.8 * max(1, min(box_w, box_h))
+            # A filled nose stays a paint region. A dot becomes a nostril.
+            # Only a long dark crease becomes a stroke, so the pad is not a wedge.
+            if not elongated and reach >= 4:
+                continue
+            if not elongated:
+                cx = float(xs.mean() + x0)
+                cy = float(ys.mean() + y0)
+                radius = max(2.0, min(6.0, np.sqrt(area / np.pi)))
+                path = _ellipse_path(cx, cy, radius, radius * 0.72, 0)
+                shapes.append((0.4, _lab_hex(line_lab), path))
+                _paint_ellipse(canvas, covered, cx, cy, radius, radius * 0.72, line_lab)
+                zone[full] = True
+                continue
+            curve = _ridge(full)
+            if curve is None:
+                continue
+            path, polygon = _ribbon(curve, 2.2)
+            if not path or len(polygon) < 3:
+                continue
+            shapes.append((0.4, _lab_hex(line_lab), path))
+            ribbon = np.zeros((height, width), np.uint8)
+            cv2.fillPoly(ribbon, [np.round(polygon).astype(np.int32)], 1)
+            on = ribbon.astype(bool)
+            canvas[on] = _hex_bgr(_lab_hex(line_lab))
+            covered[on] = True
+            zone[on] = True
+    return {
+        'shapes': shapes,
+        'covered': covered,
+        'bgr': canvas,
+        'zone': zone,
+        'eye_zone': eye_zone,
+        'irises': irises,
+    }
+
+
+def extract_faces(image: np.ndarray, source_lab: np.ndarray, ink: np.ndarray, fat: np.ndarray, eyes: list, mouths: list, auto: bool, puzzle_id: str = '') -> dict:
     """Pull fixed face shapes out of the source. ``image`` is 1024 BGR."""
     height, width = image.shape[:2]
     zone = np.zeros((height, width), bool)
@@ -172,139 +533,32 @@ def extract_faces(image: np.ndarray, source_lab: np.ndarray, ink: np.ndarray, fa
     auto_boxes: list[list[int]] = []
     lightness = source_lab[..., 0] * 100 / 255
     chroma = np.hypot(source_lab[..., 1] - 128, source_lab[..., 2] - 128)
-    yy, xx = np.mgrid[0:height, 0:width]
-    boxes = [list(box[:4]) + ['eye'] for box in eyes] + [list(box[:4]) + ['mouth'] for box in mouths]
-    jobs = []
-    for box in boxes:
-        x, y, w, h = [float(value) for value in box[:4]]
-        kind = box[4]
-        cx, cy = x + w / 2, y + h / 2
-        axis_a, axis_b = max(w, 4) / 2 * 1.08, max(h, 4) / 2 * 1.08
-        if kind == 'eye' and min(w, h) < SMALL_EYE:
-            axis_a *= 1.12
-            axis_b *= 1.12
-            eye = ((xx - cx) / axis_a) ** 2 + ((yy - cy) / axis_b) ** 2 <= 1
-            zone |= eye
-            eye_zone |= eye
-            _small_eye(image, eye, cx, cy, axis_a, axis_b, height, width, shapes, canvas, covered)
+    geometry = compose_geometry(image, source_lab, eyes, mouths, pupil_kind(puzzle_id))
+    shapes.extend(geometry['shapes'])
+    zone |= geometry['zone']
+    eye_zone |= geometry['eye_zone']
+    covered |= geometry['covered']
+    canvas[geometry['covered']] = geometry['bgr'][geometry['covered']]
+    irises = geometry['irises']
+    iris_union = np.zeros((height, width), bool)
+    for iris in irises:
+        iris_union |= iris['mask']
+    # Dark pixels in the boxes stay out of the palette. Otherwise every shadow
+    # in the fur becomes its own region. They are filled by a neighbor, and the
+    # smooth pupil, lid, and mouth stroke are what actually get drawn.
+    # Dark pixels inside an eye are the pupil and the lid, which the ellipses
+    # already draw. Leaving them in the palette splits the fur into speckles.
+    # A nose is a real paint region, so the mouth box is not held out.
+    hold = np.zeros((height, width), bool)
+    for box in eyes:
+        x, y, w, h = [int(value) for value in box[:4]]
+        x0, y0 = max(0, x), max(0, y)
+        x1, y1 = min(width, x + w), min(height, y + h)
+        if x1 <= x0 or y1 <= y0:
             continue
-        eye = ((xx - cx) / axis_a) ** 2 + ((yy - cy) / axis_b) ** 2 <= 1
-        zone |= eye
-        values = lightness[eye]
-        if len(values) < 6:
-            continue
-        model = MiniBatchKMeans(3, random_state=0, n_init=3).fit(values.reshape(-1, 1))
-        centers = np.sort(model.cluster_centers_[:, 0])
-        threshold = float(np.clip(min((centers[0] + centers[1]) / 2, centers[0] + 10), 10, 32))
-        if centers[0] > 45:
-            threshold = 0
-        if kind == 'mouth':
-            threshold = min(threshold, 20)
-        else:
-            eye_zone |= eye
-        jobs.append((cx, cy, axis_a, axis_b, eye, threshold, kind))
-    for cx, cy, axis_a, axis_b, eye, threshold, kind in jobs:
-        x0 = int(max(0, cx - axis_a * 1.8))
-        y0 = int(max(0, cy - axis_b * 1.8))
-        x1 = int(min(width, cx + axis_a * 1.8 + 1))
-        y1 = int(min(height, cy + axis_b * 1.8 + 1))
-        if x1 - x0 < 3 or y1 - y0 < 3:
-            continue
-        window = eye[y0:y1, x0:x1]
-        crop = image[y0:y1, x0:x1]
-        size = ((x1 - x0) * SUPERSAMPLE, (y1 - y0) * SUPERSAMPLE)
-        up = cv2.resize(cv2.GaussianBlur(crop, (0, 0), 0.5), size, interpolation=cv2.INTER_CUBIC)
-        up_lab = cv2.cvtColor(up, cv2.COLOR_BGR2LAB).astype(np.float32)
-        light4 = up_lab[..., 0] * 100 / 255
-        chroma4 = np.hypot(up_lab[..., 1] - 128, up_lab[..., 2] - 128)
-        eye4 = cv2.resize(window.astype(np.uint8), size, interpolation=cv2.INTER_NEAREST).astype(bool)
-        ink4 = cv2.resize(ink[y0:y1, x0:x1].astype(np.uint8), size, interpolation=cv2.INTER_NEAREST).astype(bool)
-        dark = light4 < threshold
-        if kind == 'mouth':
-            dark &= chroma4 < 22
-        dark = cv2.morphologyEx(dark.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-        components, count = ndi.label(dark)
-        kept = np.zeros_like(dark, bool)
-        for index in range(1, count + 1):
-            component = components == index
-            total = int(component.sum())
-            inside = int((component & eye4).sum())
-            if inside < SUPERSAMPLE * SUPERSAMPLE * 3:
-                continue
-            kept |= component if inside >= 0.6 * total else (component & eye4)
-        dark = kept & ~ink4
-        inside_light = light4[eye4 & ~kept]
-        reference = float(np.median(inside_light)) if inside_light.size else 60
-        bright = (light4 > max(78, reference + 12)) & (chroma4 < 40) & eye4 & (kind == 'eye')
-        components, count = ndi.label(bright)
-        catch = np.zeros_like(dark)
-        near = cv2.dilate(kept.astype(np.uint8), np.ones((3 * SUPERSAMPLE, 3 * SUPERSAMPLE), np.uint8)).astype(bool)
-        eye_area = int(eye4.sum())
-        border = eye4 & ~cv2.erode(eye4.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
-        for index in range(1, count + 1):
-            component = components == index
-            area = int(component.sum())
-            if area < SUPERSAMPLE * SUPERSAMPLE * 1.5 or area > max(SUPERSAMPLE * SUPERSAMPLE * 8, 0.12 * eye_area):
-                continue
-            if (component & border).any() or not (component & near).any():
-                continue
-            catch |= component
-        pupil = dark & ~ink4
-        if pupil.any() and kind == 'eye':
-            holes = ndi.binary_fill_holes(pupil) & ~pupil & eye4
-            hole_components, hole_count = ndi.label(holes)
-            filled_area = int(ndi.binary_fill_holes(pupil).sum())
-            for index in range(1, hole_count + 1):
-                hole = hole_components == index
-                area = int(hole.sum())
-                if area >= SUPERSAMPLE * SUPERSAMPLE * 1.5 and area <= 0.35 * filled_area and float(light4[hole].mean()) > 55:
-                    catch |= hole
-        catch = cv2.morphologyEx(catch.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
-        dark = dark & ~catch
-
-        def soften(mask: np.ndarray, sigma: float = 1.6) -> np.ndarray:
-            return cv2.GaussianBlur(mask.astype(np.float32), (0, 0), sigma) > 0.5
-
-        dark = soften(dark) & ~soften(catch) if catch.any() else soften(dark)
-        catch = soften(catch)
-        inner = None
-        if int(dark.sum()) > SUPERSAMPLE * SUPERSAMPLE * 20:
-            values = light4[dark]
-            model = MiniBatchKMeans(2, random_state=0, n_init=3).fit(values[::max(1, values.size // 4000)].reshape(-1, 1))
-            centers = np.sort(model.cluster_centers_[:, 0])
-            if centers[1] - centers[0] > 7:
-                candidate = soften(dark & (light4 < (centers[0] + centers[1]) / 2), 2.0) & dark
-                if int(candidate.sum()) > SUPERSAMPLE * SUPERSAMPLE * 6 and int(candidate.sum()) < 0.85 * int(dark.sum()):
-                    inner = candidate
-        dark_small = cv2.resize(dark.astype(np.float32), (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA) > 0.5
-        catch_small = cv2.resize(catch.astype(np.float32), (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA) > 0.3
-        sample = source_lab[y0:y1, x0:x1]
-        if dark.any():
-            color = np.median(sample[dark_small], axis=0) if dark_small.any() else np.array([20.0, 128.0, 128.0])
-            color = np.array(color, np.float64)
-            color[0] = min(color[0], 60)
-            path = _mask_paths(dark.astype(np.uint8), x0, y0)
-            if path:
-                shapes.append((0, _lab_hex(color), path))
-            _paint(canvas, covered, covered, dark_small, (y0, x0), color)
-            if inner is not None:
-                inner_small = cv2.resize(inner.astype(np.float32), (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA) > 0.5
-                if inner_small.any():
-                    inner_color = np.median(sample[inner_small], axis=0)
-                    inner_color = np.array(inner_color, np.float64)
-                    inner_color[0] = min(inner_color[0], 40)
-                    path = _mask_paths(inner.astype(np.uint8), x0, y0)
-                    if path:
-                        shapes.append((1, _lab_hex(inner_color), path))
-                    _paint(canvas, covered, covered, inner_small, (y0, x0), inner_color)
-        if catch.any():
-            color = np.median(sample[catch_small], axis=0) if catch_small.any() else np.array([250.0, 128.0, 128.0])
-            color = np.array(color, np.float64)
-            color[0] = max(color[0], min(235, color[0] + 10))
-            path = _mask_paths(catch.astype(np.uint8), x0, y0, convex=True, iou_min=0.88)
-            if path:
-                shapes.append((2, _lab_hex(color), path))
-            _paint(canvas, covered, covered, catch_small, (y0, x0), color)
+        dark = lightness[y0:y1, x0:x1] < 40
+        hold[y0:y1, x0:x1] |= dark
+    hold &= ~covered
     if auto:
         components, count = ndi.label(fat & ~zone)
         if count:
@@ -373,6 +627,10 @@ def extract_faces(image: np.ndarray, source_lab: np.ndarray, ink: np.ndarray, fa
         'zone': zone,
         'eye_zone': eye_zone,
         'auto': auto_boxes,
+        'irises': irises,
+        'iris_union': iris_union,
+        'eye_detail': geometry['covered'].copy(),
+        'hold': hold,
     }
 
 

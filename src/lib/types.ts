@@ -102,6 +102,8 @@ export interface DecodedPuzzle {
   cy: number[];
   /** Inscribed radius at the label point, in picture pixels. */
   inr: number[];
+  /** Iris regions, whose numbers are not drawn inside the eye. */
+  quiet: boolean[];
   area: number[];
   /** minX, minY, maxX, maxY per region, packed. */
   box: number[];

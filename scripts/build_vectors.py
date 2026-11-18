@@ -172,24 +172,24 @@ def build_one(picture: tuple) -> dict:
     spun = symmetry_for(puzzle_id)
     if 'k' in spec and 'minArea' in spec:
         mode = 'tonal' if kind == 'tonal' or (kind is None and len(numbers) >= 2) else 'lineart'
-        result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths, symmetry=spun)
+        result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
     elif kind == 'tonal' or (kind is None and len(numbers) >= 2):
         _k, min_area = numbers[0], numbers[1]
-        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes, mouths=mouths, symmetry=spun)
+        result = segment(str(source), 'tonal', k=int(_k), min_area=int(min_area), eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
         mode = 'tonal'
     elif kind == 'lineart' and len(numbers) >= 2:
         # Use the picture's own k and min area. Do not search, and do not shift the palette.
-        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes, mouths=mouths, symmetry=spun)
+        result = segment(str(source), 'lineart', k=int(numbers[0]), min_area=int(numbers[1]), eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
         mode = 'lineart'
     else:
         # k=28 is the line-art default. Busy pictures try a larger palette and
         # keep the closest match that still stays at or under 40 colors.
-        result = segment(str(source), 'lineart', k=28, eyes=eyes, mouths=mouths, symmetry=spun)
+        result = segment(str(source), 'lineart', k=28, eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
         for k in (36, 44):
             stats = result['stats']
             if stats['meanDE76'] <= 4.6 and stats['smallRadiusFraction'] <= 0.03 and stats['colors'] <= 40:
                 break
-            nxt = segment(str(source), 'lineart', k=k, eyes=eyes, mouths=mouths, symmetry=spun)
+            nxt = segment(str(source), 'lineart', k=k, eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
             if nxt['stats']['meanDE76'] < result['stats']['meanDE76']:
                 result = nxt
         mode = 'lineart'
