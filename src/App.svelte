@@ -60,6 +60,7 @@
   });
 
   function openPuzzle(id: string) {
+    // Leave the URL on /color/ so the book, IndexedDB, and ?open= links stay put.
     history.pushState({ screen: 'play', puzzleId: id }, '');
     show(history.state);
   }

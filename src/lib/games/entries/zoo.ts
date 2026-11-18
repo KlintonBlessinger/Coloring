@@ -1,0 +1,14 @@
+import type { GameEntry } from '../types';
+
+const entry: GameEntry = {
+  id: 'zoo',
+  title: 'Little Zookeeper',
+  tagline: 'Look after the little animals.',
+  path: '/zoo/',
+  cover: 'games/zoo-cover.jpg',
+  order: 2,
+  soon: true,
+};
+
+export { entry };
+export default entry;

@@ -3,19 +3,20 @@ import '@fontsource/nunito/latin-700.css';
 import '@fontsource/nunito/latin-800.css';
 import { mount } from 'svelte';
 import { registerSW } from 'virtual:pwa-register';
-import App from './App.svelte';
+import Shell from './landing/Shell.svelte';
 import './app.css';
-import { installAudio } from './lib/audio';
-import { APP_NAME } from './lib/brand';
-import { loadSettings } from './lib/storage';
+import { legacyColorTarget, siteBase } from './lib/games/paths';
 
-document.title = APP_NAME;
-installAudio();
+const base = siteBase();
+const next = legacyColorTarget(base, window.location.pathname, window.location.search);
+const here = `${window.location.pathname}${window.location.search}`;
+if (next && next !== here) {
+  window.location.replace(`${next}${window.location.hash}`);
+} else {
+  registerSW({ immediate: true });
 
-registerSW({ immediate: true });
+  const target = document.getElementById('app');
+  if (!target) throw new Error('Missing app root');
 
-const initialSettings = await loadSettings();
-const target = document.getElementById('app');
-if (!target) throw new Error('Missing app root');
-
-mount(App, { target, props: { initialSettings } });
+  mount(Shell, { target });
+}

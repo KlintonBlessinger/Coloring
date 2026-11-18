@@ -169,6 +169,8 @@ h1 {
   place-items: center;
   flex: none;
   box-shadow: 0 1px 0 rgba(80, 50, 30, 0.05);
+  text-decoration: none;
+  color: inherit;
 }
 
 .icon-btn:disabled { opacity: 0.35; }
