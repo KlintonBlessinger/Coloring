@@ -60,13 +60,24 @@
     </header>
     <nav class="game-list" aria-label="Games">
       {#each games as item (item.id)}
-        <a class="game-card" href={siteUrl(item.path)} data-testid="game-card" data-game={item.id}>
-          <img src={asset(item.cover)} alt="" width="800" height="500" />
-          <span class="game-copy">
-            <span class="game-title">{item.title}</span>
-            <span class="game-tag">{item.soon ? 'Coming soon' : item.tagline}</span>
-          </span>
-        </a>
+        {#if item.soon}
+          <div class="game-card" data-testid="game-card" data-game={item.id} data-soon="true">
+            <img src={asset(item.cover)} alt="" width="800" height="500" />
+            <span class="soon-badge">Coming soon</span>
+            <span class="game-copy">
+              <span class="game-title">{item.title}</span>
+              <span class="game-tag">{item.tagline}</span>
+            </span>
+          </div>
+        {:else}
+          <a class="game-card" href={siteUrl(item.path)} data-testid="game-card" data-game={item.id}>
+            <img src={asset(item.cover)} alt="" width="800" height="500" />
+            <span class="game-copy">
+              <span class="game-title">{item.title}</span>
+              <span class="game-tag">{item.tagline}</span>
+            </span>
+          </a>
+        {/if}
       {/each}
     </nav>
   </div>

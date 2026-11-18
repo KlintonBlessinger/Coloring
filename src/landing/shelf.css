@@ -22,6 +22,7 @@
 }
 
 .game-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   text-decoration: none;
@@ -30,6 +31,21 @@
   border-radius: 28px;
   overflow: hidden;
   box-shadow: var(--shadow);
+}
+
+.soon-badge {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 1;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
 }
 
 .game-card:focus-visible {
