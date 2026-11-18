@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { SITE_NAME } from './lib/brand';
-  import { asset } from './lib/vector';
-  import { games, gameForPath } from './lib/games/registry';
-  import { currentPath, siteUrl } from './lib/games/paths';
+  import { SITE_NAME } from '../lib/brand';
+  import { asset } from '../lib/vector';
+  import { games, gameForPath } from '../lib/games/registry';
+  import { currentPath, siteUrl } from '../lib/games/paths';
+  import './shelf.css';
 
   let path = $state(currentPath());
 

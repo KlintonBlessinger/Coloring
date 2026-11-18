@@ -3,7 +3,7 @@ import '@fontsource/nunito/latin-700.css';
 import '@fontsource/nunito/latin-800.css';
 import { mount } from 'svelte';
 import { registerSW } from 'virtual:pwa-register';
-import Shell from './Shell.svelte';
+import Shell from './landing/Shell.svelte';
 import './app.css';
 import { legacyColorTarget, siteBase } from './lib/games/paths';
 
