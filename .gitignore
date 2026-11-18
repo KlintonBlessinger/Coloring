@@ -1,0 +1,16 @@
+node_modules
+dist
+.vite
+playwright-report
+test-results
+blob-report
+.lighthouse
+*.log
+artifacts/
+.DS_Store
+__pycache__/
+*.pyc
+
+# Private picture packs stay off the public site. Never commit sources or a built pack.
+/private-packs/
+/content/private/
