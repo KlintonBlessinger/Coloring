@@ -21,15 +21,6 @@ from scipy import ndimage as ndi
 # face in the middle of a mandala is not spun. style 'straight' keeps corners
 # crisp for stained glass; 'curve' smooths petals.
 SPECS: dict[str, dict] = {
-    'adult-lotus-mandala': {
-        'order': 8, 'mirror': True, 'center': (512.0, 504.0), 'protect': 0, 'style': 'curve',
-    },
-    'adult-peacock-mandala': {
-        'order': 8, 'mirror': True, 'center': (512.0, 508.0), 'protect': 0, 'style': 'curve',
-    },
-    'adult-kaleidoscope-crystal': {
-        'order': 4, 'mirror': True, 'center': (512.0, 496.0), 'protect': 0, 'style': 'straight',
-    },
     'adult-art-deco-fan': {
         'order': 1, 'mirror': True, 'center': (512.0, 354.0), 'protect': 0, 'style': 'straight',
     },

@@ -1715,13 +1715,60 @@ test('four times face zooms for the owner review', async ({ page }) => {
   for (const [id, name] of shots) {
     await show(id);
     await zoomFace(page, id, 3.6);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+      canvas.clearColor?.();
+    });
+    await expect(page.locator('.swatch.selected')).toHaveCount(0);
     await page.waitForTimeout(300);
     await jpg(name);
   }
-  // Tiger at the River: the muzzle box is gone and the upper lid is a hairline.
+  // Tiger at the River: the muzzle ellipses are gone. The real eyes stay.
   await show('realistic-tiger-river');
   await zoomFace(page, 'realistic-tiger-river', 3.6, { x: 620, y: 560 });
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+    canvas.clearColor?.();
+  });
+  await expect(page.locator('.swatch.selected')).toHaveCount(0);
   await page.waitForTimeout(300);
   await jpg('face-tiger-river-4x.jpg');
+  await zoomFace(page, 'realistic-tiger-river', 3.6, { x: 620, y: 800 });
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+    canvas.clearColor?.();
+  });
+  await expect(page.locator('.swatch.selected')).toHaveCount(0);
+  await page.waitForTimeout(300);
+  await jpg('face-tiger-river-muzzle-4x.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('reverted mandala fits, no color selected', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const shots: [string, string][] = [
+    ['adult-lotus-mandala', 'vector-lotus-mandala-fit.jpg'],
+    ['adult-peacock-mandala', 'vector-peacock-mandala-fit.jpg'],
+    ['adult-kaleidoscope-crystal', 'vector-kaleidoscope-crystal-fit.jpg'],
+  ];
+  for (const [id, name] of shots) {
+    await openPuzzle(page, id);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement & { clearColor?: () => void };
+      canvas.dataset.hideArt = '1';
+      canvas.clearColor?.();
+    });
+    await expect(page.locator('.swatch.selected')).toHaveCount(0);
+    await page.waitForTimeout(400);
+    await jpg(name);
+  }
   expect(errors, errors.join('\n')).toEqual([]);
 });

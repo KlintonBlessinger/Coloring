@@ -9,7 +9,7 @@ from pathlib import Path
 
 import cv2
 
-from pbn import MATCH_PAINTING, puzzle_document, rasterize, segment, segment_matched, thumbnail
+from pbn import puzzle_document, rasterize, segment, thumbnail
 from symmetry import symmetry_for
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,13 +168,8 @@ def build_one(picture: tuple) -> dict:
     mouths = spec.get('mouths')
     kind = next((item for item in picture[4:] if item in ('lineart', 'tonal')), None)
     numbers = [item for item in picture[4:] if isinstance(item, (int, float))]
-    # Lotus, Peacock, and Kaleidoscope are colored from the painting. Folding
-    # one wedge onto the others misses the paint that is actually there.
-    spun = None if puzzle_id in MATCH_PAINTING else symmetry_for(puzzle_id)
-    if puzzle_id in MATCH_PAINTING:
-        result = segment_matched(str(source), puzzle_id)
-        mode = 'lineart'
-    elif 'k' in spec and 'minArea' in spec:
+    spun = symmetry_for(puzzle_id)
+    if 'k' in spec and 'minArea' in spec:
         mode = 'tonal' if kind == 'tonal' or (kind is None and len(numbers) >= 2) else 'lineart'
         result = segment(str(source), mode, k=int(spec['k']), min_area=int(spec['minArea']), eyes=eyes, mouths=mouths, symmetry=spun, puzzle_id=puzzle_id)
     elif kind == 'tonal' or (kind is None and len(numbers) >= 2):
@@ -199,7 +194,7 @@ def build_one(picture: tuple) -> dict:
         mode = 'lineart'
     meta = {'id': puzzle_id, 'title': title, 'category': category, 'difficulty': difficulty, 'mode': mode}
     document = puzzle_document(result, meta)
-    if spun is not None or puzzle_id in MATCH_PAINTING:
+    if spun is not None:
         # The gallery art is the vector picture the page paints. The v2 painting
         # in content/sources stays the source. Scoring a recut against this
         # render would hide the distance from that painting.

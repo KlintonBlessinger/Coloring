@@ -46,13 +46,13 @@
   },
   "adult-kaleidoscope-crystal": {
     "file": "adult-kaleidoscope-crystal",
-    "regions": 911,
-    "colors": 40
+    "regions": 1026,
+    "colors": 33
   },
   "adult-lotus-mandala": {
     "file": "adult-lotus-mandala",
-    "regions": 1310,
-    "colors": 40
+    "regions": 2037,
+    "colors": 34
   },
   "adult-lush-peony-garden": {
     "file": "adult-lush-peony-garden",
@@ -71,8 +71,8 @@
   },
   "adult-peacock-mandala": {
     "file": "adult-peacock-mandala",
-    "regions": 831,
-    "colors": 40
+    "regions": 1642,
+    "colors": 22
   },
   "adult-santorini-village": {
     "file": "adult-santorini-village",
@@ -421,7 +421,7 @@
   },
   "realistic-tiger-river": {
     "file": "realistic-tiger-river",
-    "regions": 590,
+    "regions": 588,
     "colors": 40
   },
   "realistic-tiger-walking": {
