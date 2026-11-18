@@ -1300,17 +1300,17 @@ function facePoint(id: string): { x: number; y: number } {
   return { x: sx / used.length, y: sy / used.length };
 }
 
-async function zoomFace(page: Page, id: string, ratio: number): Promise<void> {
-  const point = facePoint(id);
+async function zoomFace(page: Page, id: string, ratio: number, focus?: { x: number; y: number }): Promise<void> {
+  const point = focus ?? facePoint(id);
   const canvas = page.locator('canvas.surface');
   const fitted = Number(await canvas.getAttribute('data-scale'));
-  const panX = Number(await canvas.getAttribute('data-pan-x'));
-  const panY = Number(await canvas.getAttribute('data-pan-y'));
   const rect = await canvas.boundingBox();
   if (!rect) throw new Error('canvas is not on screen');
-  const midX = rect.x + panX + point.x * fitted;
-  const midY = rect.y + panY + point.y * fitted;
-  await page.evaluate(({ midX, midY }) => {
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  // The fitted picture fills the screen, so a drag is clamped and cannot move.
+  // Pinch on the face first. Once the picture is larger than the view, drag that
+  // point to the middle. A pinch alone would leave an edge face stuck at the edge.
+  await page.evaluate(({ point, center }) => {
     const canvas = document.querySelector('canvas.surface') as HTMLCanvasElement;
     const fire = (type: string, id: number, x: number, y: number) => {
       canvas.dispatchEvent(new PointerEvent(type, {
@@ -1318,18 +1318,36 @@ async function zoomFace(page: Page, id: string, ratio: number): Promise<void> {
         clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1,
       }));
     };
-    const start = 18;
-    const end = start * 4;
-    fire('pointerdown', 1, midX - start, midY);
-    fire('pointerdown', 2, midX + start, midY);
-    for (let step = 1; step <= 8; step++) {
-      const reach = start + ((end - start) * step) / 8;
-      fire('pointermove', 1, midX - reach, midY);
-      fire('pointermove', 2, midX + reach, midY);
+    const spot = () => {
+      const scale = Number(canvas.dataset.scale);
+      const box = canvas.getBoundingClientRect();
+      return {
+        x: box.left + Number(canvas.dataset.panX) + point.x * scale,
+        y: box.top + Number(canvas.dataset.panY) + point.y * scale,
+      };
+    };
+    const pinchAt = (x: number, y: number) => {
+      const start = 18;
+      const end = start * 4;
+      fire('pointerdown', 1, x - start, y);
+      fire('pointerdown', 2, x + start, y);
+      for (let step = 1; step <= 8; step++) {
+        const reach = start + ((end - start) * step) / 8;
+        fire('pointermove', 1, x - reach, y);
+        fire('pointermove', 2, x + reach, y);
+      }
+      fire('pointerup', 1, x - end, y);
+      fire('pointerup', 2, x + end, y);
+    };
+    const origin = spot();
+    pinchAt(origin.x, origin.y);
+    const held = spot();
+    fire('pointerdown', 1, held.x, held.y);
+    for (let step = 1; step <= 6; step++) {
+      fire('pointermove', 1, held.x + ((center.x - held.x) * step) / 6, held.y + ((center.y - held.y) * step) / 6);
     }
-    fire('pointerup', 1, midX - end, midY);
-    fire('pointerup', 2, midX + end, midY);
-  }, { midX, midY });
+    fire('pointerup', 1, center.x, center.y);
+  }, { point, center });
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale')) / fitted).toBeGreaterThan(ratio - 0.6);
 }
 
@@ -1462,5 +1480,52 @@ test('grown-up shelf, lotus piping, and finished cherry koi', async ({ page }) =
   });
   await page.waitForTimeout(200);
   await jpg('vector-cherry-koi-fit.jpg');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('v3 faces and the hammerhead shelf', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors = watch(page);
+  const jpg = async (name: string) => {
+    await page.screenshot({ path: path.join(mediaDir, name), type: 'jpeg', quality: 52, fullPage: false });
+    const bytes = fs.statSync(path.join(mediaDir, name)).size;
+    expect(bytes, name).toBeLessThan(500 * 1024);
+    expect(bytes, name).toBeGreaterThan(12 * 1024);
+  };
+  const showFace = async (id: string, focus?: { x: number; y: number }) => {
+    const book = puzzle(id);
+    await openPuzzle(page, id);
+    await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.surface');
+      if (canvas instanceof HTMLElement) canvas.dataset.hideArt = '1';
+    });
+    await paintRegions(page, book, book.regionColors.map((_, index) => index));
+    await expect(page.getByTestId('complete')).toBeVisible();
+    await page.waitForTimeout(1600);
+    await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="complete"]');
+      if (card instanceof HTMLElement) card.style.visibility = 'hidden';
+    });
+    await zoomFace(page, id, 3.6, focus);
+    await page.waitForTimeout(250);
+  };
+
+  fs.mkdirSync(mediaDir, { recursive: true });
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Color Cozy' }).waitFor();
+  const card = page.locator('[data-testid="puzzle-card"][data-id="realistic-hammerhead-school"]');
+  await card.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
+  await expect(card).toBeVisible();
+  await expect(page.locator('[data-shelf="sharks"]')).toBeVisible();
+  await page.waitForTimeout(300);
+  await jpg('face-hammerhead-shelf.jpg');
+
+  // The river tiger's eye list includes the reflection, so aim at the real face.
+  await showFace('realistic-tiger-river', { x: 620, y: 560 });
+  await jpg('face-tiger-v3-zoom.jpg');
+  await showFace('realistic-cheetah-sprint', { x: 180, y: 400 });
+  await jpg('face-cheetah-v3-zoom.jpg');
+  await showFace('realistic-nile-crocodile', { x: 160, y: 730 });
+  await jpg('face-crocodile-v3-zoom.jpg');
   expect(errors, errors.join('\n')).toEqual([]);
 });
