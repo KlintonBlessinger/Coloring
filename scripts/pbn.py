@@ -2687,19 +2687,10 @@ def contact_sheet(source_path: str, document: dict, dest: str) -> None:
 
 def gate_reasons(score: dict) -> list[str]:
     reasons = []
-    # The five symmetric grown-ups are scored against the v2 painting. A wedge
-    # posterization does not reach deltaE 6 against that painting, and the
-    # painting is not replaced with the render to make the number smaller.
-    # Celestial Mandala is not in the book until it scores 6 or under
-    # against the v2 painting. The other four are still scored against that
-    # painting, and a wedge posterization does not reach 6.
-    painting_source = {
-        'adult-lotus-mandala',
-        'adult-peacock-mandala',
-        'adult-kaleidoscope-crystal',
-        'adult-art-deco-fan',
-    }
-    if score['meanDE76'] > 6 and score.get('id') not in painting_source:
+    # Every picture, including the grown-up mandalas, is scored against its
+    # painting. A miss is a failure. Celestial stays out of the book until a
+    # cut is at deltaE 6 or under against the v2 painting.
+    if score['meanDE76'] > 6:
         reasons.append(f"mean deltaE {score['meanDE76']:.2f} > 6")
     if score['smallRadiusFraction'] > 0.03:
         reasons.append(f"small-label fraction {score['smallRadiusFraction']:.1%} > 3%")
