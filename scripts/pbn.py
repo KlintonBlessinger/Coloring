@@ -28,6 +28,103 @@ from symmetry import fold_field, refold_regions, replicate, replicate_stroke, ri
 LINEART = {'k': 28, 'min_area': 60, 'merge': 6.0}
 TONAL = {'k': 36, 'min_area': 90, 'merge': 6.0}
 
+# Species eye. Each picture's own eye boxes place it; this only says how that
+# species' eye is built. Iris is one paintable color. Pupil shape is round or
+# slit. Lid is the crown thickness of an upper curve that tapers to a point.
+# Catchlight is an offset inside the pupil, as a fraction of the pupil, with
+# up and left negative.
+EYE_TEMPLATES: dict[str, dict] = {
+    'lion': {
+        'shape': 'almond',
+        'iris': '#E08A2C',
+        'pupil': 'round',
+        'pupil_scale': 0.36,
+        'lid': 2.0,
+        'aspect': 0.64,
+        'scale': 0.86,
+        'catchlight': (-0.22, -0.30),
+        'fur_rim': '#F2BA71',
+        'fur_rim_px': 4.6,
+    },
+    'tiger': {
+        'shape': 'almond',
+        'iris': '#E2A832',
+        'pupil': 'round',
+        'pupil_scale': 0.34,
+        'lid': 2.2,
+        'aspect': 0.68,
+        'scale': 0.90,
+        'catchlight': (-0.22, -0.28),
+    },
+    'cheetah': {
+        'shape': 'almond',
+        'iris': '#D08928',
+        'pupil': 'round',
+        'pupil_scale': 0.34,
+        'lid': 2.2,
+        'aspect': 0.68,
+        'scale': 0.90,
+        'catchlight': (-0.22, -0.28),
+        'tear': True,
+    },
+    'owl': {
+        'shape': 'round',
+        'iris': '#F2C414',
+        'pupil': 'round',
+        'pupil_scale': 0.50,
+        'lid': 0.0,
+        'rim': 2.0,
+        'scale': 0.96,
+        'catchlight': (-0.18, -0.22),
+    },
+    'koala': {
+        'shape': 'small',
+        'iris': '#3E2A16',
+        'pupil': 'round',
+        'pupil_scale': 0.42,
+        'lid': 1.6,
+        'aspect': 0.86,
+        'scale': 0.62,
+        'catchlight': (-0.18, -0.22),
+    },
+    'default': {
+        'shape': 'fill',
+        'iris': None,
+        'pupil': 'round',
+        'pupil_scale': 0.36,
+        'lid': 2.0,
+        'aspect': 0.72,
+        'scale': 0.92,
+        'catchlight': (-0.22, -0.28),
+    },
+}
+
+
+def eye_template(puzzle_id: str) -> dict:
+    """The species record for this picture, ready for the eye boxes to place."""
+    name = (puzzle_id or '').lower()
+    key = 'default'
+    for species in ('owl', 'koala', 'cheetah', 'tiger', 'lion'):
+        if species in name:
+            key = species
+            break
+    spec = EYE_TEMPLATES[key]
+    pupil = spec.get('pupil', 'round')
+    return {
+        'shape': spec.get('shape', 'almond'),
+        'hex': spec.get('iris'),
+        'pupil': float(spec.get('pupil_scale', 0.36)),
+        'rim': float(spec.get('rim', 0.0)),
+        'lid': float(spec.get('lid', 0.0)),
+        'tear': bool(spec.get('tear', False)),
+        'scale': float(spec.get('scale', 0.92)),
+        'slit': pupil == 'slit',
+        'aspect': float(spec.get('aspect', 0.72)),
+        'catchlight': tuple(spec.get('catchlight', (-0.22, -0.28))),
+        'fur_rim': spec.get('fur_rim'),
+        'fur_rim_px': float(spec.get('fur_rim_px', 5.0)),
+    }
+
 
 def defaults(mode: str) -> dict:
     if mode == 'tonal':
@@ -2879,7 +2976,8 @@ def segment(src: str, mode: str = 'lineart', k: int | None = None, min_area: int
                 continue
             if float(iris_mask[region_pixels].mean()) > 0.55:
                 path = iris['d']
-                eye = True
+                # The fur crescent under the eye is paint, not a second eye.
+                eye = not iris.get('fur')
                 break
         if not path:
             continue

@@ -568,24 +568,26 @@ def _paint_ellipse(canvas, covered, cx, cy, a, b, lab, color_hex=None) -> None:
 
 
 def _species_eye(puzzle_id: str) -> dict:
-    """Life-like eye. The iris fills the opening. There is no white sclera.
+    """Life-like eye from the species template. The iris fills the opening."""
+    from pbn import eye_template
+    return eye_template(puzzle_id)
 
-    A lion, tiger, or cheetah is an almond with an amber iris. An owl is a
-    round yellow eye. A koala is a small dark eye. Anything else still fills
-    the opening and uses a tapered lid instead of a black ring.
-    """
-    name = (puzzle_id or '').lower()
-    if 'owl' in name:
-        return {'shape': 'round', 'hex': '#F2C414', 'pupil': 0.50, 'rim': 2.0, 'lid': 0.0, 'tear': False, 'scale': 0.96}
-    if 'koala' in name:
-        return {'shape': 'small', 'hex': '#3E2A16', 'pupil': 0.48, 'rim': 0.0, 'lid': 2.4, 'tear': False, 'scale': 0.62, 'slit': True}
-    if 'cheetah' in name:
-        return {'shape': 'almond', 'hex': '#D08928', 'pupil': 0.34, 'rim': 0.0, 'lid': 4.4, 'tear': True, 'scale': 0.96}
-    if 'tiger' in name:
-        return {'shape': 'almond', 'hex': '#E2A832', 'pupil': 0.34, 'rim': 0.0, 'lid': 4.4, 'tear': False, 'scale': 0.96}
-    if 'lion' in name:
-        return {'shape': 'almond', 'hex': '#C47E2A', 'pupil': 0.34, 'rim': 0.0, 'lid': 4.4, 'tear': False, 'scale': 0.96}
-    return {'shape': 'fill', 'hex': None, 'pupil': 0.36, 'rim': 0.0, 'lid': 3.8, 'tear': False, 'scale': 0.92}
+
+def _fur_rim_points(cx: float, cy: float, semi_a: float, semi_b: float, thick: float) -> np.ndarray:
+    """A light fur crescent just under the opening. It does not enter the iris."""
+    angles = np.linspace(1.18 * np.pi, 1.82 * np.pi, 14)
+    outer = []
+    inner = []
+    for angle in angles:
+        taper = float(np.sin((angle - angles[0]) / (angles[-1] - angles[0]) * np.pi))
+        span = max(1.6, thick * taper)
+        nx = float(np.cos(angle))
+        ny = float(-np.sin(angle))
+        x = cx + semi_a * 0.90 * nx
+        y = cy + semi_b * 0.90 * ny
+        outer.append((x + nx * 0.8, y + ny * 0.8))
+        inner.append((x + nx * (span + 0.8), y + ny * (span + 0.8)))
+    return np.array(outer + inner[::-1], np.float64)
 
 
 def _hex_lab(color: str) -> np.ndarray:
@@ -699,10 +701,10 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
             semi_a = semi_b = radius
         elif profile['shape'] == 'almond':
             semi_a = max(4.0, mean_w / 2 * scale)
-            semi_b = max(3.0, min(mean_h / 2 * scale, semi_a * 0.75))
+            semi_b = max(3.0, min(mean_h / 2 * scale, semi_a * float(profile.get('aspect', 0.72))))
         else:
             semi_a = max(3.0, mean_w / 2 * scale)
-            semi_b = max(3.0, min(mean_h / 2 * scale, semi_a * 0.72))
+            semi_b = max(3.0, min(mean_h / 2 * scale, semi_a * float(profile.get('aspect', 0.72))))
         colors = []
         ellipses = []
         for cx, cy, _w, _h in fitted:
@@ -758,17 +760,33 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
                     shapes.append((0.1, _lab_hex(line_lab), lid_path))
                     _paint_poly(canvas, covered, lid_pts, line_lab)
             pupil_path = _ellipse_path(cx, cy, pupil_a, pupil_b, 0)
-            catch_r = max(1.4, min(pupil_a, pupil_b) * 0.28)
-            catch_path = _ellipse_path(cx - pupil_a * 0.22, cy - pupil_b * 0.28, catch_r, catch_r, 0)
+            catch_r = max(2.2, min(pupil_a, pupil_b) * 0.34)
+            catch_dx, catch_dy = profile.get('catchlight', (-0.22, -0.28))
+            catch_x = cx + pupil_a * float(catch_dx)
+            catch_y = cy + pupil_b * float(catch_dy)
+            catch_path = _ellipse_path(catch_x, catch_y, catch_r, catch_r, 0)
             shapes.append((1.0, _lab_hex(pupil_lab), pupil_path))
             shapes.append((2.0, _lab_hex(catch_lab), catch_path))
             _paint_ellipse(canvas, covered, cx, cy, pupil_a, pupil_b, pupil_lab)
-            _paint_ellipse(canvas, covered, cx - pupil_a * 0.22, cy - pupil_b * 0.28, catch_r, catch_r, catch_lab)
+            _paint_ellipse(canvas, covered, catch_x, catch_y, catch_r, catch_r, catch_lab)
             irises.append({
                 'cx': cx, 'cy': cy, 'a': semi_a, 'b': semi_b,
                 'mask': ellipse, 'pair': pair_index, 'color': shared,
                 'd': _ellipse_path(cx, cy, semi_a, semi_b, 0),
             })
+            if profile.get('fur_rim'):
+                rim_pts = _fur_rim_points(cx, cy, semi_a, semi_b, float(profile.get('fur_rim_px', 5.0)))
+                rim_path = _poly_path(rim_pts)
+                if rim_path:
+                    rim_mask = np.zeros((height, width), np.uint8)
+                    cv2.fillPoly(rim_mask, [np.round(rim_pts).astype(np.int32)], 1)
+                    rim_on = rim_mask.astype(bool) & ~ellipse
+                    if int(rim_on.sum()) >= 12:
+                        irises.append({
+                            'cx': cx, 'cy': cy + semi_b, 'a': semi_a, 'b': float(profile.get('fur_rim_px', 5.0)),
+                            'mask': rim_on, 'pair': 100, 'color': _hex_lab(profile['fur_rim']),
+                            'd': rim_path, 'fur': True,
+                        })
     if profile['tear'] and len(placed_eyes) >= 1:
         mouth_x = mouth_y = None
         if mouths:
