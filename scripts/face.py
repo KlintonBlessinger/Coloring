@@ -1052,7 +1052,7 @@ def clear_lion_cheek_lines(regions: np.ndarray, detail: np.ndarray, stroke_shape
     from pbn import path_mask
     height, width = regions.shape
     corridor = np.zeros((height, width), bool)
-    corridor[385:560, 270:460] = True
+    corridor[360:560, 260:450] = True
     drop = np.zeros((height, width), bool)
     kept: list[dict] = []
     for shape in stroke_shapes:
@@ -1063,7 +1063,9 @@ def clear_lion_cheek_lines(regions: np.ndarray, detail: np.ndarray, stroke_shape
         ys, xs = np.nonzero(mask)
         box_w = int(xs.max() - xs.min() + 1)
         box_h = int(ys.max() - ys.min() + 1)
-        thin = min(box_w, box_h) <= 18 and max(box_w, box_h) >= 20 and int(mask.sum()) < 900
+        # A diagonal's box is wide. Thickness is the inscribed radius, not that box.
+        reach = float(cv2.distanceTransform(mask.astype(np.uint8), cv2.DIST_L2, 3).max())
+        thin = reach <= 3.2 and max(box_w, box_h) >= 16 and int(mask.sum()) < 1200
         if thin:
             drop |= mask
         else:
