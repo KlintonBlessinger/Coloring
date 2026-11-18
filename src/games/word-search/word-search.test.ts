@@ -88,8 +88,11 @@ test('plans stay speakable, unique, and point at public realistic art', () => {
     assert.equal(foldName(animal.sayEs), animal.es);
     assert.equal(animal.sayEn.includes(' '), false);
     assert.equal(sayFor(animal, 'en'), animal.sayEn);
-    assert.ok(factsFor(animal, 'en').length > 0);
-    assert.ok(factsFor(animal, 'es').length > 0);
+    for (const fact of [...factsFor(animal, 'en'), ...factsFor(animal, 'es')]) {
+      const folded = foldName(fact);
+      assert.equal(folded.includes(animal.en), false, `${animal.id}: ${fact}`);
+      assert.equal(folded.includes(animal.es), false, `${animal.id}: ${fact}`);
+    }
     assert.equal(fs.existsSync(path.join(root, 'public/art', `${animal.art}.jpg`)), true);
     assert.equal(animal.art.startsWith('realistic-'), true);
   }
