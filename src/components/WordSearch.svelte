@@ -501,9 +501,9 @@
   }
 
   .marks .live {
-    stroke: #1d4e89;
-    stroke-width: 0.78;
-    opacity: 0.9;
+    stroke: #b7ddfb;
+    stroke-width: 0.84;
+    opacity: 0.72;
   }
 
   .marks .live.miss {
@@ -529,7 +529,7 @@
   }
 
   .cell.hot {
-    color: #0b3a75;
+    color: #140e0c;
   }
 
   .done {
