@@ -16,14 +16,22 @@ import numpy as np
 import cv2
 
 # Local frame, before placement. +x points at the inner corner (the nose),
-# +y points down. Sizes are in picture pixels.
-HALF_W = 18.6
-UPPER = 14.6
-LOWER = 11.4
-IRIS_R = 15.0
+# +y points down. The opening is a flat almond, about 1.7 times as wide as it
+# is tall. The iris circle is larger than that opening, so the upper lid
+# cuts off the top of the iris instead of floating above it.
+HALF_W = 17.9
+UPPER = 7.5
+LOWER = 12.8
+IRIS_R = 15.2
+IRIS_DY = 0.7  # iris center sits just below the opening center
 PUPIL_FRAC = 0.40
-INNER_FRAC = 0.72  # light gold reaches this far across the iris radius
-TILT_DEG = 7.5
+INNER_FRAC = 0.70  # light gold reaches this far across the iris radius
+TILT_DEG = 2.5
+# How far each corner drops before the tilt. The outer point aims down
+# toward the cheek. The inner point aims down toward the nose.
+# The tilt lifts the outer corner, so the drop has to be larger than the tilt.
+OUTER_DROP = 5.4
+INNER_DROP = 3.2
 SS = 4
 
 # Warm colors taken from the sunset painting, not a new palette.
@@ -35,7 +43,7 @@ IRIS_OUTER = '#7A3C10'
 # Flat outer band for the puzzle. Darker than the gold, still in the sunset fur.
 IRIS_BAND = '#B46218'
 SLIVER = '#E8CBA8'
-PATCH = '#F6DCC4'
+PATCH = '#F1D0A8'
 TEAR = '#2E1E12'
 CATCH = '#FFF6EC'
 
@@ -89,10 +97,20 @@ def _curve(samples: int, upper: bool, power: float, bulge: float) -> np.ndarray:
     return np.column_stack([x, y])
 
 
-def almond_local(samples: int = 36) -> np.ndarray:
-    """Closed almond. Upper lid is the fuller curve. Corners are points."""
-    upper = _curve(samples, True, 0.62, UPPER)
-    lower = _curve(samples, False, 0.70, LOWER)
+def _settle_corners(points: np.ndarray) -> np.ndarray:
+    """Drop the outer corner toward the cheek and the inner corner toward the nose."""
+    moved = np.array(points, np.float64, copy=True)
+    x = moved[:, 0] / HALF_W
+    outer = np.clip(-x, 0, 1) ** 1.3
+    inner = np.clip(x, 0, 1) ** 1.7
+    moved[:, 1] += OUTER_DROP * outer + INNER_DROP * inner
+    return moved
+
+
+def almond_local(samples: int = 40) -> np.ndarray:
+    """Flat almond. A low power keeps the upper lid straight across the iris."""
+    upper = _settle_corners(_curve(samples, True, 0.38, UPPER))
+    lower = _settle_corners(_curve(samples, False, 0.78, LOWER))
     # Drop the shared corners on the way back so the rim does not double a vertex.
     lower = lower[1:-1][::-1]
     return np.vstack([upper, lower])
@@ -120,10 +138,11 @@ def lid_thickness(points: np.ndarray) -> np.ndarray:
 
 def notch_spur() -> np.ndarray:
     """A short downward point at the inner corner. Mostly down, barely sideways."""
+    y = INNER_DROP
     return np.array([
-        [HALF_W - 0.3, -1.6],
-        [HALF_W + 2.2, 6.8],
-        [HALF_W - 0.15, 1.5],
+        [HALF_W - 0.4, y - 0.2],
+        [HALF_W + 2.0, y + 6.4],
+        [HALF_W - 0.15, y + 1.3],
     ], np.float64)
 
 
@@ -135,15 +154,28 @@ def lid_outer(opening: np.ndarray, thick: np.ndarray) -> np.ndarray:
     return np.vstack([outer[:index], spur, outer[index:]])
 
 
-def patch_local(samples: int = 22) -> np.ndarray:
-    """Cream fur tucked against the lower lid. A shallow crescent, not a floating oval."""
-    t = np.linspace(0, 1, samples)
-    x = -HALF_W * 0.72 + 2 * HALF_W * 0.72 * t
-    sag = np.sin(np.pi * t)
-    # Entirely under the lid, so the cream is fur and not the white of the eye.
-    top = np.column_stack([x, LOWER + 2.6 + 0.25 * sag])
-    bottom = np.column_stack([x[::-1], (LOWER + 3.4 + 8.2 * sag)[::-1]])
-    return np.vstack([top, bottom])
+def patch_local(samples: int = 18) -> np.ndarray:
+    """Thin cream fur under the lower lid. Wavy edge and a few short tufts."""
+    t = np.linspace(0.08, 0.92, samples)
+    x = -HALF_W + 2 * HALF_W * t
+    lid = LOWER * np.sin(np.pi * t) ** 0.78
+    lid = lid + OUTER_DROP * np.clip(-x / HALF_W, 0, 1) ** 1.3
+    lid = lid + INNER_DROP * np.clip(x / HALF_W, 0, 1) ** 1.7
+    top_y = lid + 2.9
+    span = (t - t[0]) / (t[-1] - t[0])
+    # Uneven, and thinner than a crescent. The lower edge is not one smooth arc.
+    depth = 1.7 + 0.9 * np.sin(np.pi * span) + 0.55 * np.sin(2.6 * np.pi * span + 0.5)
+    # Short tufts aimed down and a little outward, so they read as fur, not drips.
+    tips = {3: 4.4, 7: 3.4, 11: 4.8, 15: 3.6}
+    top = np.column_stack([x, top_y])
+    bottom = []
+    for index in range(samples - 1, -1, -1):
+        bottom.append([x[index], top_y[index] + depth[index]])
+        extra = tips.get(index)
+        if extra:
+            bottom.append([x[index] - 1.5, top_y[index] + depth[index] + extra])
+            bottom.append([x[index] + 0.7, top_y[index] + depth[index] + 0.3])
+    return np.vstack([top, np.array(bottom, np.float64)])
 
 
 def tear_local() -> np.ndarray:
@@ -180,6 +212,18 @@ def _rotate_local(points: np.ndarray) -> np.ndarray:
     cosine, sine = float(np.cos(angle)), float(np.sin(angle))
     x, y = points[:, 0], points[:, 1]
     return np.column_stack([cosine * x - sine * y, sine * x + cosine * y])
+
+
+def iris_center(spec: dict) -> tuple[float, float]:
+    """Where the iris circle sits. The upper lid covers its top."""
+    point = place(np.array([[0.0, IRIS_DY]]), spec)[0]
+    return float(point[0]), float(point[1])
+
+
+def catch_center(spec: dict) -> tuple[float, float]:
+    """Just under the upper lid, a little toward the light, on both eyes."""
+    under = place(np.array([[0.0, -UPPER + 1.7]]), spec)[0]
+    return float(under[0] - 1.5), float(under[1])
 
 
 def place(points: np.ndarray, spec: dict) -> np.ndarray:
@@ -247,6 +291,29 @@ def _shift(points: np.ndarray, x0: float, y0: float, ss: int = 1) -> np.ndarray:
     return np.column_stack([(points[:, 0] - x0) * ss, (points[:, 1] - y0) * ss])
 
 
+def _fur_tip_mask(shape: tuple[int, int], spec: dict, x0: float, y0: float) -> np.ndarray:
+    """The short tufts only, so they can be painted firmer than the soft band."""
+    mask = np.zeros(shape, np.uint8)
+    samples = 18
+    t = np.linspace(0.08, 0.92, samples)
+    x = -HALF_W + 2 * HALF_W * t
+    lid = LOWER * np.sin(np.pi * t) ** 0.78
+    lid = lid + OUTER_DROP * np.clip(-x / HALF_W, 0, 1) ** 1.3
+    lid = lid + INNER_DROP * np.clip(x / HALF_W, 0, 1) ** 1.7
+    span = (t - t[0]) / (t[-1] - t[0])
+    depth = 1.7 + 0.9 * np.sin(np.pi * span) + 0.55 * np.sin(2.6 * np.pi * span + 0.5)
+    for index, extra in ((3, 4.4), (7, 3.4), (11, 4.8), (15, 3.6)):
+        base_y = lid[index] + 2.9 + depth[index]
+        tri = np.array([
+            [x[index] - 1.2, base_y - 0.4],
+            [x[index] + 0.8, base_y + 0.2],
+            [x[index] - 1.5, base_y + extra],
+        ])
+        placed = _shift(place(tri, spec), x0, y0, SS)
+        cv2.fillPoly(mask, [np.round(placed).astype(np.int32)], 1)
+    return mask
+
+
 def render_eye_layer(base: np.ndarray, spec: dict, geo: dict) -> tuple[np.ndarray, np.ndarray]:
     """Paint one eye at 4x over ``base``. Returns the image and the edit alpha."""
     height, width = base.shape[:2]
@@ -273,8 +340,23 @@ def render_eye_layer(base: np.ndarray, spec: dict, geo: dict) -> tuple[np.ndarra
     patch = place(geo['patch'], spec)
     tear = place(geo['tear'], spec)
 
-    # Pale fur first, then the stain, then the eye on top.
-    stamp(patch, _hex_bgr(PATCH), 1.8, 1.0)
+    # Cream fur. The edge dissolves into the cheek instead of a hard crescent.
+    patch_mask = _fill((big_h, big_w), _shift(patch, x0, y0, SS)).astype(np.float32)
+    if patch_mask.any():
+        soft = cv2.GaussianBlur(patch_mask, (0, 0), 3.4 * SS)
+        peak = float(soft.max()) or 1.0
+        soft = np.clip(soft / peak, 0, 1) * 0.58
+        color = _hex_bgr(PATCH)
+        canvas[:] = canvas * (1 - soft[..., None]) + color * soft[..., None]
+        alpha[:] = np.maximum(alpha, soft)
+        # The tufts are the sharp points of the same patch. Paint them again,
+        # a little firmer, so the blur does not wipe the fur strokes out.
+        tips = _fur_tip_mask((big_h, big_w), spec, x0, y0)
+        if tips.any():
+            tip_a = cv2.GaussianBlur(tips.astype(np.float32), (0, 0), 1.15 * SS)
+            tip_a = np.clip(tip_a, 0, 1) * 0.72
+            canvas[:] = canvas * (1 - tip_a[..., None]) + color * tip_a[..., None]
+            alpha[:] = np.maximum(alpha, tip_a)
     # Tear fades along its length so the end dissolves instead of dripping.
     tear_mask = _fill((big_h, big_w), _shift(tear, x0, y0, SS)).astype(np.float32)
     if tear_mask.any():
@@ -297,7 +379,7 @@ def render_eye_layer(base: np.ndarray, spec: dict, geo: dict) -> tuple[np.ndarra
     ix = (xx + 0.5) / SS + x0
     iy = (yy + 0.5) / SS + y0
     lx, ly = image_to_local(ix, iy, spec)
-    rad = np.hypot(lx, ly)
+    rad = np.hypot(lx, ly - IRIS_DY)
     iris = (rad <= IRIS_R) & (open_a > 0.45)
     if iris.any():
         t = np.clip((rad - geo['pupil_r']) / max(1e-3, IRIS_R - geo['pupil_r']), 0, 1)
@@ -310,7 +392,7 @@ def render_eye_layer(base: np.ndarray, spec: dict, geo: dict) -> tuple[np.ndarra
         second = ~first
         color[first] = inner_c + (mid_c - inner_c) * (t[first] / 0.46)[..., None]
         color[second] = mid_c + (outer_c - mid_c) * ((t[second] - 0.46) / 0.54)[..., None]
-        angle = np.arctan2(ly, lx)
+        angle = np.arctan2(ly - IRIS_DY, lx)
         streaks = np.clip(np.sin(angle * 5.0 + 0.6), 0, 1) ** 6
         streaks = streaks * np.clip((rad - geo['pupil_r']) / IRIS_R, 0, 1)
         color = color * (1 - 0.34 * streaks[..., None]) + outer_c * (0.34 * streaks[..., None])
@@ -323,10 +405,10 @@ def render_eye_layer(base: np.ndarray, spec: dict, geo: dict) -> tuple[np.ndarra
         a = np.clip(a, 0, 1) * (open_a > 0.2)
         canvas[:] = canvas * (1 - a[..., None]) + color * a[..., None]
         alpha[:] = np.maximum(alpha, a)
-    # Pupil, then the lid over the sliver and the iris edge.
-    pupil_r = geo['pupil_r'] * spec['sx']
-    # Circle in image space, centered, so the gaze of both eyes matches.
-    pupil = ((ix - spec['cx']) ** 2) / max(pupil_r, 0.5) ** 2 + ((iy - spec['cy']) ** 2) / geo['pupil_r'] ** 2 <= 1
+    # Pupil stays centered in the iris, so the gaze of both eyes matches.
+    pupil_rx = geo['pupil_r'] * spec['sx']
+    icx, icy = iris_center(spec)
+    pupil = ((ix - icx) ** 2) / max(pupil_rx, 0.5) ** 2 + ((iy - icy) ** 2) / geo['pupil_r'] ** 2 <= 1
     pupil &= open_a > 0.35
     if pupil.any():
         a = cv2.GaussianBlur(pupil.astype(np.float32), (0, 0), 0.45 * SS)
@@ -344,9 +426,8 @@ def render_eye_layer(base: np.ndarray, spec: dict, geo: dict) -> tuple[np.ndarra
         color = _hex_bgr(LID)
         canvas[:] = canvas * (1 - a[..., None]) + color * a[..., None]
         alpha[:] = np.maximum(alpha, a)
-    # One catchlight, upper side of the iris, same image-space offset on both eyes.
-    catch_x = spec['cx'] - 1.3 * spec['sx']
-    catch_y = spec['cy'] - geo['pupil_r'] * 0.95
+    # One catchlight just under the upper lid, same light direction on both eyes.
+    catch_x, catch_y = catch_center(spec)
     dx = (ix - catch_x) / 1.7
     dy = (iy - catch_y) / 1.35
     catch = np.exp(-(dx ** 2 + dy ** 2) / 0.85)
@@ -419,13 +500,14 @@ def puzzle_parts(height: int = 1024, width: int = 1024) -> list[dict]:
         open_m = _fill((height, width), opening).astype(bool)
         outer_m = _fill((height, width), outer).astype(bool)
         yy, xx = np.ogrid[:height, :width]
-        # Pupil stays a true circle in the picture, so the two gazes match.
+        icx, icy = iris_center(spec)
+        # Pupil stays a true circle in the iris, so the two gazes match.
         pupil_rx = geo['pupil_r'] * spec['sx']
         pupil_ry = geo['pupil_r']
-        pupil = ((xx - spec['cx']) ** 2) / pupil_rx ** 2 + ((yy - spec['cy']) ** 2) / pupil_ry ** 2 <= 1
+        pupil = ((xx - icx) ** 2) / pupil_rx ** 2 + ((yy - icy) ** 2) / pupil_ry ** 2 <= 1
         pupil &= open_m
         lx, ly = image_to_local(xx.astype(np.float64), yy.astype(np.float64), spec)
-        rad = np.hypot(lx, ly)
+        rad = np.hypot(lx, ly - IRIS_DY)
         inner = (rad <= geo['inner_r']) & open_m & ~pupil
         outer_iris = open_m & ~inner & ~pupil
         lid = outer_m & ~open_m
@@ -433,21 +515,21 @@ def puzzle_parts(height: int = 1024, width: int = 1024) -> list[dict]:
         # Shared pair ids: both eyes take one palette color per part.
         parts.append({
             'kind': 'region', 'name': 'iris-outer', 'hex': IRIS_BAND, 'pair': 110,
-            'mask': outer_iris, 'd': _smooth_path(opening) + _ellipse_path(spec['cx'], spec['cy'], geo['inner_r'] * spec['sx'], geo['inner_r']),
+            'mask': outer_iris, 'd': _smooth_path(opening) + _ellipse_path(icx, icy, geo['inner_r'] * spec['sx'], geo['inner_r']),
             'cx': spec['cx'], 'cy': spec['cy'], 'a': HALF_W * spec['sx'], 'b': (UPPER + LOWER) / 2,
             'fur': False,
         })
         parts.append({
             'kind': 'region', 'name': 'iris-inner', 'hex': IRIS_INNER, 'pair': 120,
             'mask': inner,
-            'd': _ellipse_path(spec['cx'], spec['cy'], geo['inner_r'] * spec['sx'], geo['inner_r']) + _ellipse_path(spec['cx'], spec['cy'], pupil_rx, pupil_ry),
-            'cx': spec['cx'], 'cy': spec['cy'], 'a': geo['inner_r'], 'b': geo['inner_r'],
+            'd': _ellipse_path(icx, icy, geo['inner_r'] * spec['sx'], geo['inner_r']) + _ellipse_path(icx, icy, pupil_rx, pupil_ry),
+            'cx': icx, 'cy': icy, 'a': geo['inner_r'], 'b': geo['inner_r'],
             'fur': False,
         })
         parts.append({
             'kind': 'region', 'name': 'pupil', 'hex': PUPIL, 'pair': 130,
-            'mask': pupil, 'd': _ellipse_path(spec['cx'], spec['cy'], pupil_rx, pupil_ry),
-            'cx': spec['cx'], 'cy': spec['cy'], 'a': pupil_rx, 'b': pupil_ry,
+            'mask': pupil, 'd': _ellipse_path(icx, icy, pupil_rx, pupil_ry),
+            'cx': icx, 'cy': icy, 'a': pupil_rx, 'b': pupil_ry,
             'fur': False,
         })
         parts.append({
@@ -469,8 +551,7 @@ def puzzle_parts(height: int = 1024, width: int = 1024) -> list[dict]:
             'cx': spec['cx'], 'cy': spec['cy'], 'a': 4, 'b': 12,
             'fur': False,
         })
-        catch_x = spec['cx'] - 1.3 * spec['sx']
-        catch_y = spec['cy'] - geo['pupil_r'] * 0.95
+        catch_x, catch_y = catch_center(spec)
         catch = _ellipse_path(catch_x, catch_y, 1.8, 1.35)
         catch_m = np.zeros((height, width), np.uint8)
         cv2.ellipse(
