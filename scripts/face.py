@@ -846,7 +846,15 @@ def compose_geometry(image, source_lab, eyes, mouths, kind: str, puzzle_id: str 
         shared_fallback = None
     eyes = _merge_same_eye(_tight_eyes(eyes))
     placed_eyes: list[tuple[float, float, float, float]] = []
-    for pair_index, pair in enumerate(_pair_eyes(eyes)):
+    # The portrait eyes are drawn from one almond and mirrored. The cub still
+    # uses the older template below, so this branch does not change that picture.
+    if puzzle_id == 'realistic-lion-portrait':
+        from lion_eyes import apply_portrait_eyes
+        apply_portrait_eyes(shapes, irises, zone, eye_zone, covered, canvas, placed_eyes)
+        eye_pairs: list = []
+    else:
+        eye_pairs = _pair_eyes(eyes)
+    for pair_index, pair in enumerate(eye_pairs):
         fitted = []
         for index in pair:
             x, y, w, h = [float(value) for value in eyes[index][:4]]
